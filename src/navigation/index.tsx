@@ -12,12 +12,14 @@ import Plan from '../screens/onboarding/Plan';
 import Hoje from '../screens/Hoje';
 import Campo from '../screens/Campo';
 import Raiz from '../screens/Raiz';
+import Settings from '../screens/Settings';
 
 import GraoSymbol from '../components/GraoSymbol';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 
 const Stack = createStackNavigator();
+const AppStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainNavigator() {
@@ -55,8 +57,8 @@ function MainNavigator() {
         name="Campo"
         component={Campo}
         options={{
-          tabBarIcon: ({ color }) => (
-            <GraoSymbol size={28} color={color} filled={false} />
+          tabBarIcon: ({ color, focused }) => (
+            <GraoSymbol size={28} color={color} filled={focused} />
           ),
         }}
       />
@@ -64,8 +66,8 @@ function MainNavigator() {
         name="Raiz"
         component={Raiz}
         options={{
-          tabBarIcon: ({ color }) => (
-            <GraoSymbol size={28} color={color} filled={false} />
+          tabBarIcon: ({ color, focused }) => (
+            <GraoSymbol size={28} color={color} filled={focused} />
           ),
         }}
       />
@@ -73,11 +75,16 @@ function MainNavigator() {
   );
 }
 
-interface OnboardingNavigatorProps {
-  onFinish: () => void;
+function AppNavigator() {
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Main" component={MainNavigator} />
+      <AppStack.Screen name="Settings" component={Settings} />
+    </AppStack.Navigator>
+  );
 }
 
-function OnboardingNavigator({ onFinish }: OnboardingNavigatorProps) {
+function OnboardingNavigator({ onFinish }: { onFinish: () => void }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome" component={Welcome} />
@@ -85,7 +92,7 @@ function OnboardingNavigator({ onFinish }: OnboardingNavigatorProps) {
       <Stack.Screen name="Notification" component={Notification} />
       <Stack.Screen name="WhatsApp" component={WhatsApp} />
       <Stack.Screen name="Plan">
-        {() => <Plan onFinish={onFinish} />}
+        {(props) => <Plan {...props} onFinish={onFinish} />}
       </Stack.Screen>
     </Stack.Navigator>
   );
@@ -100,7 +107,7 @@ export default function RootNavigator({ isOnboarded, onFinish }: RootNavigatorPr
   return (
     <NavigationContainer>
       {isOnboarded ? (
-        <MainNavigator />
+        <AppNavigator />
       ) : (
         <OnboardingNavigator onFinish={onFinish} />
       )}

@@ -6,7 +6,7 @@ import {
   SafeAreaView,
   FlatList,
 } from 'react-native';
-import GraoSymbol from '../components/GraoSymbol';
+import ProfileButton from '../components/ProfileButton';
 import SeedCard from '../components/SeedCard';
 import MusicCard from '../components/MusicCard';
 import { pastSeeds, Seed } from '../data/seeds';
@@ -28,7 +28,9 @@ function SeedEntry({ seed }: { seed: Seed }) {
       <View style={styles.entryHeader}>
         <Text style={styles.entryDate}>{formatDate(seed.date)}</Text>
         <View style={styles.plantedBadge}>
-          <GraoSymbol size={16} color={seed.planted ? colors.ambar : colors.casca40} filled={seed.planted} />
+          {seed.planted ? (
+            <Text style={styles.plantedEmoji}>🌱</Text>
+          ) : null}
           <Text style={[styles.plantedLabel, !seed.planted && styles.plantedLabelEmpty]}>
             {seed.planted ? 'Plantada' : 'Não plantada'}
           </Text>
@@ -40,7 +42,7 @@ function SeedEntry({ seed }: { seed: Seed }) {
   );
 }
 
-export default function Raiz() {
+export default function Raiz({ navigation }: { navigation: any }) {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
@@ -49,7 +51,10 @@ export default function Raiz() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <Text style={styles.title}>Raiz</Text>
+          <View style={styles.pageHeader}>
+            <Text style={styles.title}>Raiz</Text>
+            <ProfileButton onPress={() => navigation.navigate('Settings')} />
+          </View>
         }
         renderItem={({ item, index }) => (
           <>
@@ -64,13 +69,14 @@ export default function Raiz() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.palha },
-  list: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 48 },
-  title: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.xxl,
-    color: colors.casca,
+  list: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48 },
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 32,
   },
+  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.casca },
   entry: { marginBottom: 8 },
   entryHeader: {
     flexDirection: 'row',
@@ -79,27 +85,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   entryDate: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.xs,
-    color: colors.casca40,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    flex: 1,
+    fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.casca40,
+    textTransform: 'uppercase', letterSpacing: 0.5, flex: 1,
   },
-  plantedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  plantedLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.xs,
-    color: colors.ambar,
-  },
+  plantedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  plantedEmoji: { fontSize: 14 },
+  plantedLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.ambar },
   plantedLabelEmpty: { color: colors.casca40 },
-  separator: {
-    height: 1,
-    backgroundColor: colors.casca12,
-    marginVertical: 28,
-  },
+  separator: { height: 1, backgroundColor: colors.casca12, marginVertical: 28 },
 });

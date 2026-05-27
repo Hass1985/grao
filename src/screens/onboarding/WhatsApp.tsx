@@ -38,6 +38,9 @@ export default function WhatsApp({ navigation }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>‹</Text>
+          </TouchableOpacity>
           <Text style={styles.title}>Seu WhatsApp</Text>
           <Text style={styles.subtitle}>
             É por aqui que você vai receber sua semente todos os dias.
@@ -84,9 +87,11 @@ export default function WhatsApp({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.palha },
+  backBtn: { marginBottom: 8 },
+  backBtnText: { fontSize: 30, color: colors.ambar, lineHeight: 36, fontFamily: fonts.sans },
   scroll: {
     paddingHorizontal: 24,
-    paddingTop: 48,
+    paddingTop: 16,
     paddingBottom: 48,
     flexGrow: 1,
     justifyContent: 'space-between',

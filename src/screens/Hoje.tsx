@@ -10,13 +10,14 @@ import {
   FlatList,
 } from 'react-native';
 import GraoSymbol from '../components/GraoSymbol';
+import ProfileButton from '../components/ProfileButton';
 import SeedCard from '../components/SeedCard';
 import MusicCard from '../components/MusicCard';
 import { todaySeed, emotionalFamilies } from '../data/seeds';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 
-export default function Hoje() {
+export default function Hoje({ navigation }: { navigation: any }) {
   const [planted, setPlanted] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -29,9 +30,13 @@ export default function Hoje() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
         <View style={styles.header}>
-          <GraoSymbol size={32} color={colors.ambar} filled={false} />
-          <Text style={styles.date}>{today}</Text>
+          <View style={styles.headerLeft}>
+            <GraoSymbol size={32} color={colors.ambar} filled={false} />
+            <Text style={styles.date}>{today}</Text>
+          </View>
+          <ProfileButton onPress={() => navigation.navigate('Settings')} />
         </View>
 
         <View style={styles.seedContainer}>
@@ -102,94 +107,46 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     paddingTop: 24,
     marginBottom: 24,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   date: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.casca60,
-    textTransform: 'capitalize',
+    fontFamily: fonts.sans, fontSize: fontSizes.sm,
+    color: colors.casca60, textTransform: 'capitalize',
   },
   seedContainer: {
-    backgroundColor: colors.peneira,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 8,
+    backgroundColor: colors.peneira, borderRadius: 16, padding: 20, marginBottom: 8,
   },
   plantButton: {
-    backgroundColor: colors.ambar,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: colors.ambar, borderRadius: 12,
+    paddingVertical: 16, alignItems: 'center', marginBottom: 16,
   },
-  plantButtonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.white,
-  },
+  plantButtonText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.white },
   plantedState: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16, marginBottom: 16,
   },
-  plantedText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.ambar,
-  },
-  otherLink: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
+  plantedText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.ambar },
+  otherLink: { alignItems: 'center', paddingVertical: 8 },
   otherLinkText: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.casca60,
-    textDecorationLine: 'underline',
+    fontFamily: fonts.sans, fontSize: fontSizes.sm,
+    color: colors.casca60, textDecorationLine: 'underline',
   },
   modal: { flex: 1, backgroundColor: colors.palha },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.casca12,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, paddingVertical: 20,
+    borderBottomWidth: 1, borderBottomColor: colors.casca12,
   },
-  modalTitle: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.xl,
-    color: colors.casca,
-  },
-  modalClose: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.ambar,
-  },
-  familyList: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    gap: 10,
-  },
+  modalTitle: { fontFamily: fonts.serif, fontSize: fontSizes.xl, color: colors.casca },
+  modalClose: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.ambar },
+  familyList: { paddingHorizontal: 24, paddingTop: 20, gap: 10 },
   familyCard: {
-    flex: 1,
-    backgroundColor: colors.peneira,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
+    flex: 1, backgroundColor: colors.peneira, borderRadius: 12,
+    padding: 16, alignItems: 'center', gap: 8,
   },
   familyEmoji: { fontSize: 28 },
-  familyLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.casca,
-  },
+  familyLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.casca },
 });

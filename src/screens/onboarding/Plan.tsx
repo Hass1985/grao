@@ -12,6 +12,7 @@ import { fonts, fontSizes } from '../../theme/typography';
 
 type Props = {
   onFinish: () => void;
+  navigation?: any;
 };
 
 const plans = [
@@ -33,12 +34,15 @@ const plans = [
   },
 ];
 
-export default function Plan({ onFinish }: Props) {
+export default function Plan({ onFinish, navigation }: Props) {
   const [selected, setSelected] = useState('annual');
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TouchableOpacity onPress={() => (navigation as any)?.goBack?.()} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>‹</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Escolha seu plano</Text>
         <Text style={styles.subtitle}>
           7 dias grátis para conhecer o Grão. Cancele quando quiser.
@@ -87,9 +91,11 @@ export default function Plan({ onFinish }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.palha },
+  backBtn: { marginBottom: 8 },
+  backBtnText: { fontSize: 30, color: colors.ambar, lineHeight: 36, fontFamily: fonts.sans },
   scroll: {
     paddingHorizontal: 24,
-    paddingTop: 48,
+    paddingTop: 16,
     paddingBottom: 48,
   },
   title: {

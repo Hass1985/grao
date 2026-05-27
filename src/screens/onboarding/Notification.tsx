@@ -26,6 +26,11 @@ export default function Notification({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.navHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>‹</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.content}>
         <Text style={styles.title}>Quando quer receber sua semente?</Text>
         <Text style={styles.subtitle}>
@@ -67,10 +72,12 @@ export default function Notification({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.palha },
+  navHeader: { paddingHorizontal: 20, paddingTop: 8 },
+  backBtnText: { fontSize: 30, color: colors.ambar, lineHeight: 36, fontFamily: fonts.sans },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 48,
+    paddingTop: 16,
     paddingBottom: 48,
     justifyContent: 'space-between',
   },

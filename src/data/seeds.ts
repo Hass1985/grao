@@ -49,6 +49,7 @@ export const todaySeed: Seed = {
   music: {
     title: 'Tudo Vai Ser Bem',
     artist: 'Fernandinho',
+    spotifyUrl: 'https://open.spotify.com/search/Fernandinho%20Tudo%20Vai%20Ser%20Bem',
     youtubeUrl: 'https://www.youtube.com/results?search_query=Fernandinho+Tudo+Vai+Ser+Bem',
   },
   planted: false,
@@ -72,6 +73,7 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Lugar Secreto',
       artist: 'Gabriela Rocha',
+      spotifyUrl: 'https://open.spotify.com/search/Gabriela%20Rocha%20Lugar%20Secreto',
       youtubeUrl: 'https://www.youtube.com/results?search_query=Gabriela+Rocha+Lugar+Secreto',
     },
     planted: true,
@@ -93,6 +95,7 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Quão Grande é o Meu Deus',
       artist: 'Soraya Moraes',
+      spotifyUrl: 'https://open.spotify.com/search/Soraya%20Moraes%20Qu%C3%A3o%20Grande',
       youtubeUrl: 'https://www.youtube.com/results?search_query=Soraya+Moraes+Quão+Grande',
     },
     planted: true,
@@ -132,6 +135,7 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Paz Como um Rio',
       artist: 'Diante do Trono',
+      spotifyUrl: 'https://open.spotify.com/search/Diante%20do%20Trono%20Paz%20Como%20Um%20Rio',
       youtubeUrl: 'https://www.youtube.com/results?search_query=Diante+do+Trono+Paz+Como+Um+Rio',
     },
     planted: true,
@@ -171,6 +175,7 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Nada Além do Sangue',
       artist: 'Ministério Zoe',
+      spotifyUrl: 'https://open.spotify.com/search/Minist%C3%A9rio%20Zoe%20Nada%20Al%C3%A9m%20do%20Sangue',
       youtubeUrl: 'https://www.youtube.com/results?search_query=Ministério+Zoe+Nada+Além+do+Sangue',
     },
     planted: true,

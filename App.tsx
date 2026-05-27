@@ -16,7 +16,7 @@ import RootNavigator from './src/navigation';
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [isOnboarded, setIsOnboarded] = useState(false);
+  const [isOnboarded, setIsOnboarded] = useState(true);
 
   const [fontsLoaded] = useFonts({
     Fraunces_400Regular,
