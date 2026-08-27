@@ -1,0 +1,30 @@
+{
+  "name": "grao-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend do Grão — conversa generativa (Claude API) + perfil + entrega de sementes",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "smoke": "tsx scripts/smoke.ts",
+    "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql && psql \"$DATABASE_URL\" -f db/seed_data.sql",
+    "eval:opening": "tsx scripts/eval-opening.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.0",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

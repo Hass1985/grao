@@ -19,29 +19,28 @@ type Props = {
 export default function Welcome({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.palha} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         <View style={styles.header}>
-          <GraoSymbol size={64} color={colors.ambar} filled={false} />
+          <GraoSymbol size={56} color={colors.accent} filled={false} />
           <Text style={styles.name}>Grão</Text>
-          <Text style={styles.slogan}>Uma semente por dia</Text>
+          <Text style={styles.eyebrow}>Devocional diário · em português</Text>
         </View>
 
         <View style={styles.body}>
+          <Text style={styles.headline}>Uma semente{'\n'}por dia.</Text>
           <Text style={styles.description}>
-            Todo dia, uma passagem bíblica escolhida para o momento que você está vivendo. Uma reflexão. Uma oração. Uma prática.
-          </Text>
-          <Text style={styles.subdescription}>
-            Plantada no WhatsApp. Guardada no seu coração.
+            A Palavra de Deus{'\n'}na palma da sua mão.
           </Text>
         </View>
 
         <TouchableOpacity
+          testID="welcome-cta"
           style={styles.button}
-          onPress={() => navigation.navigate('Segment')}
+          onPress={() => navigation.navigate('Intro')}
           activeOpacity={0.85}
         >
-          <Text style={styles.buttonText}>Começar</Text>
+          <Text style={styles.buttonText}>Plantar minha primeira semente</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -51,7 +50,7 @@ export default function Welcome({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.palha,
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -62,48 +61,70 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   name: {
     fontFamily: fonts.serif,
-    fontSize: fontSizes.xxxl,
-    color: colors.casca,
+    fontSize: fontSizes.xxl,
+    color: colors.foreground,
     letterSpacing: -0.5,
+    marginTop: 4,
   },
-  slogan: {
+  eyebrow: {
     fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.casca40,
+    fontSize: 11,
+    color: colors.accent,
     textTransform: 'uppercase',
-    letterSpacing: 2,
+    letterSpacing: 1.5,
   },
   body: {
-    gap: 16,
+    gap: 24,
+    alignItems: 'center',
+  },
+  headline: {
+    fontFamily: fonts.serif,
+    fontSize: 44,
+    color: colors.foreground,
+    lineHeight: 46,
+    letterSpacing: -1,
+    textAlign: 'center',
   },
   description: {
     fontFamily: fonts.serif,
-    fontSize: fontSizes.xl,
-    color: colors.casca,
-    lineHeight: 32,
+    fontSize: fontSizes.lg,
+    color: colors.foregroundMuted,
+    lineHeight: 30,
     textAlign: 'center',
+    maxWidth: 320,
   },
-  subdescription: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
-    color: colors.casca60,
-    textAlign: 'center',
-    lineHeight: 24,
+  ruleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  ruleLine: {
+    width: 40,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  ruleLabel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 11,
+    color: colors.foregroundSubtle,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
   },
   button: {
-    backgroundColor: colors.ambar,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   buttonText: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.base,
-    color: colors.white,
-    letterSpacing: 0.5,
+    color: colors.accentForeground,
+    letterSpacing: 0.3,
   },
 });

@@ -129,7 +129,7 @@ export default function Campo({ navigation }: { navigation: any }) {
 const CELL_SIZE = 44;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.palha },
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48 },
   header: {
     flexDirection: 'row',

@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.pbuild/
+
+# Saída de build do webapp (regenerável com `npx expo export --platform web`)
+pitch/webapp/
+pitch/Grao_webapp/
+pitch/*.zip

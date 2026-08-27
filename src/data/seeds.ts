@@ -38,7 +38,7 @@ export const todaySeed: Seed = {
   type: 'reflexão',
   family: 'esperança',
   passage:
-    '"Porque eu sei os planos que tenho para vocês", diz o Senhor, "planos de fazê-los prosperar e não de causar dano, planos de dar a vocês esperança e um futuro."',
+    'Porque eu sei os planos que tenho para vocês", diz o Senhor, "planos de fazê-los prosperar e não de causar dano, planos de dar a vocês esperança e um futuro.',
   reference: 'Jeremias 29:11',
   reflection:
     'Mesmo quando o presente parece incerto, existe um projeto maior traçado com cuidado para a sua vida. Hoje, permita-se confiar no que ainda não consegue ver.',
@@ -47,10 +47,10 @@ export const todaySeed: Seed = {
   practice:
     'Escreva uma coisa boa que aconteceu hoje, por menor que seja. Deixe que ela seja evidência de que há cuidado no seu caminho.',
   music: {
-    title: 'Tudo Vai Ser Bem',
-    artist: 'Fernandinho',
-    spotifyUrl: 'https://open.spotify.com/search/Fernandinho%20Tudo%20Vai%20Ser%20Bem',
-    youtubeUrl: 'https://www.youtube.com/results?search_query=Fernandinho+Tudo+Vai+Ser+Bem',
+    title: 'Deus Proverá',
+    artist: 'Gabriela Gomes',
+    spotifyUrl: 'https://open.spotify.com/track/2zouxoanOhjJi3HB8mBr9F',
+    youtubeUrl: 'https://www.youtube.com/results?search_query=Gabriela+Gomes+Deus+Prover%C3%A1',
   },
   planted: false,
 };
@@ -73,7 +73,7 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Lugar Secreto',
       artist: 'Gabriela Rocha',
-      spotifyUrl: 'https://open.spotify.com/search/Gabriela%20Rocha%20Lugar%20Secreto',
+      spotifyUrl: 'https://open.spotify.com/track/19KSVYPZSOZtvhYx8aVCvb',
       youtubeUrl: 'https://www.youtube.com/results?search_query=Gabriela+Rocha+Lugar+Secreto',
     },
     planted: true,
@@ -87,7 +87,7 @@ export const pastSeeds: Seed[] = [
       'Em tudo dai graças, porque esta é a vontade de Deus em Cristo Jesus para convosco.',
     reference: '1 Tessalonicenses 5:18',
     reflection:
-      'A gratidão não nega a dor — ela encontra luz dentro dela. Agradecer é um ato de fé que treina os olhos para enxergar a graça.',
+      'A gratidão não nega a dor, ela encontra luz dentro dela. Agradecer é um ato de fé que treina os olhos para enxergar a graça.',
     prayer:
       'Senhor, abre meus olhos para as bênçãos que já estão aqui. Que a gratidão seja meu idioma primeiro.',
     practice:
@@ -95,8 +95,8 @@ export const pastSeeds: Seed[] = [
     music: {
       title: 'Quão Grande é o Meu Deus',
       artist: 'Soraya Moraes',
-      spotifyUrl: 'https://open.spotify.com/search/Soraya%20Moraes%20Qu%C3%A3o%20Grande',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=Soraya+Moraes+Quão+Grande',
+      spotifyUrl: 'https://open.spotify.com/track/7DhiPsmpu4kzIQyCtvWqzd',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=Soraya+Moraes+Qu%C3%A3o+Grande+%C3%A9+o+Meu+Deus',
     },
     planted: true,
   },
@@ -111,11 +111,12 @@ export const pastSeeds: Seed[] = [
       'A solidão dói porque fomos feitos para comunhão. Mas há uma presença que não abandona nem nos momentos em que ninguém mais está.',
     prayer: 'Deus, faz-te real para mim neste silêncio. Que eu sinta que não estou só.',
     practice:
-      'Sente-se em silêncio por cinco minutos. Não tente resolver nada — apenas perceba que há algo além de você neste espaço.',
+      'Sente-se em silêncio por cinco minutos. Não tente resolver nada, apenas perceba que há algo além de você neste espaço.',
     music: {
       title: 'Deus Cuida de Mim',
-      artist: 'Aline Barros',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=Aline+Barros+Deus+Cuida+de+Mim',
+      artist: 'Kleber Lucas',
+      spotifyUrl: 'https://open.spotify.com/track/449TmbIw140iAdtYpUWB4h',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=Kleber+Lucas+Deus+Cuida+de+Mim',
     },
     planted: false,
   },
@@ -133,10 +134,10 @@ export const pastSeeds: Seed[] = [
     practice:
       'Antes de dormir, coloque as mãos no peito e respire profundamente enquanto repete: "Paz, eu recebo."',
     music: {
-      title: 'Paz Como um Rio',
+      title: 'Príncipe da Paz',
       artist: 'Diante do Trono',
-      spotifyUrl: 'https://open.spotify.com/search/Diante%20do%20Trono%20Paz%20Como%20Um%20Rio',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=Diante+do+Trono+Paz+Como+Um+Rio',
+      spotifyUrl: 'https://open.spotify.com/track/1sBvuSkhAnfppzUBpvIKi3',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=Diante+do+Trono+Pr%C3%ADncipe+da+Paz',
     },
     planted: true,
   },
@@ -153,9 +154,10 @@ export const pastSeeds: Seed[] = [
     practice:
       'Faça algo pequeno e bom por alguém hoje, sem esperar reconhecimento. Uma mensagem, um gesto, uma palavra.',
     music: {
-      title: 'Me Usa Senhor',
-      artist: 'Fernandinho',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=Fernandinho+Me+Usa+Senhor',
+      title: 'Oceanos (Onde Meus Pés Podem Falhar)',
+      artist: 'Hillsong UNITED',
+      spotifyUrl: 'https://open.spotify.com/track/49TMWB2yqSHcm7aomyeR7G',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=Hillsong+Oceanos+Onde+Meus+P%C3%A9s+Podem+Falhar',
     },
     planted: true,
   },
@@ -168,15 +170,15 @@ export const pastSeeds: Seed[] = [
       'A fé é a certeza daquilo que esperamos e a prova das coisas que não vemos.',
     reference: 'Hebreus 11:1',
     reflection:
-      'Fé não é ausência de dúvida — é escolher caminhar mesmo quando os olhos não alcançam o destino. É o músculo que se fortalece exatamente quando o chão some.',
+      'Fé não é ausência de dúvida, é escolher caminhar mesmo quando os olhos não alcançam o destino. É o músculo que se fortalece exatamente quando o chão some.',
     prayer: 'Senhor, aumenta a minha fé. Que eu confie no que ainda não consigo ver.',
     practice:
       'Escreva uma promessa bíblica que você quer acreditar mais profundamente. Leia em voz alta três vezes.',
     music: {
       title: 'Nada Além do Sangue',
-      artist: 'Ministério Zoe',
-      spotifyUrl: 'https://open.spotify.com/search/Minist%C3%A9rio%20Zoe%20Nada%20Al%C3%A9m%20do%20Sangue',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=Ministério+Zoe+Nada+Além+do+Sangue',
+      artist: 'Fernandinho',
+      spotifyUrl: 'https://open.spotify.com/track/2mI6Oxf5FhUlSoDT67SeZM',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=Fernandinho+Nada+Al%C3%A9m+do+Sangue',
     },
     planted: true,
   },

@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  FlatList,
-} from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList } from 'react-native';
 import ProfileButton from '../components/ProfileButton';
 import SeedCard from '../components/SeedCard';
 import MusicCard from '../components/MusicCard';
@@ -28,15 +22,13 @@ function SeedEntry({ seed }: { seed: Seed }) {
       <View style={styles.entryHeader}>
         <Text style={styles.entryDate}>{formatDate(seed.date)}</Text>
         <View style={styles.plantedBadge}>
-          {seed.planted ? (
-            <Text style={styles.plantedEmoji}>🌱</Text>
-          ) : null}
+          {seed.planted ? <Text style={styles.plantedEmoji}>🌱</Text> : null}
           <Text style={[styles.plantedLabel, !seed.planted && styles.plantedLabelEmpty]}>
             {seed.planted ? 'Plantada' : 'Não plantada'}
           </Text>
         </View>
       </View>
-      <SeedCard seed={seed} compact={true} />
+      <SeedCard seed={seed} compact={true} featured={true} />
       <MusicCard music={seed.music} />
     </View>
   );
@@ -52,7 +44,10 @@ export default function Raiz({ navigation }: { navigation: any }) {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View style={styles.pageHeader}>
-            <Text style={styles.title}>Raiz</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>Raiz</Text>
+              <Text style={styles.subtitle}>Suas sementes, guardadas.</Text>
+            </View>
             <ProfileButton onPress={() => navigation.navigate('Settings')} />
           </View>
         }
@@ -68,29 +63,39 @@ export default function Raiz({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.palha },
-  list: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48 },
+  container: { flex: 1, backgroundColor: colors.background },
+  list: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 48 },
   pageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
+    paddingVertical: 14,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.casca },
-  entry: { marginBottom: 8 },
+  headerLeft: { gap: 2 },
+  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.foreground },
+  subtitle: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundMuted },
+
+  entry: { marginBottom: 4 },
   entryHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   entryDate: {
-    fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.casca40,
-    textTransform: 'uppercase', letterSpacing: 0.5, flex: 1,
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.xs,
+    color: colors.foregroundSubtle,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    flex: 1,
   },
   plantedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plantedEmoji: { fontSize: 14 },
-  plantedLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.ambar },
-  plantedLabelEmpty: { color: colors.casca40 },
-  separator: { height: 1, backgroundColor: colors.casca12, marginVertical: 28 },
+  plantedLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.accent },
+  plantedLabelEmpty: { color: colors.foregroundSubtle },
+  separator: { height: 1, backgroundColor: colors.border, marginVertical: 24 },
 });

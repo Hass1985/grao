@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
@@ -16,21 +16,33 @@ import RootNavigator from './src/navigation';
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [isOnboarded, setIsOnboarded] = useState(true);
+  const [isOnboarded, setIsOnboarded] = useState(false);
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Fraunces_400Regular,
     Inter_400Regular,
     Inter_500Medium,
   });
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+  // Rede de segurança: mesmo que as fontes falhem ou travem no host,
+  // o app renderiza (com a fonte do sistema) em no máximo 2,5s — nunca fica branco.
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
 
-  if (!fontsLoaded) return null;
+  const ready = fontsLoaded || !!fontError || timedOut;
+
+  const onLayoutRootView = useCallback(async () => {
+    if (ready) {
+      try {
+        await SplashScreen.hideAsync();
+      } catch {}
+    }
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>

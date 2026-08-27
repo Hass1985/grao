@@ -9,6 +9,8 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
+import { shadows } from '../../theme/shadows';
+import { webScreenFill } from '../../theme/webScreen';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -25,17 +27,19 @@ export default function Notification({ navigation }: Props) {
   const [selected, setSelected] = useState('dawn');
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, webScreenFill]}>
       <View style={styles.navHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.content}>
-        <Text style={styles.title}>Quando quer receber sua semente?</Text>
-        <Text style={styles.subtitle}>
-          Você vai receber via WhatsApp. Pode mudar isso depois.
-        </Text>
+        <View>
+          <Text style={styles.eyebrow}>RITMO · PASSO 2</Text>
+          <Text style={styles.title}>Quando quer receber sua semente?</Text>
+          <Text style={styles.subtitle}>
+            Você vai receber via WhatsApp. Pode mudar isso depois.
+          </Text>
 
         <View style={styles.list}>
           {windows.map((w) => (
@@ -57,6 +61,7 @@ export default function Notification({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+        </View>
 
         <TouchableOpacity
           style={styles.button}
@@ -71,9 +76,9 @@ export default function Notification({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.palha },
+  container: { flex: 1, backgroundColor: colors.background },
   navHeader: { paddingHorizontal: 20, paddingTop: 8 },
-  backBtnText: { fontSize: 30, color: colors.ambar, lineHeight: 36, fontFamily: fonts.sans },
+  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 36, fontFamily: fonts.sans },
   content: {
     flex: 1,
     paddingHorizontal: 24,
@@ -81,61 +86,74 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     justifyContent: 'space-between',
   },
+  eyebrow: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 11,
+    color: colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 14,
+  },
   title: {
     fontFamily: fonts.serif,
     fontSize: fontSizes.xxl,
-    color: colors.casca,
+    color: colors.foreground,
     marginBottom: 8,
+    lineHeight: 34,
   },
   subtitle: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,
-    color: colors.casca60,
+    color: colors.foregroundMuted,
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   list: { gap: 10 },
   item: {
-    backgroundColor: colors.peneira,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
     padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...(shadows.sm as object),
   },
   itemSelected: {
-    borderColor: colors.ambar,
-    backgroundColor: colors.white,
+    borderColor: colors.accent,
+    borderWidth: 2,
+    backgroundColor: colors.surfaceAccent,
   },
   itemLeft: { gap: 4 },
   itemLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.base,
-    color: colors.casca,
+    color: colors.foreground,
   },
-  itemLabelSelected: { color: colors.ambar },
+  itemLabelSelected: { color: colors.accent },
   itemDesc: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
-    color: colors.casca60,
+    color: colors.foregroundMuted,
   },
   itemTime: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.sm,
-    color: colors.casca40,
+    color: colors.foregroundSubtle,
   },
-  itemTimeSelected: { color: colors.ambar },
+  itemTimeSelected: { color: colors.accent },
   button: {
-    backgroundColor: colors.ambar,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 15,
     alignItems: 'center',
+    ...(shadows.sm as object),
   },
   buttonText: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.base,
-    color: colors.white,
+    color: colors.accentForeground,
+    letterSpacing: 0.3,
   },
 });

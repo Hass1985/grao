@@ -10,6 +10,8 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
+import { shadows } from '../../theme/shadows';
+import { webScreenFill, webScroll } from '../../theme/webScreen';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -34,14 +36,15 @@ export default function Segment({ navigation }: Props) {
   const [selectedSegment, setSelectedSegment] = useState<string | null>(null);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, webScreenFill]}>
       <View style={styles.navHeader}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={webScroll} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.eyebrow}>PERFIL · PASSO 1</Text>
         <Text style={styles.title}>Quem está chegando?</Text>
         <Text style={styles.subtitle}>Isso ajuda a personalizar sua semente diária.</Text>
 
@@ -85,36 +88,41 @@ export default function Segment({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.palha },
+  container: { flex: 1, backgroundColor: colors.background },
   navHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   backBtn: {},
-  backBtnText: { fontSize: 30, color: colors.ambar, lineHeight: 36, fontFamily: fonts.sans },
+  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 36, fontFamily: fonts.sans },
   scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 48 },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.casca, marginBottom: 8 },
-  subtitle: { fontFamily: fonts.sans, fontSize: fontSizes.base, color: colors.casca60, marginBottom: 28, lineHeight: 24 },
+  eyebrow: {
+    fontFamily: fonts.sansMedium, fontSize: 11, color: colors.accent,
+    textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14,
+  },
+  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.foreground, marginBottom: 8 },
+  subtitle: { fontFamily: fonts.sans, fontSize: fontSizes.base, color: colors.foregroundMuted, marginBottom: 28, lineHeight: 24 },
   sectionLabel: {
-    fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.casca40,
-    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14,
+    fontFamily: fonts.sansMedium, fontSize: 11, color: colors.foregroundSubtle,
+    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14,
   },
   pairsList: { gap: 10, marginBottom: 32 },
   pairRow: { flexDirection: 'row', gap: 10 },
   card: {
     flex: 1,
-    backgroundColor: colors.peneira,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...(shadows.sm as object),
   },
-  cardSelected: { borderColor: colors.ambar, backgroundColor: colors.white },
-  cardLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.casca },
-  cardLabelSelected: { color: colors.ambar },
-  cardSub: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.casca60, marginTop: 2 },
-  cardSubSelected: { color: colors.casca60 },
-  cardAge: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.casca40, marginTop: 2 },
-  cardAgeSelected: { color: colors.casca40 },
-  button: { backgroundColor: colors.ambar, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
-  buttonDisabled: { backgroundColor: colors.casca40 },
-  buttonText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.white },
+  cardSelected: { borderColor: colors.accent, borderWidth: 2, backgroundColor: colors.surfaceAccent },
+  cardLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.foreground },
+  cardLabelSelected: { color: colors.accent },
+  cardSub: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundMuted, marginTop: 2 },
+  cardSubSelected: { color: colors.foregroundMuted },
+  cardAge: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundSubtle, marginTop: 2 },
+  cardAgeSelected: { color: colors.foregroundSubtle },
+  button: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 15, alignItems: 'center', ...(shadows.sm as object) },
+  buttonDisabled: { backgroundColor: colors.foregroundSubtle },
+  buttonText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.accentForeground, letterSpacing: 0.3 },
 });
