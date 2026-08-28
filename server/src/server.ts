@@ -89,7 +89,7 @@ app.post('/onboarding/turn', async (req, res) => {
     if (result.kind === 'profile') {
       await upsertProfile(userId, result.profile);
       if (result.profile.emotional_hint) {
-        await setMoment(userId, result.profile.emotional_hint); // momento inicial = hint
+        await setMomentBySystem(userId, result.profile.emotional_hint); // inferência = system
       }
       const closing = result.text || 'Prontinho. Já sei do seu jeito — sua primeira semente está sendo preparada. 🌱';
       await saveTurn(userId, 'assistant', closing);
@@ -154,7 +154,7 @@ app.post('/onboarding/opening', async (req, res) => {
       await saveTurn(userId, 'assistant', fallback);
       if (backup) {
         await saveReading(userId, 'onboarding', backup).catch(() => {});
-        if (backup.family) await setMoment(userId, backup.family).catch(() => {});
+        if (backup.family) await setMomentBySystem(userId, backup.family).catch(() => {});
       }
       void logEvent(userId, 'onboarding_done', { mode: 'opening', source, degraded: true, needsCare: care });
       return res.json({
@@ -187,7 +187,10 @@ app.post('/onboarding/opening', async (req, res) => {
         evidencias: r.evidencias,
       },
     });
-    await setMoment(userId, r.family);
+    // Momento vindo de INFERÊNCIA (não de escolha consciente) → set_by='system',
+    // para que o cérebro possa atualizá-lo livremente nos próximos dias.
+    // Usar setMoment aqui marcaria como 'user' e travaria a leitura por 24h.
+    await setMomentBySystem(userId, r.family);
     await saveReading(userId, 'onboarding', {
       family: r.family, intensity: r.intensity, confidence: r.confidence,
       channel_hint: r.channel_hint, needs_care: r.needs_care, summary: r.summary,
