@@ -12,7 +12,9 @@ services:
     plan: free
     region: oregon
     rootDir: server
-    buildCommand: npm ci && npm run build
+    # --include=dev é obrigatório: com NODE_ENV=production o npm omite as
+    # devDependencies, e o TypeScript (tsc) vive lá — sem ele o build quebra.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
