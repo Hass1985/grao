@@ -29,10 +29,9 @@ app.use(cors(origins?.length ? { origin: origins } : undefined));
 app.use(express.json({ limit: '1mb' }));
 
 /**
- * Health check com diagnóstico: a plataforma de deploy usa para saber se o
- * serviço subiu, e nós usamos para ver rapidamente o que falta configurar.
+ * Diagnóstico compartilhado por /health e /ready.
  */
-app.get('/health', async (_req, res) => {
+async function diagnose() {
   const hasKey = !!process.env.ANTHROPIC_API_KEY;
   let db: 'ok' | 'erro' | 'nao_configurado' = 'nao_configurado';
   let dbError: string | undefined;
@@ -45,14 +44,27 @@ app.get('/health', async (_req, res) => {
       dbError = err?.message;
     }
   }
-  const ok = hasKey && db === 'ok';
-  res.status(ok ? 200 : 503).json({
-    ok,
-    anthropicKey: hasKey ? 'ok' : 'faltando',
-    db,
-    ...(dbError ? { dbError } : {}),
-    version: 2,
-  });
+  return { ok: hasKey && db === 'ok', anthropicKey: hasKey ? 'ok' : 'faltando', db, dbError };
+}
+
+/**
+ * LIVENESS — "o processo está de pé?". Responde 200 mesmo com dependências
+ * faltando, e informa o diagnóstico no corpo. É este que as plataformas de
+ * deploy monitoram: devolver 503 aqui faria o serviço reiniciar em loop
+ * quando o banco estivesse fora, derrubando também o que ainda funciona.
+ */
+app.get('/health', async (_req, res) => {
+  const d = await diagnose();
+  res.status(200).json({ ...d, version: 2 });
+});
+
+/**
+ * READINESS — "dá para atender requisições de verdade?". Devolve 503 quando
+ * falta chave ou banco. Use este para verificar a configuração após o deploy.
+ */
+app.get('/ready', async (_req, res) => {
+  const d = await diagnose();
+  res.status(d.ok ? 200 : 503).json({ ...d, version: 2 });
 });
 
 /**

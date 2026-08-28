@@ -1,11 +1,16 @@
 # Deploy no Render (render.com) — "Blueprint".
-# No painel: New → Blueprint → aponte para o repositório. As variáveis marcadas
-# com sync:false são pedidas na tela (nunca ficam no repositório).
+# No painel: New → Blueprint → aponte para o repositório Hass1985/grao.
+# As variáveis com sync:false são pedidas na tela (nunca ficam no repositório).
+#
+# Plano free: 750h/mês, porém o serviço HIBERNA após ~15 min sem tráfego e a
+# primeira chamada depois disso leva ~50s para responder. Ótimo para validar o
+# Trial; troque para "starter" antes de abrir para usuários de verdade.
 services:
   - type: web
     name: grao-backend
     runtime: node
-    plan: starter
+    plan: free
+    region: oregon
     rootDir: server
     buildCommand: npm ci && npm run build
     startCommand: npm start
@@ -18,6 +23,8 @@ services:
       - key: DATABASE_URL
         sync: false          # connection string do Supabase (Session pooler)
       - key: GRAO_MODEL
+        value: claude-opus-4-8
+      - key: GRAO_OPENING_MODEL
         value: claude-opus-4-8
       - key: GRAO_BRAIN_MODEL
         value: claude-haiku-4-5-20251001
