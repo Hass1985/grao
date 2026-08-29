@@ -58,6 +58,22 @@ const CANDIDATES: Candidate[] = [
   { title: 'Advogado Fiel', artist: 'Bruna Karla', families: ['fé', 'ansiedade'] },
   { title: 'Acalma o Meu Coração', artist: 'Anderson Freire', families: ['ansiedade', 'paz'] },
   { title: 'Casa do Pai', artist: 'Aline Barros', families: ['alegria', 'gratidão'] },
+  // — 2ª leva: reforço de luto, alegria, culpa e solidão —
+  { title: 'Teu Amor Não Falha', artist: 'Nívea Soares', families: ['esperança', 'fé'] },
+  { title: 'Digno É o Senhor', artist: 'Aline Barros', families: ['alegria', 'gratidão'] },
+  { title: 'Aclame ao Senhor', artist: 'Diante do Trono', families: ['alegria', 'gratidão'] },
+  { title: 'Preciso de Ti', artist: 'Diante do Trono', families: ['solidão', 'paz'] },
+  { title: 'Jeová Jireh', artist: 'Midian Lima', families: ['fé', 'ansiedade'] },
+  { title: 'Não Pare', artist: 'Midian Lima', families: ['esperança', 'luto'] },
+  { title: 'Ele Não Desiste de Você', artist: 'Marquinhos Gomes', families: ['esperança', 'culpa'] },
+  { title: 'Canção do Apocalipse', artist: 'Marine Friesen', families: ['luto', 'esperança'] },
+  { title: 'Faz um Milagre em Mim', artist: 'Regis Danese', families: ['culpa', 'esperança'] },
+  { title: 'Abraça-me', artist: 'David Quinlan', families: ['paz', 'solidão'] },
+  { title: 'Santo Espírito', artist: 'Laura Souguellis', families: ['paz'] },
+  { title: 'Consagração', artist: 'Aline Barros', families: ['propósito'] },
+  { title: 'Deus é Deus', artist: 'Delino Marçal', families: ['fé', 'alegria'] },
+  { title: 'Está Tudo Bem', artist: 'Gabriela Gomes', families: ['ansiedade', 'esperança'] },
+  { title: 'Perto Quero Estar', artist: 'Nívea Soares', families: ['paz', 'gratidão'] },
 ];
 
 interface ItunesTrack {
@@ -77,7 +93,10 @@ async function searchItunes(title: string, artist: string): Promise<ItunesTrack 
     const t = norm(r.trackName), a = norm(r.artistName);
     // nunca aceitar versões instrumentais/karaokê
     if (/playback|instrumental|karaoke|remix/.test(t)) continue;
-    const titleOk = t.includes(wantT) || wantT.includes(t.split('(')[0].trim());
+    // o título do catálogo precisa CONTER o buscado (ou ser igual sem sufixos) —
+    // nunca o contrário, senão "Está Tudo Bem" casa com uma faixa chamada "Tudo".
+    const catalogBase = t.split('(')[0].trim();
+    const titleOk = t.includes(wantT) || catalogBase === wantT;
     const artistOk = a.includes(wantA) || wantA.includes(a);
     if (titleOk && artistOk) return r;
   }
