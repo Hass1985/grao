@@ -10,7 +10,12 @@
     "build": "tsc -p tsconfig.json",
     "smoke": "tsx scripts/smoke.ts",
     "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql && psql \"$DATABASE_URL\" -f db/seed_data.sql",
-    "eval:opening": "tsx scripts/eval-opening.ts"
+    "eval:opening": "tsx scripts/eval-opening.ts",
+    "content:migrate": "tsx scripts/apply-sql.ts db/migrations/002_content.sql db/passage_pool.sql",
+    "content:bible": "tsx scripts/import-bible.ts",
+    "content:musics": "tsx scripts/import-musics.ts",
+    "content:generate": "tsx scripts/generate-seeds.ts",
+    "content:review": "tsx scripts/review-seeds.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

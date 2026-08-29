@@ -65,7 +65,24 @@ GET /state/:userId
 
 **Falta:** rodar o eval com a chave (validação inicial), deployar o backend, e calibrar com usuários reais usando os dados das views.
 
-## 2. Curadoria de conteúdo 🟡 estruturado, precisa escalar
+## 2. Curadoria de conteúdo ✅ arquitetura completa em produção
+
+**Fábrica de conteúdo com âncoras anti-invenção (ago/2026):**
+
+| Camada | O que é | Estado |
+|---|---|---|
+| `bible_verses` | **Bíblia COMPLETA no nosso banco** — Bíblia Livre (tradução brasileira moderna, licença CC-BY 3.0 BR), 66 livros, 31.102 versículos. O texto bíblico nunca vem da memória de um modelo. | ✅ importada |
+| `passage_pool` | Cardápio curado: 120 referências clássicas (12 × 10 famílias), 100% validadas contra o texto | ✅ |
+| `musics` | Pool de louvores **validados na API do iTunes** (catálogo BR, sem chave): só entra faixa que existe, com nome oficial; playback/instrumental/remix são recusados. 33 faixas, todas as famílias cobertas | ✅ |
+| `content_drafts` | Rascunhos gerados por IA aguardando **revisão humana** — nada chega ao usuário sem aprovação | ✅ 20 na fila |
+
+**Fluxo de produção** (`server/scripts/`): `content:generate` sorteia passagens menos usadas do pool → injeta o **texto real** do versículo → Claude escreve reflexão/oração/prática na voz do Grão (com lista de clichês proibidos e checagens automáticas) → música do pool da família → rascunho. `content:review` lista/mostra/aprova/rejeita; aprovar publica direto na tabela `seeds`. View `v_content_health` acompanha o estoque por família.
+
+**Meta de 90+ sementes**: rodar `content:generate 3` + revisão ≈ 30 por rodada. O gargalo agora é só o tempo de revisão humana (como deve ser).
+
+⚠️ **Atribuição pendente**: a licença CC-BY da Bíblia Livre pede crédito — adicionar "Texto bíblico: Bíblia Livre" na tela Sobre/Política do app.
+
+### Estado anterior (base mínima)
 
 - Banco `seeds` estruturado por **família emocional × tipo** (reflexão/oração/prática — o tipo casa com o canal sensorial da pessoa).
 - **20 sementes curadas** (2 por família, 10 famílias) em `server/db/seed_data.sql` — suficiente pra iniciar o Trial (com dedupe por usuário).
