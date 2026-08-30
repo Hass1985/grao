@@ -22,7 +22,9 @@
     "content:repair": "tsx scripts/repair-drafts.ts",
     "content:variety": "tsx scripts/variety-report.ts",
     "content:validate-pool": "tsx scripts/validate-pool.ts",
-    "content:page": "tsx scripts/review-page.ts"
+    "content:page": "tsx scripts/review-page.ts",
+    "db:check": "tsx scripts/check-db.ts",
+    "db:password": "bash scripts/set-db-password.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
