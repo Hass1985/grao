@@ -104,19 +104,34 @@ O que a auditoria marcar volta pro `content:regen`, que reescreve com o contexto
 
 **Falta:** pipeline editorial pra escalar (meta: 90+ sementes = ~1 mês sem repetição por família). Sugestão: geração assistida por IA **com revisão humana/teológica obrigatória** antes de publicar — posso montar esse pipeline quando decidirem.
 
-## 3. Integração WhatsApp (n8n) 🔴 a construir — contrato pronto
+## 3. Integração WhatsApp (n8n) 🟡 backend pronto — falta a conta no BSP
 
-O backend já expõe tudo que o n8n precisa. Fluxos a montar:
+O backend expõe o canal inteiro. O n8n é encanamento: recebe do BSP, chama um
+endpoint e envia o que voltar. Toda decisão fica aqui, onde dá para testar.
 
-**Fluxo A — mensagem recebida:**
-`Webhook WhatsApp (BSP) → [n8n] map phone→userId → POST /message {wantSeed conforme intenção} → enviar resposta via BSP`
+| Endpoint | O que faz |
+|---|---|
+| `POST /whatsapp/inbound` | telefone + texto → cérebro lê, gera resposta curta e decide sozinho se a pessoa pediu a semente. Devolve os balões na ordem de envio |
+| `GET /whatsapp/due?window=` | fila da janela (dawn/morning/noon/evening) com a mensagem já renderizada **e** as partes separadas para template HSM |
+| `POST /whatsapp/opt-in` | consentimento + janela de horário escolhida |
 
-**Fluxo B — entrega diária (cron por janela de horário):**
-`Cron (6h/8h/12h/20h) → [n8n] usuários da janela → GET /seed/today/:userId → template HSM aprovado → enviar`
+Os endpoints falam em **telefone**, não em `userId`: o n8n não mantém tabela de
+mapeamento. Autenticação por `WHATSAPP_TOKEN` (header `x-grao-token`), com
+falha **fechada** — sem a variável, respondem 503.
 
-Pré-requisitos (fora do código): conta **WhatsApp Business API** via BSP (Meta Cloud API direto, ou Twilio/360dialog/Gupshup), verificação de negócio no Business Manager, **templates HSM aprovados** pra mensagem proativa, opt-in explícito (a tela de consentimento do app já cobre), janela de 24h para respostas livres.
+Fluxos prontos para importar em `server/n8n/` (dois JSON + README).
 
-Observação: o campo `users.phone_e164` já existe no schema pro mapeamento telefone↔usuário.
+**A restrição que molda tudo:** a Meta só aceita texto livre nas 24h seguintes à
+última mensagem do usuário. Fora disso, apenas template aprovado. Por isso o
+`/whatsapp/due` devolve `parts` (passagem, referência, reflexão, prática
+separadas) além do texto pronto — o README traz o texto do template a submeter.
+
+`/whatsapp/due` é idempotente por dia no fuso de cada usuário: cron repetido não
+duplica entrega. Em compensação, **chamar já registra a entrega** — não serve
+para espiar a fila.
+
+Falta (fora do código): conta WhatsApp Business API por um BSP, verificação do
+negócio no Business Manager, template aprovado e `WHATSAPP_TOKEN` no Render.
 
 ## 4. Design/UX 🤝 com os sócios
 

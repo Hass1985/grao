@@ -1,0 +1,94 @@
+{
+  "name": "Grão · Fluxo A · mensagem recebida",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "grao-inbound",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wa-webhook",
+      "name": "Webhook do BSP",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "grao-inbound"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai telefone, texto e nome do payload da Meta Cloud API.\n// Mensagens que não são de texto (áudio, imagem, status) são descartadas:\n// o backend só trata texto por enquanto.\nconst saida = [];\nfor (const item of $input.all()) {\n  const entry = item.json.entry?.[0];\n  const value = entry?.changes?.[0]?.value;\n  const msg = value?.messages?.[0];\n  if (!msg || msg.type !== 'text') continue;\n  saida.push({\n    json: {\n      phone: msg.from,\n      text: msg.text.body,\n      name: value?.contacts?.[0]?.profile?.name ?? null,\n      messageId: msg.id,\n    },\n  });\n}\nreturn saida;"
+      },
+      "id": "wa-parse",
+      "name": "Extrair mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.GRAO_API }}/whatsapp/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-grao-token", "value": "={{ $vars.GRAO_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "phone", "value": "={{ $json.phone }}" },
+            { "name": "text", "value": "={{ $json.text }}" },
+            { "name": "name", "value": "={{ $json.name }}" }
+          ]
+        },
+        "options": { "timeout": 60000 }
+      },
+      "id": "wa-brain",
+      "name": "Grão responde",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Um item por balão a enviar, preservando a ordem que o backend definiu\n// (resposta primeiro, semente depois).\nconst saida = [];\nfor (const item of $input.all()) {\n  const phone = $('Extrair mensagem').first().json.phone;\n  for (const texto of item.json.mensagens ?? []) {\n    saida.push({ json: { phone, texto, needsCare: item.json.needsCare } });\n  }\n}\nreturn saida;"
+      },
+      "id": "wa-split",
+      "name": "Um balão por mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $vars.WA_PHONE_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $vars.WA_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.phone, type: 'text', text: { body: $json.texto } }) }}",
+        "options": { "batching": { "batch": { "batchSize": 1, "batchInterval": 900 } } }
+      },
+      "id": "wa-send",
+      "name": "Enviar no WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300]
+    }
+  ],
+  "connections": {
+    "Webhook do BSP": { "main": [[{ "node": "Extrair mensagem", "type": "main", "index": 0 }]] },
+    "Extrair mensagem": { "main": [[{ "node": "Grão responde", "type": "main", "index": 0 }]] },
+    "Grão responde": { "main": [[{ "node": "Um balão por mensagem", "type": "main", "index": 0 }]] },
+    "Um balão por mensagem": { "main": [[{ "node": "Enviar no WhatsApp", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

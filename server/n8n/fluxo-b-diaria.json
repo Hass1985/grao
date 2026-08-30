@@ -1,0 +1,95 @@
+{
+  "name": "Grão · Fluxo B · semente diária",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 7 * * *" },
+            { "field": "cronExpression", "expression": "0 9 * * *" },
+            { "field": "cronExpression", "expression": "0 12 * * *" },
+            { "field": "cronExpression", "expression": "0 20 * * *" }
+          ]
+        }
+      },
+      "id": "cron",
+      "name": "Cron por janela",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "notes": "Ajuste o fuso do n8n para America/Sao_Paulo, senão os horários disparam em UTC."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hora do disparo → janela de entrega. As janelas espelham as opções que o\n// app oferece no onboarding (Amanhecer/Manhã/Meio-dia/Noite).\nconst hora = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false });\nconst h = parseInt(hora, 10);\nconst janela = h < 8 ? 'dawn' : h < 11 ? 'morning' : h < 15 ? 'noon' : 'evening';\nreturn [{ json: { window: janela } }];"
+      },
+      "id": "janela",
+      "name": "Definir janela",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.GRAO_API }}/whatsapp/due",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-grao-token", "value": "={{ $vars.GRAO_TOKEN }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "window", "value": "={{ $json.window }}" }
+          ]
+        },
+        "options": { "timeout": 120000 }
+      },
+      "id": "fila",
+      "name": "Buscar fila de entrega",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "notes": "Cuidado: esta chamada JÁ REGISTRA a entrega. Não use para espiar a fila."
+    },
+    {
+      "parameters": { "fieldToSplitOut": "entregas", "options": {} },
+      "id": "split",
+      "name": "Um item por usuário",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $vars.WA_PHONE_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $vars.WA_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.phone, type: 'template', template: { name: 'semente_do_dia', language: { code: 'pt_BR' }, components: [{ type: 'body', parameters: [ { type: 'text', text: $json.parts.name || 'tudo bem' }, { type: 'text', text: $json.parts.passage }, { type: 'text', text: $json.parts.reference }, { type: 'text', text: $json.parts.reflection }, { type: 'text', text: $json.parts.practice } ] }] } }) }}",
+        "options": { "batching": { "batch": { "batchSize": 10, "batchInterval": 1000 } } }
+      },
+      "id": "enviar",
+      "name": "Enviar template aprovado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "notes": "Fora da janela de 24h a Meta só aceita template. O nome 'semente_do_dia' precisa estar aprovado no Business Manager — ver n8n/README.md."
+    }
+  ],
+  "connections": {
+    "Cron por janela": { "main": [[{ "node": "Definir janela", "type": "main", "index": 0 }]] },
+    "Definir janela": { "main": [[{ "node": "Buscar fila de entrega", "type": "main", "index": 0 }]] },
+    "Buscar fila de entrega": { "main": [[{ "node": "Um item por usuário", "type": "main", "index": 0 }]] },
+    "Um item por usuário": { "main": [[{ "node": "Enviar template aprovado", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

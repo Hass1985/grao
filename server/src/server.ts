@@ -19,6 +19,7 @@ import {
 } from './db.js';
 import { selectSeedForUser } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
+import { registerWhatsAppRoutes } from './whatsapp.js';
 
 const app = express();
 
@@ -321,6 +322,9 @@ app.delete('/user/:userId', async (req, res) => {
   await deleteUserData(req.params.userId);
   res.json({ ok: true });
 });
+
+// Canal WhatsApp (consumido pelo n8n). Protegido por WHATSAPP_TOKEN.
+registerWhatsAppRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => console.log(`Grão backend em http://localhost:${port}`));
