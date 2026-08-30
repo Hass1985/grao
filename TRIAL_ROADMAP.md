@@ -93,7 +93,35 @@ Quatro travas de qualidade, aplicadas nesta ordem:
 
 O que a auditoria marcar volta pro `content:regen`, que reescreve com o contexto de antirrepetição. Só então vai para a revisão humana.
 
-⚠️ **Atribuição pendente**: a licença CC-BY da Bíblia Livre pede crédito — adicionar "Texto bíblico: Bíblia Livre" na tela Sobre/Política do app.
+**As 380 estão publicadas e aprovadas** (ago/2026): 37 a 39 por família.
+
+### Garantia de espaçamento no calendário
+
+Não repetir a mesma semente não basta: duas sementes *parecidas* caindo perto
+uma da outra também soam repetidas. A regra é dura — **nada semelhante a menos
+de 5 dias** — e vale para dois sentidos de "semelhante":
+
+- **mesmo gesto físico** (`seeds.gesture`, vocabulário fechado de 30 termos). É a
+  repetição que a pessoa sente no corpo, ainda que as palavras mudem: "segure um
+  objeto na palma" e "ponha a mão no peito" não compartilham vocabulário e são o
+  mesmo gesto;
+- **par lexicalmente próximo** (`seed_similar`, Jaccard sobre prática e abertura).
+
+O `seedSelector` filtra pela janela (7 dias, com margem sobre os 5 exigidos) e —
+o detalhe que faz a garantia durar o ano — **ordena pelo gesto com mais sementes
+inéditas restantes**. Sem essa ordenação o sorteio gasta os gestos abundantes
+cedo e sobra um bolo do maior grupo no fim do ano, sem candidato elegível.
+
+`npm run content:simulate` prova a garantia rodando 365 dias contra o seletor
+real e **falha o processo** se achar qualquer repetição. Rodar depois de mexer
+no seletor, no rótulo de gestos ou na base.
+
+⚠️ Ao gerar sementes novas, rode `content:gestures` e `content:similarity` antes
+de publicar — semente sem gesto não participa da garantia.
+
+**Atribuição CC-BY** ✅ tela `Credits` (Ajustes → Sobre) com a licença da Bíblia
+Livre e a indicação das modificações que fizemos no texto-fonte, como a licença
+exige.
 
 ### Estado anterior (base mínima)
 
