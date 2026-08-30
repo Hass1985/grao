@@ -38,7 +38,11 @@ O QUE ESCREVER (sempre pela ferramenta, exatamente uma vez):
 - practice (1-2 frases): UMA ação pequena e física, executável hoje em menos de 5 minutos (escrever, respirar, mandar mensagem, observar, silenciar). Nada vago tipo "reflita sobre".
 - O campo "type" indica a ÊNFASE da semente (reflexão, oração ou prática): capriche especialmente nesse campo, mas escreva os três.
 
-Varie começos e estruturas entre sementes — nada de fórmulas repetidas.`;
+Varie começos e estruturas entre sementes — nada de fórmulas repetidas.
+
+ANTIRREPETIÇÃO (regra dura): você receberá a lista de práticas e aberturas JÁ existentes nesta família. Sua semente NÃO pode repetir nenhum daqueles gestos nem aquelas estruturas de abertura. Se a prática que você pensou se parece com uma da lista, DESCARTE e invente outra.
+
+Repertório de gestos possíveis (use para variar, não como lista fechada): escrever/riscar/rasgar/guardar papel · respirar contando · colocar a mão no peito ou no batente da porta · falar em voz alta sozinho · mandar mensagem ou ligar para alguém · cantar ou ouvir um trecho · lavar louça/caminhar prestando atenção · abrir a janela e olhar o céu · acender uma luz/vela · arrumar um objeto da casa · beber água devagar · pôr um alarme com um lembrete · escrever num espelho ou geladeira · fazer algo pequeno por outra pessoa · devolver/consertar/pedir desculpa · guardar um objeto que lembra alguém · desligar o celular por 5 minutos · abraçar alguém da casa · anotar no calendário · segurar uma pedra/objeto e depois soltá-lo · subir uma escada ou um degrau devagar · tocar a água da torneira e agradecer · plantar/regar uma planta · varrer um cômodo pequeno · trocar o papel de parede do celular por um versículo · dar bom-dia em voz alta a alguém da rua · sentar no chão por um minuto · alongar os braços para cima ao acordar · apagar as luzes e ficar 1 minuto no escuro em silêncio · escrever com o dedo no vapor do espelho · separar uma roupa ou alimento para doar · caminhar até a esquina e voltar · assobiar ou cantarolar uma melodia · pôr a mão na terra ou na grama · abrir a Bíblia física e deixar o dedo achar a página · segurar uma xícara quente com as duas mãos · escrever uma palavra na palma da mão · tirar uma foto de algo bonito no caminho · guardar uma moeda no bolso como lembrete.`;
 
 const TOOL = {
   name: 'escrever_semente',
@@ -75,6 +79,15 @@ async function nextSeedNumber(family: string): Promise<number> {
   return (rows[0]?.n ?? 0) + 1;
 }
 
+// Trava de sanidade: modelo pode emitir lixo (tags internas, truncamento).
+function looksCorrupt(s: string): string | null {
+  const t = (s ?? '').trim();
+  if (t.length < 20) return 'muito curto';
+  if (/<\/?\w|antml|&lt;\//i.test(t)) return 'contém marcação/tag';
+  if (!/[.!?…][)\]"'”»]?$/.test(t)) return 'sem pontuação final (truncado?)';
+  return null;
+}
+
 async function main() {
   console.log(`Gerando ${PER_FAMILY} rascunho(s) por família com ${MODEL}…\n`);
   let created = 0;
@@ -102,6 +115,20 @@ async function main() {
       const text = await passageText(p);
       if (!text) { console.log(`  ✗ sem texto para ${p.reference}`); continue; }
 
+      // ANTIRREPETIÇÃO: mostra ao modelo o que a família JÁ tem, para ele
+      // divergir. Sem isso cada chamada é cega às outras e converge para os
+      // mesmos gestos ("escreva num papel e guarde") — foi o principal achado
+      // da auditoria da primeira leva.
+      const { rows: existing } = await pool.query(
+        `SELECT practice, left(reflection, 60) opening FROM (
+           SELECT practice, reflection FROM seeds WHERE family=$1
+           UNION ALL
+           SELECT practice, reflection FROM content_drafts WHERE family=$1 AND status IN ('draft','approved','published')
+         ) x LIMIT 40`, [family]);
+      const avoid = existing.length
+        ? `\n\nPRÁTICAS JÁ USADAS nesta família (NÃO repita o gesto nem a estrutura):\n${existing.map((e: any) => `- ${e.practice}`).join('\n')}\n\nABERTURAS já usadas (comece de outro jeito):\n${existing.map((e: any) => `- "${e.opening}…"`).join('\n')}`
+        : '';
+
       const res = await client.messages.create({
         model: MODEL,
         max_tokens: 900,
@@ -109,11 +136,14 @@ async function main() {
         tools: [TOOL as any],
         tool_choice: { type: 'tool', name: 'escrever_semente' },
         messages: [{ role: 'user', content:
-          `Família emocional: ${family}\nÊnfase (type): ${type}\nPassagem (texto EXATO, não altere): "${text}"\nReferência: ${p.reference}\nContexto da curadoria: ${p.note ?? '—'}` }],
+          `Família emocional: ${family}\nÊnfase (type): ${type}\nPassagem (texto EXATO, não altere): "${text}"\nReferência: ${p.reference}\nContexto da curadoria: ${p.note ?? '—'}${avoid}` }],
       });
       const tu = res.content.find((b) => b.type === 'tool_use');
       if (!tu || tu.type !== 'tool_use') { console.log(`  ✗ sem resposta para ${p.reference}`); continue; }
       const out = tu.input as { reflection: string; prayer: string; practice: string };
+      const corrupt = (['reflection','prayer','practice'] as const)
+        .map((k) => { const c = looksCorrupt(out[k]); return c ? `${k}: ${c}` : null; }).filter(Boolean);
+      if (corrupt.length) { console.log(`  ✗ ${p.reference}: saída inválida (${corrupt.join(', ')}) — descartada`); continue; }
 
       // música da família, menos usada nos drafts recentes
       const { rows: [music] } = await pool.query(

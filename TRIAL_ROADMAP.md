@@ -72,13 +72,26 @@ GET /state/:userId
 | Camada | O que é | Estado |
 |---|---|---|
 | `bible_verses` | **Bíblia COMPLETA no nosso banco** — Bíblia Livre (tradução brasileira moderna, licença CC-BY 3.0 BR), 66 livros, 31.102 versículos. O texto bíblico nunca vem da memória de um modelo. | ✅ importada |
-| `passage_pool` | Cardápio curado: 120 referências clássicas (12 × 10 famílias), 100% validadas contra o texto | ✅ |
-| `musics` | Pool de louvores **validados na API do iTunes** (catálogo BR, sem chave): só entra faixa que existe, com nome oficial; playback/instrumental/remix são recusados. 33 faixas, todas as famílias cobertas | ✅ |
-| `content_drafts` | Rascunhos gerados por IA aguardando **revisão humana** — nada chega ao usuário sem aprovação | ✅ 20 na fila |
+| `passage_pool` | Cardápio curado: **380 referências** (38 × 10 famílias), 100% validadas versículo a versículo contra o texto importado (`content:validate-pool`) | ✅ |
+| `musics` | Pool de louvores **validados na API do iTunes** (catálogo BR, sem chave): só entra faixa que existe, com nome oficial; playback/instrumental/remix são recusados. **75 faixas**, todas as famílias com 8+ | ✅ |
+| `content_drafts` | Rascunhos gerados por IA aguardando **revisão humana** — nada chega ao usuário sem aprovação | ✅ |
 
 **Fluxo de produção** (`server/scripts/`): `content:generate` sorteia passagens menos usadas do pool → injeta o **texto real** do versículo → Claude escreve reflexão/oração/prática na voz do Grão (com lista de clichês proibidos e checagens automáticas) → música do pool da família → rascunho. `content:review` lista/mostra/aprova/rejeita; aprovar publica direto na tabela `seeds`. View `v_content_health` acompanha o estoque por família.
 
-**Meta de 90+ sementes**: rodar `content:generate 3` + revisão ≈ 30 por rodada. O gargalo agora é só o tempo de revisão humana (como deve ser).
+### Meta 365: um ano sem repetição
+
+O `seedSelector` já registra cada entrega em `seed_deliveries` e **nunca** repete uma semente para o mesmo usuário. Com 380 sementes, isso são 365+ dias sem repetição — o padrão "Café com Deus Pai".
+
+Quatro travas de qualidade, aplicadas nesta ordem:
+
+| Trava | Script | Custo | O que pega |
+|---|---|---|---|
+| Antirrepetição na geração | embutida no `content:generate` | — | mostra ao modelo as práticas e aberturas **já existentes na família** e o obriga a divergir; repertório de ~39 gestos físicos |
+| Sanidade estrutural | `content:check` | zero | tag interna vazando no texto, campo truncado, placeholder. Descarta **antes** de gravar no banco (pegou 7 saídas defeituosas em 260) |
+| Variedade quantitativa | `content:variety` | zero | similaridade lexical (Jaccard) entre todas as práticas e aberturas da mesma família |
+| Auditoria editorial | `content:audit` | API | revisor de IA lê a família inteira de uma vez e julga fidelidade à passagem, teologia, voz, prática concreta e variedade |
+
+O que a auditoria marcar volta pro `content:regen`, que reescreve com o contexto de antirrepetição. Só então vai para a revisão humana.
 
 ⚠️ **Atribuição pendente**: a licença CC-BY da Bíblia Livre pede crédito — adicionar "Texto bíblico: Bíblia Livre" na tela Sobre/Política do app.
 
