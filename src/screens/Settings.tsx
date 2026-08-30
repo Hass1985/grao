@@ -316,6 +316,11 @@ export default function Settings({ navigation }: Props) {
         <Section title="Sobre">
           <Row label="Fale com a gente" value="ola@graoapp.com.br" onPress={() => {}} />
           <Row label="Avaliar o Grão" onPress={() => {}} />
+          <Row
+            label="Créditos"
+            value="Texto bíblico: Bíblia Livre"
+            onPress={() => navigation.navigate('Credits')}
+          />
           <Row label="Versão" value="1.0.0 (protótipo)" last />
         </Section>
 

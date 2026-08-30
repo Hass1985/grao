@@ -17,6 +17,7 @@ import Campo from '../screens/Campo';
 import Raiz from '../screens/Raiz';
 import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
+import Credits from '../screens/Credits';
 import WhatsAppDemo from '../screens/WhatsAppDemo';
 
 import GraoSymbol from '../components/GraoSymbol';
@@ -88,6 +89,7 @@ function AppNavigator() {
       <AppStack.Screen name="Main" component={MainNavigator} />
       <AppStack.Screen name="Settings" component={Settings} />
       <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+      <AppStack.Screen name="Credits" component={Credits} />
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
     </AppStack.Navigator>
   );
@@ -104,6 +106,7 @@ function OnboardingNavigator({ onFinish }: { onFinish: () => void }) {
       <Stack.Screen name="WhatsApp" component={WhatsApp} />
       <Stack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+      <Stack.Screen name="Credits" component={Credits} />
       <Stack.Screen name="Plan">
         {(props) => <Plan {...props} onFinish={onFinish} />}
       </Stack.Screen>

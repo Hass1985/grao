@@ -24,7 +24,10 @@
     "content:validate-pool": "tsx scripts/validate-pool.ts",
     "content:page": "tsx scripts/review-page.ts",
     "db:check": "tsx scripts/check-db.ts",
-    "db:password": "bash scripts/set-db-password.sh"
+    "db:password": "bash scripts/set-db-password.sh",
+    "content:similarity": "tsx scripts/build-similarity.ts",
+    "content:gestures": "tsx scripts/label-gestures.ts",
+    "content:simulate": "tsx scripts/simulate-year.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
