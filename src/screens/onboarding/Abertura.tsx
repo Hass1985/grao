@@ -4,9 +4,15 @@
 // 1 minuto (ou escreve) contando o que tem vivido e pedido a Deus. A resposta
 // do Grão cita o que ela disse — a prova de que foi ouvida.
 //
-// Transcrição NO APARELHO (Web Speech API): o áudio nunca sai do dispositivo;
-// só o texto viaja. Sem suporte a voz (ou permissão negada), cai para texto
-// com a mesma experiência.
+// Transcrição pelo navegador (Web Speech API). ATENÇÃO ao que isso significa
+// de verdade: o áudio NÃO é processado no aparelho — o navegador o envia para
+// o servidor do fornecedor (Google no Chrome, Apple no Safari) e devolve o
+// texto. Para o Grão só o texto trafega, mas o áudio já saiu do dispositivo
+// antes disso. Como relato de fé é dado sensível na LGPD, isso precisa estar
+// na política de privacidade antes de abrir para usuários reais — e não pode
+// ser descrito como "transcrição no aparelho" em lugar nenhum.
+// Sem suporte a voz (ou permissão negada), cai para texto com a mesma
+// experiência.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
