@@ -27,7 +27,8 @@
     "db:password": "bash scripts/set-db-password.sh",
     "content:similarity": "tsx scripts/build-similarity.ts",
     "content:gestures": "tsx scripts/label-gestures.ts",
-    "content:simulate": "tsx scripts/simulate-year.ts"
+    "content:simulate": "tsx scripts/simulate-year.ts",
+    "wa:token": "bash scripts/set-wa-token.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
