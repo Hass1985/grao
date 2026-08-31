@@ -158,8 +158,46 @@ separadas) além do texto pronto — o README traz o texto do template a submete
 duplica entrega. Em compensação, **chamar já registra a entrega** — não serve
 para espiar a fila.
 
-Falta (fora do código): conta WhatsApp Business API por um BSP, verificação do
-negócio no Business Manager, template aprovado e `WHATSAPP_TOKEN` no Render.
+### O caminho crítico agora é fora do código
+
+Ordem sugerida — o item 3 é o que demora, então comece por ele.
+
+1. **Conta WhatsApp Business Platform.** Meta Cloud API direto é o mais barato
+   (sem taxa de intermediário) e o que os fluxos assumem. Twilio/360dialog/
+   Gupshup cobram a mais, mas resolvem suporte e faturamento em real.
+2. **Verificação do negócio** no Business Manager: CNPJ, comprovante de
+   endereço e site no ar. Sem ela os limites de envio ficam baixos demais.
+3. **Template `semente_do_dia` aprovado**, categoria `UTILITY`. Texto exato em
+   `server/n8n/README.md`. É o passo com prazo imprevisível (horas a dias) e
+   bloqueia o Fluxo B inteiro — submeta primeiro.
+4. **`WHATSAPP_TOKEN` no Render** (gerar com `npm run wa:token`).
+5. **Render no plano Starter.** No free tier o serviço hiberna e a primeira
+   chamada leva ~50s. A Meta reenvia webhooks lentos, e ninguém espera 50
+   segundos por uma resposta no WhatsApp.
+
+### Como a Meta cobra (modelo por mensagem, desde jul/2025)
+
+- Cobra-se **por template entregue**, não por conversa.
+- **Dentro da janela de 24h**, mensagem de texto livre e template `UTILITY` são
+  **gratuitos**. Ou seja: o custo real é ~1 template pago por usuário por dia
+  (a semente proativa). Se a pessoa responder, o resto do dia sai de graça.
+- **Free Entry Point:** quem chega por anúncio Click-to-WhatsApp dá 72h de
+  mensagens gratuitas — vale alinhar com os sócios de marketing.
+- O Brasil entrou na cobrança localizada em jul/2026; confira as tarifas em BRL
+  no próprio Business Manager antes de projetar custo.
+
+### Decisão pendente: n8n ou integração direta
+
+O backend não depende do n8n — ele foi desenhado com o n8n como encanamento.
+
+| | n8n Cloud | Direto no backend |
+|---|---|---|
+| Custo | €20/mês (Starter, 2.500 execuções) a €50 (Pro) | R$ 0 |
+| Falta construir | nada — os dois fluxos estão em `server/n8n/` | endpoint no protocolo da Meta (verificação + assinatura HMAC) e cron (GitHub Actions) |
+| Vale quando | os sócios querem montar e mudar fluxos sem código | a equipe técnica é quem opera |
+
+Cada mensagem recebida consome uma execução do n8n: com 50 usuários ativos o
+plano Starter estoura no primeiro mês. Decidir depois que o BSP estiver de pé.
 
 ## 4. Design/UX 🤝 com os sócios
 
