@@ -44,7 +44,7 @@ export default function PrivacyPolicy({ navigation }: Props) {
           </Text>
         </View>
 
-        <Text style={styles.updated}>Última atualização: maio de 2026</Text>
+        <Text style={styles.updated}>Última atualização: agosto de 2026</Text>
 
         <Section title="O que a gente guarda">
           <P>• Seu nome e número de WhatsApp, para te entregar a semente diária.</P>
@@ -53,6 +53,22 @@ export default function PrivacyPolicy({ navigation }: Props) {
             momento. Isso é um dado sensível, e a gente trata com o cuidado que ele merece.
           </P>
           <P>• Seu histórico de sementes (o que foi plantado), para montar o seu Campo e a sua Raiz.</P>
+        </Section>
+
+        <Section title="Quando você grava um áudio">
+          <P>
+            Na Abertura, você pode falar em vez de escrever. Quem transforma a sua fala em texto não
+            é o Grão: é o serviço de voz do próprio navegador do seu celular — do Google, se você usa
+            Chrome, ou da Apple, se usa Safari.
+          </P>
+          <P>
+            Na prática, isso significa que o áudio passa pelos servidores dessa empresa antes de
+            virar texto. Até nós chega só o texto: o Grão nunca recebe nem guarda a gravação.
+          </P>
+          <P>
+            Preferindo não usar a voz, é só tocar em "Prefiro escrever". A experiência é a mesma, e
+            aí nada de áudio sai do seu aparelho.
+          </P>
         </Section>
 
         <Section title="Pra que a gente usa">
