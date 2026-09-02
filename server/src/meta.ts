@@ -50,16 +50,30 @@ export function sendText(phone: string, texto: string) {
 /**
  * Template aprovado — o único caminho fora da janela de 24h.
  *
- * A ordem das variáveis tem que casar exatamente com o corpo submetido à Meta:
- * {{1}} nome · {{2}} passagem · {{3}} referência · {{4}} reflexão · {{5}} prática
+ * A Meta passou a exigir variáveis NOMEADAS ({{nome}}) em vez de numeradas
+ * ({{1}}) na criação de templates novos. No envio, cada parâmetro carrega
+ * `parameter_name`, e aí a ordem do array deixa de importar — o casamento é
+ * pelo nome. Os nomes aqui têm que ser idênticos aos do corpo submetido.
+ *
+ * WA_TEMPLATE_POSITIONAL=true volta ao formato antigo, para o caso de um
+ * template legado numerado.
  */
 export function sendSeedTemplate(phone: string, partes: {
   name: string; passage: string; reference: string; reflection: string; practice: string;
 }) {
-  const v = [
-    partes.name?.trim() || 'tudo bem',   // template não aceita variável vazia
-    partes.passage, partes.reference, partes.reflection, partes.practice,
+  const campos: Array<[string, string]> = [
+    // template não aceita variável vazia; o fallback mantém a frase natural
+    ['nome', partes.name?.trim() || 'tudo bem'],
+    ['passagem', partes.passage],
+    ['referencia', partes.reference],
+    ['reflexao', partes.reflection],
+    ['pratica', partes.practice],
   ];
+
+  const posicional = process.env.WA_TEMPLATE_POSITIONAL === 'true';
+  const parameters = campos.map(([nome, text]) =>
+    posicional ? { type: 'text', text } : { type: 'text', parameter_name: nome, text });
+
   return chamar({
     messaging_product: 'whatsapp',
     to: phone,
@@ -67,7 +81,7 @@ export function sendSeedTemplate(phone: string, partes: {
     template: {
       name: TEMPLATE(),
       language: { code: TEMPLATE_LANG() },
-      components: [{ type: 'body', parameters: v.map((text) => ({ type: 'text', text })) }],
+      components: [{ type: 'body', parameters }],
     },
   });
 }

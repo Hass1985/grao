@@ -46,19 +46,26 @@ com variáveis e mande a semente já no primeiro disparo. O endpoint devolve
 Texto para submeter à aprovação (categoria `UTILITY`):
 
 ```
-Olá {{1}}, sua semente de hoje 🌱
+Olá {{nome}}, sua semente de hoje 🌱
 
-"{{2}}"
-— {{3}}
+"{{passagem}}"
+— {{referencia}}
 
-{{4}}
+{{reflexao}}
 
-Prática de hoje: {{5}}
+Prática de hoje: {{pratica}}
+
+Que Deus te guarde hoje. 🌱
 ```
 
-Mapeando: `{{1}}` = `parts.name`, `{{2}}` = `parts.passage`,
-`{{3}}` = `parts.reference`, `{{4}}` = `parts.reflection`,
-`{{5}}` = `parts.practice`.
+Duas regras da Meta que derrubam o modelo se ignoradas:
+
+1. **Variáveis são nomeadas**, não numeradas — minúsculas e sublinhados, sem
+   acento. `{{1}}` é recusado.
+2. **O corpo não pode terminar (nem começar) numa variável.** É por isso que
+   existe a linha de fecho depois de `{{pratica}}`.
+
+No envio, cada parâmetro leva `parameter_name` com esses mesmos nomes.
 
 **Opção 2 — template curto de convite.** Um template pequeno ("Sua semente de
 hoje está pronta. Quer receber?") com botão de resposta rápida. Quando a pessoa
