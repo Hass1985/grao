@@ -1,0 +1,243 @@
+// O webhook que a Meta chama. É a porta de entrada do WhatsApp no Grão.
+//
+// Três exigências da Meta moldam este arquivo:
+//
+//  1. HANDSHAKE — antes de mandar qualquer evento, ela faz um GET com um
+//     desafio e só aceita a URL se você devolver o desafio de volta.
+//  2. ASSINATURA — todo POST vem com X-Hub-Signature-256, um HMAC do corpo
+//     CRU usando a chave secreta do app. Sem conferir isso, qualquer um que
+//     descubra a URL consegue injetar mensagens falsas no cérebro.
+//  3. RESPOSTA RÁPIDA — se o 200 demorar, a Meta REENVIA. Por isso
+//     respondemos primeiro e processamos depois, com trava de idempotência.
+
+import type { Express, Request, Response } from 'express';
+import crypto from 'node:crypto';
+import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
+import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
+import { selectSeedForUser } from './seedSelector.js';
+import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
+import { sendText, sendSeedTemplate, markRead, metaConfigurada } from './meta.js';
+
+/** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
+const SO_TEXTO =
+  'Por enquanto eu só consigo ler mensagens escritas — ainda não sei ouvir áudio. ' +
+  'Me conta por texto o que você está vivendo? 🌱';
+
+/**
+ * Confere o HMAC do corpo cru. Comparação em tempo constante: comparar
+ * assinatura com === vaza informação pelo tempo de resposta.
+ */
+function assinaturaValida(raw: Buffer | undefined, header: string | undefined): boolean {
+  const segredo = process.env.WA_APP_SECRET;
+  if (!segredo || !raw || !header?.startsWith('sha256=')) return false;
+  const esperado = crypto.createHmac('sha256', segredo).update(raw).digest('hex');
+  const recebido = header.slice('sha256='.length);
+  const a = Buffer.from(esperado, 'utf8');
+  const b = Buffer.from(recebido, 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Registra a mensagem como vista. Devolve false se já tinha sido processada. */
+async function primeiraVez(messageId: string): Promise<boolean> {
+  const { rowCount } = await pool.query(
+    `INSERT INTO wa_inbound_seen (message_id) VALUES ($1) ON CONFLICT DO NOTHING`, [messageId]);
+  return rowCount === 1;
+}
+
+interface MsgMeta {
+  id: string; from: string; type: string;
+  text?: { body: string };
+}
+
+/** Processa UMA mensagem: cérebro, resposta e (se pedida) semente. */
+async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<void> {
+  if (!(await primeiraVez(msg.id))) return;      // reenvio da Meta
+  const e164 = normalizePhone(msg.from);
+  if (!e164) return;
+
+  void markRead(msg.id);
+  const userId = await resolveUserByPhone(e164, nome ?? undefined);
+
+  if (msg.type !== 'text' || !msg.text?.body?.trim()) {
+    void logEvent(userId, 'message_in', { source: 'whatsapp', tipo: msg.type, lido: false });
+    await sendText(msg.from, SO_TEXTO);
+    return;
+  }
+
+  const texto = msg.text.body;
+  await saveTurn(userId, 'user', texto);
+  void logEvent(userId, 'message_in', { source: 'whatsapp', chars: texto.length });
+
+  const [recentes, perfil] = await Promise.all([
+    getRecentUserMessages(userId, 4),
+    getProfile(userId),
+  ]);
+  const leitura = await readMessage(texto, {
+    recentMessages: recentes.slice(0, -1),
+    profileHint: perfil?.emotional_hint ?? null,
+  });
+  if (leitura) {
+    await saveReading(userId, 'whatsapp', leitura);
+    if (leitura.confidence >= CONFIDENCE_TO_UPDATE) {
+      const mudou = await setMomentBySystem(userId, leitura.family);
+      if (mudou) void logEvent(userId, 'moment_changed', { by: 'brain', family: leitura.family });
+    }
+  }
+
+  const { resposta, quer_semente } = await replyFor(texto, leitura, recentes.slice(0, -1));
+  await saveTurn(userId, 'assistant', resposta);
+  const env = await sendText(msg.from, resposta);
+  if (!env.ok) console.error(`[wa] falha ao responder ${e164}: ${env.erro}`);
+
+  if (quer_semente) {
+    const seed = await selectSeedForUser(userId);
+    if (seed) {
+      const r = await sendText(msg.from, formatSeed(seed, perfil ? null : nome));
+      if (r.ok) void logEvent(userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'whatsapp' });
+      else console.error(`[wa] falha ao enviar semente para ${e164}: ${r.erro}`);
+    }
+  }
+}
+
+/** Percorre o envelope da Meta, que vem em três níveis de aninhamento. */
+async function processarEvento(corpo: any): Promise<void> {
+  for (const entry of corpo?.entry ?? []) {
+    for (const change of entry?.changes ?? []) {
+      const value = change?.value;
+      const nome: string | null = value?.contacts?.[0]?.profile?.name ?? null;
+
+      for (const msg of value?.messages ?? []) {
+        try { await processarMensagem(msg, nome); }
+        catch (e: any) { console.error('[wa] erro ao processar mensagem:', e?.message || e); }
+      }
+
+      // Status de entrega. Só o 'failed' importa: sem isso, mensagem que a
+      // Meta recusou some sem deixar rastro.
+      for (const st of value?.statuses ?? []) {
+        if (st.status === 'failed') {
+          console.error(`[wa] envio falhou para ${st.recipient_id}:`,
+            JSON.stringify(st.errors ?? st));
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Disparo da semente diária.
+ *
+ * Faz TUDO num só lugar — monta a fila e envia — para o agendador externo ser
+ * burro: um cron que só sabe chamar uma URL. Foi o mesmo motivo de dispensar
+ * o n8n; a diferença é que aqui não há mensalidade nem um segundo sistema
+ * para manter de pé.
+ *
+ * Fora da janela de 24h a Meta só aceita template, então este disparo usa
+ * sempre o template aprovado.
+ */
+async function despachar(janela: string): Promise<{ enviadas: number; falhas: number; detalhes: string[] }> {
+  const { rows: usuarios } = await pool.query(
+    `SELECT u.id, u.phone_e164, u.name
+       FROM users u
+      WHERE u.delivery_window = $1
+        AND u.wa_opt_in_at IS NOT NULL
+        AND u.phone_e164 IS NOT NULL
+        AND NOT EXISTS (
+              SELECT 1 FROM seed_deliveries d
+               WHERE d.user_id = u.id
+                 AND (d.delivered_at AT TIME ZONE u.timezone)::date
+                   = (now() AT TIME ZONE u.timezone)::date)`, [janela]);
+
+  let enviadas = 0, falhas = 0;
+  const detalhes: string[] = [];
+
+  for (const u of usuarios) {
+    const seed = await selectSeedForUser(u.id);
+    if (!seed) continue;
+
+    const r = await sendSeedTemplate(u.phone_e164, {
+      name: u.name ?? '',
+      passage: seed.passage,
+      reference: seed.reference,
+      reflection: seed.reflection,
+      practice: seed.practice,
+    });
+
+    if (r.ok) {
+      enviadas++;
+      void logEvent(u.id, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'whatsapp_cron' });
+    } else {
+      falhas++;
+      detalhes.push(`${u.phone_e164}: ${r.erro}`);
+      console.error(`[wa/dispatch] ${u.phone_e164}: ${r.erro}`);
+      // A entrega já foi registrada pelo seletor. Desfazemos, senão a pessoa
+      // fica sem semente hoje E sem a semente de amanhã (ela contaria como vista).
+      await pool.query(
+        `DELETE FROM seed_deliveries
+          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1 AND seed_id = $2)`,
+        [u.id, seed.id]);
+    }
+  }
+  return { enviadas, falhas, detalhes };
+}
+
+export function registerMetaWebhookRoutes(app: Express) {
+  /**
+   * Chamado pelo cron (GitHub Actions). Protegido pelo mesmo segredo dos
+   * outros endpoints internos.
+   */
+  app.post('/whatsapp/dispatch', async (req: Request, res: Response) => {
+    const esperado = process.env.GRAO_API_TOKEN;
+    if (!esperado) return res.status(503).json({ error: 'GRAO_API_TOKEN não configurado' });
+    if (req.header('x-grao-token') !== esperado) return res.status(401).json({ error: 'token inválido' });
+
+    const janela = String(req.query.window ?? '');
+    if (!['dawn', 'morning', 'noon', 'evening'].includes(janela)) {
+      return res.status(400).json({ error: 'window deve ser dawn, morning, noon ou evening' });
+    }
+    if (!metaConfigurada()) return res.status(503).json({ error: 'credenciais da Meta ausentes' });
+
+    try {
+      const r = await despachar(janela);
+      console.log(`[wa/dispatch] ${janela}: ${r.enviadas} enviadas, ${r.falhas} falhas`);
+      return res.json({ window: janela, ...r });
+    } catch (e: any) {
+      console.error('[wa/dispatch]', e?.message || e);
+      return res.status(500).json({ error: 'falha no disparo' });
+    }
+  });
+
+  /** Handshake: a Meta chama uma vez, ao salvar a URL no painel. */
+  app.get('/whatsapp/webhook', (req: Request, res: Response) => {
+    const esperado = process.env.WA_VERIFY_TOKEN;
+    if (!esperado) return res.status(503).send('WA_VERIFY_TOKEN não configurado');
+
+    const modo = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const desafio = req.query['hub.challenge'];
+
+    if (modo === 'subscribe' && token === esperado) {
+      // Precisa ser texto puro, não JSON — a Meta compara byte a byte.
+      return res.status(200).type('text/plain').send(String(desafio ?? ''));
+    }
+    console.warn('[wa] handshake recusado (token não confere)');
+    return res.sendStatus(403);
+  });
+
+  /** Eventos. Responde 200 na hora e processa em seguida. */
+  app.post('/whatsapp/webhook', (req: Request & { rawBody?: Buffer }, res: Response) => {
+    if (!assinaturaValida(req.rawBody, req.header('x-hub-signature-256'))) {
+      console.warn('[wa] assinatura inválida — evento descartado');
+      return res.sendStatus(401);
+    }
+    if (!metaConfigurada()) {
+      console.error('[wa] evento recebido mas WA_ACCESS_TOKEN/WA_PHONE_NUMBER_ID faltam');
+      return res.sendStatus(200);   // 200 mesmo assim: reenviar não resolveria
+    }
+
+    // A Meta reenvia se o 200 demorar. Confirmamos primeiro; o processamento
+    // (que chama modelo e banco) segue depois, protegido pela idempotência.
+    res.sendStatus(200);
+    void processarEvento(req.body).catch((e) =>
+      console.error('[wa] erro no processamento assíncrono:', e?.message || e));
+  });
+}

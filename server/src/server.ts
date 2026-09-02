@@ -20,6 +20,7 @@ import {
 import { selectSeedForUser } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { registerWhatsAppRoutes } from './whatsapp.js';
+import { registerMetaWebhookRoutes } from './metaWebhook.js';
 
 const app = express();
 
@@ -27,7 +28,13 @@ const app = express();
 // Sem a variável, libera geral (útil no Trial e no desenvolvimento).
 const origins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
 app.use(cors(origins?.length ? { origin: origins } : undefined));
-app.use(express.json({ limit: '1mb' }));
+// O corpo CRU precisa sobreviver ao parser: a assinatura HMAC que a Meta
+// envia é calculada sobre os bytes originais. Re-serializar o JSON muda
+// espaços e ordem de chaves, e a conferência falharia sempre.
+app.use(express.json({
+  limit: '1mb',
+  verify: (req: any, _res, buf) => { req.rawBody = buf; },
+}));
 
 /**
  * Diagnóstico compartilhado por /health e /ready.
@@ -323,8 +330,12 @@ app.delete('/user/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Canal WhatsApp (consumido pelo n8n). Protegido por GRAO_API_TOKEN.
+// Canal WhatsApp. As rotas /whatsapp/inbound|due|opt-in são protegidas por
+// GRAO_API_TOKEN e existem para um orquestrador externo (n8n). O webhook
+// /whatsapp/webhook é a integração DIRETA com a Meta, autenticada pela
+// assinatura HMAC — é o caminho em uso.
 registerWhatsAppRoutes(app);
+registerMetaWebhookRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => console.log(`Grão backend em http://localhost:${port}`));

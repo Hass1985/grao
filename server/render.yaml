@@ -25,7 +25,17 @@ services:
       - key: DATABASE_URL
         sync: false          # connection string do Supabase (Session pooler)
       - key: GRAO_API_TOKEN
-        sync: false          # segredo compartilhado com o n8n
+        sync: false          # segredo dos endpoints internos (cron, orquestrador)
+      - key: WA_ACCESS_TOKEN
+        sync: false          # token do usuário do sistema (Meta)
+      - key: WA_APP_SECRET
+        sync: false          # valida a assinatura dos webhooks
+      - key: WA_VERIFY_TOKEN
+        sync: false          # handshake do webhook
+      - key: WA_PHONE_NUMBER_ID
+        sync: false
+      - key: WA_BUSINESS_ACCOUNT_ID
+        sync: false
       - key: GRAO_MODEL
         value: claude-opus-4-8
       - key: GRAO_OPENING_MODEL

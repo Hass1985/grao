@@ -186,18 +186,47 @@ Ordem sugerida — o item 3 é o que demora, então comece por ele.
 - O Brasil entrou na cobrança localizada em jul/2026; confira as tarifas em BRL
   no próprio Business Manager antes de projetar custo.
 
-### Decisão pendente: n8n ou integração direta
+### Decisão tomada: integração direta (set/2026)
 
-O backend não depende do n8n — ele foi desenhado com o n8n como encanamento.
+Sem n8n. O backend fala com a Meta diretamente — R$ 0/mês contra €20–50, e um
+sistema a menos para manter de pé. Os fluxos n8n seguem em `server/n8n/` como
+plano B.
 
-| | n8n Cloud | Direto no backend |
+| Peça | Arquivo | O que faz |
 |---|---|---|
-| Custo | €20/mês (Starter, 2.500 execuções) a €50 (Pro) | R$ 0 |
-| Falta construir | nada — os dois fluxos estão em `server/n8n/` | endpoint no protocolo da Meta (verificação + assinatura HMAC) e cron (GitHub Actions) |
-| Vale quando | os sócios querem montar e mudar fluxos sem código | a equipe técnica é quem opera |
+| Cliente da Graph API | `src/meta.ts` | envia texto e template; traduz o erro 131047 (janela de 24h fechada) |
+| Webhook | `src/metaWebhook.ts` | handshake, validação de assinatura, processamento |
+| Disparo diário | `POST /whatsapp/dispatch?window=` | monta a fila E envia, para o agendador ser burro |
+| Agendador | `.github/workflows/semente-diaria.yml` | cron do GitHub Actions, gratuito |
 
-Cada mensagem recebida consome uma execução do n8n: com 50 usuários ativos o
-plano Starter estoura no primeiro mês. Decidir depois que o BSP estiver de pé.
+Três exigências da Meta moldaram o webhook:
+
+1. **Handshake** — ela faz um GET com um desafio e só aceita a URL se você
+   devolver o desafio como texto puro.
+2. **Assinatura** — todo POST traz `X-Hub-Signature-256`, um HMAC do corpo
+   **cru** com a chave secreta do app. Por isso o `express.json` guarda
+   `rawBody`: re-serializar o JSON muda bytes e a conferência falharia sempre.
+   Sem essa validação, quem descobrisse a URL injetaria mensagens falsas no
+   cérebro.
+3. **Resposta rápida** — se o 200 demora, a Meta **reenvia**. Respondemos
+   primeiro e processamos depois, com a tabela `wa_inbound_seen` garantindo
+   idempotência por `message_id`.
+
+Detalhes de produto embutidos:
+
+- **Áudio, figurinha e imagem** recebem uma resposta explicando que ainda só
+  lemos texto. O público manda áudio o tempo todo — ignorar em silêncio seria
+  o pior comportamento possível.
+- **Falha no disparo desfaz a entrega registrada**, senão a pessoa ficaria sem
+  a semente de hoje *e* sem a de amanhã (a de hoje contaria como vista).
+- Só o status `failed` é logado: sem isso, mensagem recusada pela Meta some
+  sem rastro.
+
+⚠️ **Pré-requisito de webhook:** em modo de desenvolvimento a Meta **não envia
+eventos de produção** — nem de administradores ou testadores. É preciso
+publicar o app, e publicar exige uma **URL de política de privacidade**, que
+vem do webapp no ar. A cadeia é: publicar o webapp → URL da política →
+publicar o app na Meta → o webhook passa a receber.
 
 ## 4. Design/UX 🤝 com os sócios
 

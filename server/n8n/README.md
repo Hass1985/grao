@@ -1,3 +1,8 @@
+> **Este caminho NÃO está em uso.** Optamos pela integração direta com a Meta
+> (`server/src/metaWebhook.ts`), que custa R$ 0 e dispensa um segundo sistema.
+> Estes fluxos ficam aqui como plano B, caso um dia faça sentido dar aos sócios
+> uma interface visual para montar automações sem código.
+
 # WhatsApp via n8n
 
 O n8n aqui é **encanamento, não cérebro**. Ele recebe do BSP, chama um endpoint
