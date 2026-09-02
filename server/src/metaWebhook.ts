@@ -208,18 +208,24 @@ export function registerMetaWebhookRoutes(app: Express) {
 
   /** Handshake: a Meta chama uma vez, ao salvar a URL no painel. */
   app.get('/whatsapp/webhook', (req: Request, res: Response) => {
-    const esperado = process.env.WA_VERIFY_TOKEN;
+    // trim dos dois lados: colar num painel web quase sempre traz um espaço
+    // ou uma quebra de linha junto, e a diferença é invisível na tela. Sem
+    // isso o handshake falha com uma mensagem genérica da Meta e não há como
+    // descobrir o motivo olhando a configuração.
+    const esperado = (process.env.WA_VERIFY_TOKEN ?? '').trim();
     if (!esperado) return res.status(503).send('WA_VERIFY_TOKEN não configurado');
 
-    const modo = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
+    const modo = String(req.query['hub.mode'] ?? '').trim();
+    const token = String(req.query['hub.verify_token'] ?? '').trim();
     const desafio = req.query['hub.challenge'];
 
     if (modo === 'subscribe' && token === esperado) {
       // Precisa ser texto puro, não JSON — a Meta compara byte a byte.
       return res.status(200).type('text/plain').send(String(desafio ?? ''));
     }
-    console.warn('[wa] handshake recusado (token não confere)');
+    // Diagnóstico sem vazar segredo: os tamanhos já dizem se é valor errado
+    // (tamanhos diferentes) ou caractere invisível no meio (tamanhos iguais).
+    console.warn(`[wa] handshake recusado · modo="${modo}" · token recebido tem ${token.length} caracteres, esperado tem ${esperado.length}`);
     return res.sendStatus(403);
   });
 
