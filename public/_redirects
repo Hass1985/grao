@@ -1,0 +1,8 @@
+# O Grão é uma SPA: todas as rotas são resolvidas no navegador, então o
+# servidor precisa devolver o index.html para qualquer caminho. Sem isso,
+# recarregar a página em /privacidade (ou abrir um link direto) dá 404.
+#
+# Fica em public/ de propósito: o Expo copia esta pasta para dist/ a cada
+# build. Deixar o arquivo solto em dist/ sumiria no próximo export — foi o
+# que aconteceu agora.
+/*    /index.html   200
