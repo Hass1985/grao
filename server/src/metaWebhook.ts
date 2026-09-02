@@ -160,6 +160,9 @@ async function despachar(janela: string): Promise<{ enviadas: number; falhas: nu
       reference: seed.reference,
       reflection: seed.reflection,
       practice: seed.practice,
+      musicTitle: seed.music.title,
+      musicArtist: seed.music.artist,
+      musicUrl: seed.music.spotifyUrl || seed.music.youtubeUrl,
     });
 
     if (r.ok) {

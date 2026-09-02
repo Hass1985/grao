@@ -55,6 +55,8 @@ Olá {{nome}}, sua semente de hoje 🌱
 
 Prática de hoje: {{pratica}}
 
+🎵 {{musica}}
+
 Que Deus te guarde hoje. 🌱
 ```
 
@@ -63,7 +65,11 @@ Duas regras da Meta que derrubam o modelo se ignoradas:
 1. **Variáveis são nomeadas**, não numeradas — minúsculas e sublinhados, sem
    acento. `{{1}}` é recusado.
 2. **O corpo não pode terminar (nem começar) numa variável.** É por isso que
-   existe a linha de fecho depois de `{{pratica}}`.
+   existe a linha de fecho no final.
+3. **O limite de 1024 caracteres vale para a mensagem MONTADA**, não para o
+   modelo com os espaços vazios. Medindo a base: 16 das 380 sementes
+   estouravam esse teto. O `sendSeedTemplate` encurta a reflexão — e só ela —
+   até caber, cortando no fim de uma frase.
 
 No envio, cada parâmetro leva `parameter_name` com esses mesmos nomes.
 
