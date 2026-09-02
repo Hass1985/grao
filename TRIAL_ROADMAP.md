@@ -144,7 +144,7 @@ endpoint e envia o que voltar. Toda decisão fica aqui, onde dá para testar.
 | `POST /whatsapp/opt-in` | consentimento + janela de horário escolhida |
 
 Os endpoints falam em **telefone**, não em `userId`: o n8n não mantém tabela de
-mapeamento. Autenticação por `WHATSAPP_TOKEN` (header `x-grao-token`), com
+mapeamento. Autenticação por `GRAO_API_TOKEN` (header `x-grao-token`), com
 falha **fechada** — sem a variável, respondem 503.
 
 Fluxos prontos para importar em `server/n8n/` (dois JSON + README).
@@ -170,7 +170,7 @@ Ordem sugerida — o item 3 é o que demora, então comece por ele.
 3. **Template `semente_do_dia` aprovado**, categoria `UTILITY`. Texto exato em
    `server/n8n/README.md`. É o passo com prazo imprevisível (horas a dias) e
    bloqueia o Fluxo B inteiro — submeta primeiro.
-4. **`WHATSAPP_TOKEN` no Render** (gerar com `npm run wa:token`).
+4. **`GRAO_API_TOKEN` no Render** (gerar com `npm run wa:token`).
 5. **Render no plano Starter.** No free tier o serviço hiberna e a primeira
    chamada leva ~50s. A Meta reenvia webhooks lentos, e ninguém espera 50
    segundos por uma resposta no WhatsApp.

@@ -9,12 +9,12 @@ manter tabela de mapeamento nem inventar identificadores.
 
 ## Antes de importar
 
-1. No Render, defina `WHATSAPP_TOKEN` com um segredo forte. Sem ele os
+1. No Render, defina `GRAO_API_TOKEN` com um segredo forte. Sem ele os
    endpoints respondem **503** — falham fechados de propósito, porque abertos
    exporiam a conversa e o telefone de todos os usuários.
 2. No n8n, crie as credenciais/variáveis:
    - `GRAO_API` — `https://grao-backend.onrender.com`
-   - `GRAO_TOKEN` — o mesmo valor do `WHATSAPP_TOKEN`
+   - `GRAO_TOKEN` — o mesmo valor do `GRAO_API_TOKEN`
    - `WA_PHONE_ID` e `WA_TOKEN` — do WhatsApp Business (Meta Cloud API)
 
 ## Os dois fluxos

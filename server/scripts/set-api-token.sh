@@ -22,12 +22,12 @@ caminho = '.env'
 linhas = open(caminho, encoding='utf-8').read().split('\n')
 saida, trocou = [], False
 for l in linhas:
-    if l.startswith('WHATSAPP_TOKEN=') and not trocou:
-        saida.append('WHATSAPP_TOKEN=' + token); trocou = True
+    if l.startswith('GRAO_API_TOKEN=') and not trocou:
+        saida.append('GRAO_API_TOKEN=' + token); trocou = True
     else:
         saida.append(l)
 if not trocou:
-    saida.append('WHATSAPP_TOKEN=' + token)
+    saida.append('GRAO_API_TOKEN=' + token)
 open(caminho, 'w', encoding='utf-8').write('\n'.join(saida))
 
 import subprocess
@@ -38,7 +38,7 @@ echo "✓ Token gerado (64 caracteres) e gravado em server/.env"
 echo "✓ Copiado para a área de transferência."
 echo
 echo "Cole o MESMO valor em dois lugares:"
-echo "  1. Render → Environment → WHATSAPP_TOKEN"
+echo "  1. Render → Environment → GRAO_API_TOKEN"
 echo "  2. n8n → Variables → GRAO_TOKEN"
 echo
 echo "Depois, esvazie a área de transferência:  pbcopy < /dev/null"

@@ -24,7 +24,7 @@ services:
         sync: false          # cole no painel do Render
       - key: DATABASE_URL
         sync: false          # connection string do Supabase (Session pooler)
-      - key: WHATSAPP_TOKEN
+      - key: GRAO_API_TOKEN
         sync: false          # segredo compartilhado com o n8n
       - key: GRAO_MODEL
         value: claude-opus-4-8

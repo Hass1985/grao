@@ -133,13 +133,13 @@ export async function replyFor(
 /**
  * Autenticação por segredo compartilhado.
  *
- * Falha FECHADA: sem WHATSAPP_TOKEN configurado, os endpoints não respondem.
+ * Falha FECHADA: sem GRAO_API_TOKEN configurado, os endpoints não respondem.
  * Deixá-los abertos exporia a conversa e o telefone de todos os usuários.
  */
 function exigeToken(req: Request, res: Response, next: NextFunction) {
-  const esperado = process.env.WHATSAPP_TOKEN;
+  const esperado = process.env.GRAO_API_TOKEN;
   if (!esperado) {
-    return res.status(503).json({ error: 'Canal WhatsApp não configurado (defina WHATSAPP_TOKEN).' });
+    return res.status(503).json({ error: 'Canal WhatsApp não configurado (defina GRAO_API_TOKEN).' });
   }
   const recebido = req.header('x-grao-token');
   if (recebido !== esperado) return res.status(401).json({ error: 'token inválido' });

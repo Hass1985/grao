@@ -323,7 +323,7 @@ app.delete('/user/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Canal WhatsApp (consumido pelo n8n). Protegido por WHATSAPP_TOKEN.
+// Canal WhatsApp (consumido pelo n8n). Protegido por GRAO_API_TOKEN.
 registerWhatsAppRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
