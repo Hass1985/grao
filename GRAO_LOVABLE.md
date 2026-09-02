@@ -99,7 +99,7 @@ Título "Seu WhatsApp"; subtítulo "É por aqui que você vai receber sua sement
 Título "Escolha seu plano"; subtítulo "7 dias grátis para conhecer o Grão. Cancele quando quiser."
 2 cards de plano (seleção única, "Anual" pré-selecionado):
 - Anual — R$ 19,90 /mês — "12x de R$ 19,90 — R$ 238,80/ano" — badge âmbar "RECOMENDADO"
-- Mensal — R$ 29,90 /mês — "Renovação automática mensal"
+- Mensal — R$ 19,90 /mês — "Renovação automática mensal"
 Botão "Começar 7 dias grátis" → entra no app principal (aba Hoje).
 Texto legal pequeno: "No 8º dia, a cobrança é feita automaticamente. Cancele antes sem custo."
 
@@ -1368,7 +1368,7 @@ const plans = [
     detail: '12x de R$ 19,90 — R$ 238,80/ano', badge: 'RECOMENDADO',
   },
   {
-    id: 'monthly', label: 'Mensal', price: 'R$ 29,90', period: '/mês',
+    id: 'monthly', label: 'Mensal', price: 'R$ 19,90', period: '/mês',
     detail: 'Renovação automática mensal', badge: null,
   },
 ];

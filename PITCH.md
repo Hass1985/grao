@@ -49,12 +49,12 @@ Campos entre [colchetes] você preenche. Números marcados como *(a validar)* s�
 **Fala:** "Mercado grande e com porta de entrada clara: quase 50 milhões de evangélicos, e a Assembleia, a maior denominação com 12 milhões de membros e rede capilar de líderes, é o foco e a porta. 200 mil assinantes, menos de 0,5% dos evangélicos, já é mais de 100 milhões de reais por ano. Validar os números com Censo/Datafolha."
 
 ## Slide 11 — Projeção de crescimento (gráfico + tabela)
-**No slide:** gráfico de colunas do ARR (Ano 1→5: R$ 2,9M → R$ 23,5M → R$ 88M → R$ 176M → R$ 294M) + tabela (Ano / Assinantes / ARR).
-**Fala:** "A rampa, ano a ano: ano 1, 5 mil pagantes e quase R$3M de ARR; ano 3, 150 mil e R$88M; ano 5, 500 mil e quase R$294M. Cenário base, a validar — cada degrau vem do modelo por igreja. Com aporte e força técnica, encurta." (Modelo completo em [MERCADO_E_NUMEROS.md](MERCADO_E_NUMEROS.md).)
+**No slide:** gráfico de colunas do ARR (Ano 1→5: R$ 1,1M → R$ 9,1M → R$ 34M → R$ 68M → R$ 113M) + tabela (Ano / Assinantes / ARR).
+**Fala:** "A rampa, ano a ano: ano 1, 5 mil pagantes e R$1,1 milhão de ARR; ano 3, 150 mil e R$34 milhões; ano 5, 500 mil e R$113 milhões. Cenário base, a validar — cada degrau vem do modelo por igreja. Com aporte e força técnica, encurta." (Modelo completo em [MERCADO_E_NUMEROS.md](MERCADO_E_NUMEROS.md).)
 
 ## Slide 12 — Modelo de negócio
-**No slide:** Escada de preço — tabela (Semente R$ 19,90 · **Plantio R$ 49/mês** · Anual R$ 468) + unit economics (margem ~90%, LTV ~R$ 880, LTV/CAC >20x, custo R$2–4/usuário, CAC baixo via igreja).
-**Fala:** "Uma escada de preço: entrada de R$19,90 pra ampliar o alcance, o Plantio de R$49 como principal, e o anual. Custo por usuário de dois a quatro reais, margem bruta perto de 90%. LTV em torno de R$880 e, como a aquisição vem da igreja, o LTV sobre CAC passa de 20 vezes."
+**No slide:** Preço único — **R$ 19,90/mês** ou R$ 199/ano (2 meses de graça) + unit economics (ARPU R$ 18,90, margem ~82%, LTV ~R$ 308, LTV/CAC 8x–31x, COGS R$ 2–5/usuário, CAC baixo via igreja).
+**Fala:** "Um preço só, e ele entrega tudo: dezenove e noventa por mês, ou cento e noventa e nove no ano. Sessenta e seis centavos por dia, menos que um café. A gente abriu mão de ticket para tirar o preço da mesa como objeção: no nosso público, R$49 é uma decisão; R$19,90 é um arredondamento. Margem bruta de 82%, LTV em torno de trezentos reais, e como a aquisição vem da igreja o LTV sobre CAC fica entre oito e trinta vezes, conforme o custo por assinante."
 
 ## Slide 13 — Como chegamos ao público
 **No slide:** Foco Assembleia de Deus · Canal = a própria igreja (líder traz a congregação, CAC baixo) · A ponte (liderança de SP com acesso a pastores da Assembleia).

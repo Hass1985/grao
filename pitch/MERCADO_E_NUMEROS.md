@@ -20,25 +20,25 @@
 | **SAM** | Praticantes ativos, digitais, dispostos a pagar por algo diário premium | ~10 milhões | ~25% do TAM. Alinha com o núcleo engajado da Assembleia (~6–8M) |
 | **SOM** (3–5 anos) | Assinantes pagantes que conseguimos capturar | **200 mil a 500 mil** | 2% a 5% do SAM |
 
-**Receita recorrente anual (ARR) no SOM, a R$ 49/mês:**
+**Receita recorrente anual (ARR) no SOM, ao ARPU de R$ 18,90/mês** (ver seção 5):
 
 | Cenário | Assinantes | % do SAM | ARR |
 |---|---|---|---|
-| Conservador | 200 mil | 2% | **R$ 117,6 milhões** |
-| Base | 350 mil | 3,5% | R$ 205,8 milhões |
-| Otimista | 500 mil | 5% | R$ 294,0 milhões |
+| Conservador | 200 mil | 2% | **R$ 45,4 milhões** |
+| Base | 350 mil | 3,5% | R$ 79,4 milhões |
+| Otimista | 500 mil | 5% | R$ 113,4 milhões |
 
 > Referência de tamanho: 200 mil assinantes é **menos de 0,5% dos evangélicos** e **~1,7% da Assembleia**. É uma fatia pequena de um público enorme e já reunido.
 
 ## 3. Rampa (como chego lá) — cenário base
 
-| Momento | Assinantes pagantes | ARR (R$49/mês) | O que destrava |
+| Momento | Assinantes pagantes | ARR (ARPU R$ 18,90/mês) | O que destrava |
 |---|---|---|---|
-| Ano 1 | 5.000 | ~R$ 2,9 mi | Piloto + primeiras 50 igrejas + WhatsApp em produção |
-| Ano 2 | 40.000 | ~R$ 23,5 mi | Endosso denominacional + a ponte SP + motor de aquisição |
-| Ano 3 | 150.000 | ~R$ 88,2 mi | Rede de igrejas/campos + indicação orgânica |
-| Ano 4 | 300.000 | ~R$ 176,4 mi | Escala nacional na Assembleia + outras denominações |
-| Ano 5 | 500.000 | ~R$ 294,0 mi | Consolidação + planos de igreja/família |
+| Ano 1 | 5.000 | ~R$ 1,1 mi | Piloto + primeiras 50 igrejas + WhatsApp em produção |
+| Ano 2 | 40.000 | ~R$ 9,1 mi | Endosso denominacional + a ponte SP + motor de aquisição |
+| Ano 3 | 150.000 | ~R$ 34,0 mi | Rede de igrejas/campos + indicação orgânica |
+| Ano 4 | 300.000 | ~R$ 68,0 mi | Escala nacional na Assembleia + outras denominações |
+| Ano 5 | 500.000 | ~R$ 113,4 mi | Consolidação + planos de igreja/família |
 
 ## 4. A conta por igreja (o motor de aquisição)
 
@@ -54,40 +54,62 @@ O canal não é ads, é a igreja. Por isso a unidade de crescimento é a **congr
 - Para **150 mil pagantes** (Ano 3): ~**10.000 igrejas** — OU um número bem menor de **campos/convenções grandes** (um campo de 20–50 mil membros gera milhares de pagantes de uma vez).
 - A Assembleia tem **dezenas de milhares de congregações** no Brasil. Com endosso denominacional + a ponte de SP, a meta é alcançável.
 
-## 5. Preço e ARPU (alavanca importante)
+## 5. Preço e ARPU (decisão de set/2026)
 
-R$ 49/mês pode ser alto para parte da base (renda). Sugestão de escada de preço para **maximizar alcance sem matar a margem**:
+**A escada de preço foi abandonada.** Havia um plano de entrada a R$ 19,90 (só
+WhatsApp) e um principal a R$ 49 (completo). Hoje existe **um preço só, e ele
+entrega tudo**:
 
-| Plano | Preço | O que inclui |
+| Plano | Preço | Equivalente mensal |
 |---|---|---|
-| Semente (entrada) | R$ 19,90/mês | Só a semente diária no WhatsApp |
-| **Plantio (principal)** | **R$ 49/mês** | Completo: semente + app + histórico + música |
-| Anual | R$ 468/ano | 2 meses grátis |
+| **Mensal** | **R$ 19,90/mês** | R$ 19,90 |
+| Anual | R$ 199,00/ano | R$ 16,58 (2 meses de graça) |
 
-**Cenário de ARPU misto** (ex.: 60% no plano de entrada, 40% no Plantio) → ARPU ~**R$ 31,50/mês**.
-- SOM conservador (200 mil) a esse ARPU misto = **~R$ 75,6 milhões de ARR**.
-- Ou seja: mesmo com preço conservador e mix pessimista, o negócio é de **dezenas de milhões de ARR**.
+**ARPU:** com 30% da base no anual — premissa a validar no piloto —
+0,70 × 19,90 + 0,30 × 16,58 = **R$ 18,90/mês**, ou R$ 226,80/ano.
+Se ninguém aderir ao anual, o teto é R$ 19,90; se todos aderirem, o piso é
+R$ 16,58. A faixa inteira é estreita, o que torna a projeção mais previsível
+do que era com mix de planos.
+
+**O que a decisão troca:** ARPU de R$ 49 para R$ 18,90 é uma queda de 61%. A
+aposta é que a conversão suba mais que isso — e ela é plausível, porque o
+preço saiu de "uma decisão" para "quase nada" (ver seção 7). É a tese a provar
+no piloto: **volume compensando ticket**.
 
 ## 6. Economia por assinante (unit economics)
 
 | Métrica | Estimativa | Premissa |
 |---|---|---|
-| ARPU | R$ 49 (ou R$ 31,5 misto) | |
-| Custo por usuário (COGS) | R$ 2–5/mês | IA (onboarding cacheado + seleção diária barata) + mensagens WhatsApp |
-| **Margem bruta** | **~90%** | |
+| ARPU | **R$ 18,90/mês** | 70% mensal + 30% anual |
+| Custo por usuário (COGS) | R$ 2–5/mês | IA (cache no onboarding + seleção diária barata) + ~1 template WhatsApp/dia |
+| **Margem bruta** | **~82%** | faixa de 74% (COGS R$5) a 89% (COGS R$2) |
 | CAC via igreja | R$ 10–40 | Endosso do líder; vs. R$ 80–150 em ads |
 | Churn mensal | ~5% (meta) | Puxado para baixo pelo hábito diário |
 | Vida média | ~20 meses | 1 / churn |
-| **LTV** | **~R$ 880** | 20 × R$49 × 90% |
-| **LTV / CAC** | **>20x** (canal igreja) | Muito saudável quando a aquisição é comunitária |
+| **LTV** | **~R$ 308** | 20 × R$ 18,90 × 82% |
+| **LTV / CAC** | **8x a 31x** | 31x com CAC R$10 · 15x com R$20 · 8x com R$40 |
+
+**Duas mudanças honestas em relação à versão anterior deste documento:**
+
+1. **A margem caiu de ~90% para ~82%,** e agora é sensível ao COGS. Com ARPU
+   de R$ 49, cada real de custo valia 2 pontos de margem; com R$ 18,90, vale
+   5 pontos. O custo do WhatsApp deixou de ser detalhe — é a alavanca a vigiar.
+2. **O "LTV/CAC > 20x" não vale mais como afirmação geral.** Ele agora depende
+   do CAC: acima de R$ 15 por assinante, cai abaixo de 20x. Continua saudável
+   (o padrão de mercado é 3x), mas a frase precisa vir com a premissa junto.
 
 ## 7. Contexto de disposição a pagar (por que os números fecham)
 
-O público evangélico já **investe dinheiro em fé**: dízimo (10% da renda), livros, congressos, streaming e shows gospel (mercado gospel movimenta **bilhões de reais/ano** no Brasil). R$ 49/mês é **menos que um ingresso de show gospel** ou dois livros. O que falta não é disposição — é um **produto diário à altura**.
+O público evangélico já **investe dinheiro em fé**: dízimo (10% da renda), livros, congressos, streaming e shows gospel (mercado gospel movimenta **bilhões de reais/ano** no Brasil).
+
+A R$ 19,90, o argumento fica quase trivial: são **R$ 0,66 por dia**, menos que um café. Para quem ganha um salário mínimo e dizima, é **cerca de 1,4% do que já destina à igreja todo mês**. O preço deixou de ser uma decisão de orçamento e virou um arredondamento — que é exatamente o efeito buscado ao abandonar a escada de planos.
+
+O que falta não é disposição — é um **produto diário à altura**.
 
 ## 8. Riscos e sensibilidades (ser honesto com o sócio)
 
-- **Preço/renda:** parte da base é sensível a preço → a escada de planos e o ARPU misto mitigam.
+- **Preço/renda:** ~~risco principal~~ **em grande parte neutralizado** pelo preço único de R$ 19,90. O risco se inverteu: agora a pergunta não é se a pessoa pode pagar, é se o valor percebido sustenta a cobrança.
+- **Margem sensível ao COGS:** a R$ 18,90 de ARPU, cada real de custo por usuário come 5 pontos de margem. O custo por mensagem do WhatsApp é a variável a monitorar desde o piloto.
 - **Churn:** a tese inteira depende de virar hábito. É a métrica nº 1 a provar no piloto.
 - **Conversão via igreja:** depende do endosso real dos líderes (por isso a ponte de SP é estratégica).
 - **WhatsApp API:** custo por conversa e políticas da Meta (templates, opt-in) — impactam COGS.
@@ -96,4 +118,6 @@ O público evangélico já **investe dinheiro em fé**: dízimo (10% da renda), 
 ---
 
 ### Resumo em uma linha
-Público de **~40M** alcançáveis, alvo servível de **~10M**, capturando **200–500 mil** pagantes em 3–5 anos = **R$ 118M a R$ 294M de ARR**, com margem ~90% e aquisição de baixo custo via igreja. Mesmo no cenário pessimista de preço, é um negócio de **dezenas de milhões de ARR**.
+Público de **~40M** alcançáveis, alvo servível de **~10M**, capturando **200–500 mil** pagantes em 3–5 anos = **R$ 45M a R$ 113M de ARR**, com margem ~82% e aquisição de baixo custo via igreja.
+
+A troca de R$ 49 por R$ 19,90 cortou a projeção pela metade — e comprou, em vez disso, um preço que praticamente elimina a objeção de renda no público-alvo. **A tese a provar no piloto deixou de ser "eles pagam?" e passou a ser "eles ficam?".** Churn é a métrica número um.
