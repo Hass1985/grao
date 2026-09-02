@@ -22,7 +22,7 @@ const plans = [
     id: 'plantio',
     label: 'Plantio',
     badge: 'Mais escolhido',
-    price: 'R$ 49',
+    price: 'R$ 19,90',
     period: '/mês',
     detail: 'Para quem quer crescer na fé com profundidade e continuidade.',
     features: [
@@ -40,7 +40,7 @@ const plans = [
     id: 'anual',
     label: 'Anual',
     badge: '2 meses de graça',
-    price: 'R$ 468',
+    price: 'R$ 199,00',
     period: '/ano',
     detail: 'Fidelidade com desconto. A mesma experiência completa, com mais.',
     features: [

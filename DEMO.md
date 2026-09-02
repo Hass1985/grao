@@ -24,7 +24,7 @@ O app roda 100% sem backend: a conversa inicial usa o roteiro local, o perfil é
 3. **A entrega personalizada:** na tela **Hoje**, mostre que a semente veio no formato do perfil. Toque em **"Estou passando por outra coisa"** e escolha um sentimento → a semente **muda na hora**.
 4. **Configuração de momento:** em **Configurações → Como estou me sentindo**, mude o momento e volte para Hoje para mostrar a adaptação.
 5. **Confiança/LGPD:** em **Configurações → Privacidade e dados**, mostre o disclaimer "Aqui você pode se abrir com tranquilidade".
-6. **Modelo de negócio:** role até **Planos** (Plantio R$49 / Anual R$468).
+6. **Modelo de negócio:** role até **Planos** (Plantio R$ 19,90/mês / Anual R$ 199).
 
 > Dica: percorra o fluxo uma vez antes de apresentar para "aquecer" o app.
 
