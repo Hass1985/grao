@@ -26,25 +26,25 @@ const DESCRICAO: Record<string, string> = {
 
 async function main() {
   // Marco zero: só reporta o que acontecer daqui para a frente.
+  //
+  // Guardar os ids já vistos em vez de comparar por timestamp é deliberado: o
+  // Date do JavaScript trunca os microssegundos do Postgres, e a comparação
+  // "created_at > $1" acabava incluindo a própria linha de referência.
+  const vistosUsuarios = new Set<string>(
+    (await pool.query(`SELECT id FROM users`)).rows.map((r: any) => r.id));
   const { rows: [e0] } = await pool.query(`SELECT coalesce(max(id), 0) id FROM events`);
-  const { rows: [u0] } = await pool.query(`SELECT coalesce(max(created_at), now()) t FROM users`);
   let ultimoEvento = Number(e0.id);
-  let ultimoUsuario = u0.t;
 
-  console.log(`observando… (a partir de agora, ${BR(new Date())})`);
+  console.log(`observando… (${vistosUsuarios.size} usuários já existentes serão ignorados)`);
 
   for (;;) {
     try {
-      const { rows: novos } = await pool.query(
-        `SELECT id FROM users WHERE created_at > $1 ORDER BY created_at`, [ultimoUsuario]);
-      if (novos.length) {
-        const { rows } = await pool.query(
-          `SELECT coalesce(name,'(sem nome)') nome, created_at FROM users
-            WHERE created_at > $1 ORDER BY created_at`, [ultimoUsuario]);
-        for (const u of rows as any[]) {
-          console.log(`${BR(u.created_at)} · ${u.nome} — abriu o app`);
-          ultimoUsuario = u.created_at;
-        }
+      const { rows: usuarios } = await pool.query(
+        `SELECT id, coalesce(name,'(sem nome)') nome, created_at FROM users ORDER BY created_at`);
+      for (const u of usuarios as any[]) {
+        if (vistosUsuarios.has(u.id)) continue;
+        vistosUsuarios.add(u.id);
+        console.log(`${BR(u.created_at)} · ${u.nome} — abriu o app`);
       }
 
       const { rows: evs } = await pool.query(
