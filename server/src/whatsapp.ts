@@ -12,12 +12,30 @@ import Anthropic from '@anthropic-ai/sdk';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser, type SelectedSeed } from './seedSelector.js';
+import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
 
-export const JANELAS = ['dawn', 'morning', 'noon', 'evening'] as const;
+/**
+ * Janelas de entrega — cobrem o dia inteiro das 6h às 22h, sem buraco.
+ *
+ * A versão anterior tinha quatro faixas estreitas (6-8, 8-10, 12-13, 20-22) e
+ * deixava 6 horas do dia descobertas. Quem ligava o WhatsApp às 13h40 escolhia
+ * "Meio-dia", cujo disparo já tinha passado às 12h, e não recebia nada — foi
+ * exatamente o que aconteceu no teste do Samir. Faixas contíguas de 4 horas
+ * eliminam o buraco; `entregarSeJaEstaNaJanela` resolve o resto.
+ */
+export const JANELAS = ['dawn', 'noon', 'afternoon', 'evening'] as const;
 export type Janela = (typeof JANELAS)[number];
+
+/** Rótulo e faixa (hora de Brasília) de cada janela. Espelha a tela do app. */
+export const JANELA_INFO: Record<Janela, { rotulo: string; inicio: number; fim: number }> = {
+  dawn: { rotulo: 'Amanhecer', inicio: 6, fim: 10 },
+  noon: { rotulo: 'Meio-dia', inicio: 10, fim: 14 },
+  afternoon: { rotulo: 'Tarde', inicio: 14, fim: 18 },
+  evening: { rotulo: 'Noite', inicio: 18, fim: 22 },
+};
 
 /** Telefone em E.164 (+5511999999999). Devolve null se não der para normalizar. */
 export function normalizePhone(raw: string): string | null {
@@ -80,7 +98,107 @@ export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
   return partes.join('\n');
 }
 
-const REPLY_SYSTEM = `Você é o Grão respondendo no WhatsApp de uma pessoa evangélica brasileira. Você recebe a mensagem dela e uma leitura emocional interna (que ela nunca vê).
+/** Quem vai receber. `janela_aberta` = falou com o Grão nas últimas 24h. */
+export interface DestinoEntrega {
+  id: string;
+  phone_e164: string;
+  name: string | null;
+  janela_aberta?: boolean;
+}
+
+/**
+ * Entrega a semente do dia para UMA pessoa. Único lugar que sabe enviar.
+ *
+ * Dentro da janela de 24h da Meta, texto livre é gratuito: mandamos a semente
+ * inteira. Fora dela só passa template aprovado, então vai o aviso com o botão
+ * "Plantar" — e o toque no botão abre a janela, deixando o resto do dia grátis.
+ *
+ * Se o envio falhar, a entrega registrada pelo seletor é DESFEITA. Sem isso a
+ * pessoa ficaria sem semente hoje e ainda perderia a de amanhã, porque esta
+ * contaria como já vista.
+ */
+export async function entregarSemente(
+  u: DestinoEntrega,
+  origem: string,
+): Promise<{ ok: boolean; erro?: string; seedId?: string }> {
+  const seed = await selectSeedForUser(u.id);
+  if (!seed) return { ok: false, erro: 'sem semente disponível' };
+
+  const aberta = !!u.janela_aberta;
+  const r = aberta
+    ? await sendText(u.phone_e164, formatSeed(seed, u.name ?? undefined))
+    : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
+
+  if (r.ok) {
+    if (aberta) {
+      await pool.query(
+        `UPDATE seed_deliveries SET planted = true
+          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [u.id]);
+    }
+    void logEvent(u.id, aberta ? 'seed_delivered' : 'seed_announced',
+      { seedId: seed.id, family: seed.family, source: origem, gratuita: aberta });
+    return { ok: true, seedId: seed.id };
+  }
+
+  void logEvent(u.id, 'wa_send_failed', { details: r.erro, source: origem });
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM seed_deliveries
+        WHERE id = (SELECT max(id) FROM seed_deliveries
+                     WHERE user_id = $1 AND planted = false
+                       AND delivered_at > now() - interval '2 days')`, [u.id]);
+    if (rowCount) console.warn(`[wa] entrega desfeita para ${u.phone_e164} — a semente volta para a fila`);
+  } catch (e: any) {
+    console.error('[wa] erro ao desfazer entrega:', e?.message || e);
+  }
+  return { ok: false, erro: r.erro };
+}
+
+/**
+ * Primeira semente logo depois do opt-in, quando a janela escolhida JÁ abriu
+ * hoje.
+ *
+ * Sem isto, quem liga o WhatsApp depois do horário do próprio disparo fica até
+ * o dia seguinte sem nenhum sinal de que a integração funcionou — e conclui
+ * que não funcionou. Foi o que aconteceu no teste do Samir: ele escolheu
+ * "Meio-dia" às 13h40, e o disparo daquela janela tinha passado.
+ *
+ * Quem liga ANTES da janela abrir não recebe nada aqui: o cron entrega no
+ * horário que a pessoa pediu, que é o certo.
+ *
+ * Falha de propósito em silêncio — é um bônus, não pode derrubar o opt-in.
+ */
+export async function entregarSeJaEstaNaJanela(userId: string): Promise<boolean> {
+  if (!metaConfigurada()) return false;
+  try {
+    const { rows: [u] } = await pool.query(
+      `SELECT u.id, u.phone_e164, u.name, u.delivery_window,
+              extract(hour from (now() AT TIME ZONE u.timezone))::int hora_local,
+              (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
+         FROM users u
+        WHERE u.id = $1
+          AND u.wa_opt_in_at IS NOT NULL
+          AND u.phone_e164 IS NOT NULL
+          AND NOT EXISTS (
+                SELECT 1 FROM seed_deliveries d
+                 WHERE d.user_id = u.id
+                   AND (d.delivered_at AT TIME ZONE u.timezone)::date
+                     = (now() AT TIME ZONE u.timezone)::date)`, [userId]);
+
+    if (!u) return false;
+    const info = JANELA_INFO[(u.delivery_window ?? 'dawn') as Janela];
+    if (!info || u.hora_local < info.inicio) return false;
+
+    const r = await entregarSemente(u, 'whatsapp_optin');
+    if (!r.ok) console.warn(`[wa/opt-in] entrega imediata falhou: ${r.erro}`);
+    return r.ok;
+  } catch (e: any) {
+    console.error('[wa/opt-in] entrega imediata:', e?.message || e);
+    return false;
+  }
+}
+
+const REPLY_SYSTEM =`Você é o Grão respondendo no WhatsApp de uma pessoa evangélica brasileira. Você recebe a mensagem dela e uma leitura emocional interna (que ela nunca vê).
 
 Escreva UMA resposta curta — no máximo 3 frases, como se manda numa conversa de WhatsApp. Português brasileiro caloroso e simples. Fale COM a pessoa.
 
@@ -345,6 +463,10 @@ export function registerWhatsAppRoutes(app: Express) {
           WHERE id = $1`, [idFinal, janela ?? null, timezone ?? null]);
       void logEvent(idFinal, 'wa_opt_in', { window: janela ?? null, origem: 'webapp' });
 
+      // Não é awaited: a primeira semente é um bônus, e a resposta do
+      // onboarding não pode esperar a Meta nem quebrar se ela falhar.
+      void entregarSeJaEstaNaJanela(idFinal);
+
       return res.json({ ok: true, userId: idFinal, merged: idFinal !== userId });
     } catch (err: any) {
       console.error('[wa/link]', err?.message || err);
@@ -371,6 +493,7 @@ export function registerWhatsAppRoutes(app: Express) {
           WHERE id = $1`,
         [userId, optIn, janela ?? null, timezone ?? null]);
       void logEvent(userId, optIn ? 'wa_opt_in' : 'wa_opt_out', { window: janela ?? null });
+      if (optIn) void entregarSeJaEstaNaJanela(userId);
       return res.json({ ok: true, userId, optIn, window: janela ?? null });
     } catch (err: any) {
       console.error('[wa/opt-in]', err?.message || err);

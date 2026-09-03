@@ -34,11 +34,12 @@ import { webScreenFill, webScroll } from '../theme/webScreen';
 
 type Props = { navigation: any };
 
+// Precisa espelhar as janelas do onboarding (Notification.tsx) e do backend.
 const timeWindows = [
-  { id: 'dawn', label: 'Amanhecer', time: '6h às 8h' },
-  { id: 'morning', label: 'Manhã', time: '8h às 10h' },
-  { id: 'noon', label: 'Meio-dia', time: '12h às 13h' },
-  { id: 'evening', label: 'Noite', time: '20h às 22h' },
+  { id: 'dawn', label: 'Amanhecer', time: '6h às 10h' },
+  { id: 'noon', label: 'Meio-dia', time: '10h às 14h' },
+  { id: 'afternoon', label: 'Tarde', time: '14h às 18h' },
+  { id: 'evening', label: 'Noite', time: '18h às 22h' },
 ];
 
 // -------- blocos reutilizáveis --------

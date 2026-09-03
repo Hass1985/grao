@@ -16,11 +16,17 @@ type Props = {
   navigation: StackNavigationProp<any>;
 };
 
+// Faixas contíguas de 4 horas, cobrindo das 6h às 22h.
+//
+// As faixas antigas eram estreitas e deixavam 6 horas do dia sem janela
+// nenhuma. Quem escolhia "Meio-dia" às 13h40 já tinha perdido o disparo das
+// 12h e não recebia nada — foi o que aconteceu no teste. Os ids viajam até o
+// banco e o cron: mudar um deles exige migração (ver 009_janelas.sql).
 const windows = [
-  { id: 'dawn', label: 'Amanhecer', time: '6h – 8h', description: 'Comece o dia com a semente' },
-  { id: 'morning', label: 'Manhã', time: '8h – 10h', description: 'Após o café da manhã' },
-  { id: 'noon', label: 'Meio-dia', time: '12h – 13h', description: 'Uma pausa no seu dia' },
-  { id: 'evening', label: 'Noite', time: '20h – 22h', description: 'Encerre o dia com calma' },
+  { id: 'dawn', label: 'Amanhecer', time: '6h – 10h', description: 'Comece o dia com a semente' },
+  { id: 'noon', label: 'Meio-dia', time: '10h – 14h', description: 'Uma pausa no seu dia' },
+  { id: 'afternoon', label: 'Tarde', time: '14h – 18h', description: 'Retome o ritmo' },
+  { id: 'evening', label: 'Noite', time: '18h – 22h', description: 'Encerre o dia com calma' },
 ];
 
 export default function Notification({ navigation }: Props) {

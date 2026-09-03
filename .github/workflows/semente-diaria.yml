@@ -13,18 +13,22 @@ name: Semente diária
 on:
   schedule:
     # O GitHub agenda em UTC. Brasília é UTC-3, então somamos 3 horas.
-    - cron: '0 10 * * *'   #  7h em Brasília → janela dawn
-    - cron: '0 12 * * *'   #  9h            → morning
-    - cron: '0 15 * * *'   # 12h            → noon
-    - cron: '0 23 * * *'   # 20h            → evening
+    #
+    # Cada disparo sai UMA HORA depois da janela abrir: a pessoa escolheu uma
+    # faixa de 4 horas, não um instante, e sobra folga para o atraso do próprio
+    # agendador do GitHub (que não é pontual em horário de pico).
+    - cron: '0 10 * * *'   #  7h em Brasília → dawn      (6h-10h)
+    - cron: '0 14 * * *'   # 11h             → noon      (10h-14h)
+    - cron: '0 18 * * *'   # 15h             → afternoon (14h-18h)
+    - cron: '0 22 * * *'   # 19h             → evening   (18h-22h)
   workflow_dispatch:
     inputs:
       window:
         description: 'Janela a disparar manualmente'
         required: true
-        default: morning
+        default: dawn
         type: choice
-        options: [dawn, morning, noon, evening]
+        options: [dawn, noon, afternoon, evening]
 
 jobs:
   disparar:
@@ -38,9 +42,9 @@ jobs:
           else
             # Hora de Brasília no momento do disparo
             H=$(TZ=America/Sao_Paulo date +%H)
-            if   [ "$H" -lt 8 ];  then W=dawn
-            elif [ "$H" -lt 11 ]; then W=morning
-            elif [ "$H" -lt 15 ]; then W=noon
+            if   [ "$H" -lt 10 ]; then W=dawn
+            elif [ "$H" -lt 14 ]; then W=noon
+            elif [ "$H" -lt 18 ]; then W=afternoon
             else                       W=evening
             fi
             echo "w=$W" >> "$GITHUB_OUTPUT"

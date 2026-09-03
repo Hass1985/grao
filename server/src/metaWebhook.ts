@@ -15,7 +15,10 @@ import crypto from 'node:crypto';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser } from './seedSelector.js';
-import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
+import {
+  resolveUserByPhone, normalizePhone, formatSeed, replyFor,
+  entregarSemente, JANELAS,
+} from './whatsapp.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -240,37 +243,17 @@ async function despachar(janela: string): Promise<{ enviadas: number; falhas: nu
   let enviadas = 0, falhas = 0;
   const detalhes: string[] = [];
 
+  // O envio em si — inclusive a escolha entre texto livre e template, e o
+  // desfazimento em caso de falha — vive em entregarSemente. O opt-in usa a
+  // mesma função para mandar a primeira semente, e as duas não podem divergir.
   for (const u of usuarios) {
-    const seed = await selectSeedForUser(u.id);
-    if (!seed) continue;
-
-    // Se a pessoa falou com o Grão nas últimas 24h, a janela está aberta e
-    // texto livre é GRATUITO: mandamos a semente inteira, sem gastar template.
-    // Quanto mais engajada, menos custa.
-    const r = u.janela_aberta
-      ? await sendText(u.phone_e164, formatSeed(seed, u.name))
-      : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
-
-    if (r.ok && u.janela_aberta) {
-      await pool.query(
-        `UPDATE seed_deliveries SET planted = true
-          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [u.id]);
-    }
-
+    const r = await entregarSemente(u, 'whatsapp_cron');
     if (r.ok) {
       enviadas++;
-      void logEvent(u.id, u.janela_aberta ? 'seed_delivered' : 'seed_announced',
-        { seedId: seed.id, family: seed.family, source: 'whatsapp_cron', gratuita: !!u.janela_aberta });
-    } else {
+    } else if (r.erro) {
       falhas++;
       detalhes.push(`${u.phone_e164}: ${r.erro}`);
       console.error(`[wa/dispatch] ${u.phone_e164}: ${r.erro}`);
-      // A entrega já foi registrada pelo seletor. Desfazemos, senão a pessoa
-      // fica sem semente hoje E sem a semente de amanhã (ela contaria como vista).
-      await pool.query(
-        `DELETE FROM seed_deliveries
-          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1 AND seed_id = $2)`,
-        [u.id, seed.id]);
     }
   }
   return { enviadas, falhas, detalhes };
@@ -287,8 +270,8 @@ export function registerMetaWebhookRoutes(app: Express) {
     if (req.header('x-grao-token') !== esperado) return res.status(401).json({ error: 'token inválido' });
 
     const janela = String(req.query.window ?? '');
-    if (!['dawn', 'morning', 'noon', 'evening'].includes(janela)) {
-      return res.status(400).json({ error: 'window deve ser dawn, morning, noon ou evening' });
+    if (!(JANELAS as readonly string[]).includes(janela)) {
+      return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
     }
     if (!metaConfigurada()) return res.status(503).json({ error: 'credenciais da Meta ausentes' });
 
