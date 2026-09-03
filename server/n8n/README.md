@@ -55,6 +55,18 @@ Toque em Plantar para receber a reflexão, a prática e o louvor.
 
 Botão de **resposta rápida**: `Plantar`.
 
+**Categoria: Marketing.** A Meta recusa Utilidade para este conteúdo, e ela
+está certa pela própria definição: Utilidade é "mensagem sobre uma conta ou
+pedido existente" — confirmação de compra, status de entrega. Um devocional
+diário é conteúdo. Insistir não adianta, e ainda que uma versão passasse, a
+Meta recategoriza templates periodicamente.
+
+**O que reduz o custo de verdade:** o disparo diário checa se a janela de 24h
+está aberta. Quem falou com o Grão nas últimas 24 horas recebe a semente
+inteira como texto livre, **de graça**, sem gastar template. Só quem está fora
+da janela consome uma mensagem paga. Quanto mais engajada a pessoa, menos ela
+custa.
+
 E no campo **Rodapé**, opcional e **sem emoji** (a Meta recusa emoji ali):
 
 ```

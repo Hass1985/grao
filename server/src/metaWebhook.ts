@@ -102,6 +102,8 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
 
   void markRead(msg.id);
   const userId = await resolveUserByPhone(e164, nome ?? undefined);
+  // Qualquer mensagem dela — texto ou toque de botão — abre a janela de 24h.
+  await pool.query(`UPDATE users SET wa_last_inbound_at = now() WHERE id = $1`, [userId]);
 
   if (msg.type === 'button') { await processarBotao(msg, userId); return; }
 
@@ -198,7 +200,8 @@ async function processarEvento(corpo: any): Promise<void> {
  */
 async function despachar(janela: string): Promise<{ enviadas: number; falhas: number; detalhes: string[] }> {
   const { rows: usuarios } = await pool.query(
-    `SELECT u.id, u.phone_e164, u.name
+    `SELECT u.id, u.phone_e164, u.name,
+            (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
        FROM users u
       WHERE u.delivery_window = $1
         AND u.wa_opt_in_at IS NOT NULL
@@ -216,16 +219,23 @@ async function despachar(janela: string): Promise<{ enviadas: number; falhas: nu
     const seed = await selectSeedForUser(u.id);
     if (!seed) continue;
 
-    // Só o AVISO é pago. A semente completa sai quando a pessoa toca em
-    // Plantar — como texto livre, dentro da janela de 24h, de graça.
-    const r = await sendSeedNotice(u.phone_e164, {
-      name: u.name ?? '',
-      reference: seed.reference,
-    });
+    // Se a pessoa falou com o Grão nas últimas 24h, a janela está aberta e
+    // texto livre é GRATUITO: mandamos a semente inteira, sem gastar template.
+    // Quanto mais engajada, menos custa.
+    const r = u.janela_aberta
+      ? await sendText(u.phone_e164, formatSeed(seed, u.name))
+      : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
+
+    if (r.ok && u.janela_aberta) {
+      await pool.query(
+        `UPDATE seed_deliveries SET planted = true
+          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [u.id]);
+    }
 
     if (r.ok) {
       enviadas++;
-      void logEvent(u.id, 'seed_announced', { seedId: seed.id, family: seed.family, source: 'whatsapp_cron' });
+      void logEvent(u.id, u.janela_aberta ? 'seed_delivered' : 'seed_announced',
+        { seedId: seed.id, family: seed.family, source: 'whatsapp_cron', gratuita: !!u.janela_aberta });
     } else {
       falhas++;
       detalhes.push(`${u.phone_e164}: ${r.erro}`);
