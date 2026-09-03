@@ -47,6 +47,28 @@ async function primeiraVez(messageId: string): Promise<boolean> {
 interface MsgMeta {
   id: string; from: string; type: string;
   text?: { body: string };
+  button?: { payload?: string; text?: string };
+}
+
+/**
+ * Toque no botão "Plantar" do template da semente diária.
+ *
+ * Vale mais do que parece: um toque conta como mensagem da pessoa, o que
+ * ABRE a janela de 24h. Dali em diante, tudo que o Grão responder naquele dia
+ * é gratuito — o botão se paga sozinho. E ainda registra o gesto de plantar,
+ * que alimenta o Campo e a Raiz.
+ */
+async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
+  const { rowCount } = await pool.query(
+    `UPDATE seed_deliveries SET planted = true
+      WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)
+        AND planted = false`, [userId]);
+
+  void logEvent(userId, 'seed_planted', { source: 'whatsapp_botao' });
+
+  await sendText(msg.from, rowCount
+    ? 'Plantada. 🌱 Que ela cresça em você hoje. Se quiser conversar sobre o que está vivendo, é só me escrever.'
+    : 'Estou aqui. Me conta como você está hoje?');
 }
 
 /** Processa UMA mensagem: cérebro, resposta e (se pedida) semente. */
@@ -57,6 +79,8 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
 
   void markRead(msg.id);
   const userId = await resolveUserByPhone(e164, nome ?? undefined);
+
+  if (msg.type === 'button') { await processarBotao(msg, userId); return; }
 
   if (msg.type !== 'text' || !msg.text?.body?.trim()) {
     void logEvent(userId, 'message_in', { source: 'whatsapp', tipo: msg.type, lido: false });
@@ -111,12 +135,27 @@ async function processarEvento(corpo: any): Promise<void> {
         catch (e: any) { console.error('[wa] erro ao processar mensagem:', e?.message || e); }
       }
 
-      // Status de entrega. Só o 'failed' importa: sem isso, mensagem que a
-      // Meta recusou some sem deixar rastro.
+      // Status de entrega. O 'failed' chega DEPOIS do envio ter sido aceito —
+      // por exemplo quando a mensagem expira sem ser entregue (celular
+      // desligado além do período de validade). Nesse caso a entrega já foi
+      // registrada como sucesso, e sem desfazer o registro a pessoa perderia
+      // a semente do dia em silêncio.
       for (const st of value?.statuses ?? []) {
-        if (st.status === 'failed') {
-          console.error(`[wa] envio falhou para ${st.recipient_id}:`,
-            JSON.stringify(st.errors ?? st));
+        if (st.status !== 'failed') continue;
+        console.error(`[wa] envio falhou para ${st.recipient_id}:`, JSON.stringify(st.errors ?? st));
+        try {
+          const e164 = normalizePhone(st.recipient_id ?? '');
+          if (!e164) continue;
+          const { rows: [u] } = await pool.query(`SELECT id FROM users WHERE phone_e164 = $1`, [e164]);
+          if (!u) continue;
+          const { rowCount } = await pool.query(
+            `DELETE FROM seed_deliveries
+              WHERE id = (SELECT max(id) FROM seed_deliveries
+                           WHERE user_id = $1 AND planted = false
+                             AND delivered_at > now() - interval '2 days')`, [u.id]);
+          if (rowCount) console.warn(`[wa] entrega desfeita para ${e164} — a semente volta para a fila`);
+        } catch (e: any) {
+          console.error('[wa] erro ao desfazer entrega:', e?.message || e);
         }
       }
     }
