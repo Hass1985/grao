@@ -11,6 +11,11 @@
 // Bônus: como todo toque passa por aqui, dá para saber quais louvores as
 // pessoas realmente ouvem.
 //
+// O NOME da imagem é versionado (og-v2.png) porque o WhatsApp guarda cache
+// pela URL da IMAGEM, não da página. Trocar o conteúdo de /og.png não adianta:
+// ele reusa o que já baixou, mesmo num link de semente inédito. Ao mudar o
+// desenho, incremente a versão aqui.
+//
 // A imagem é QUADRADA de propósito. A primeira versão usava o banner de
 // 1200×630 do site, e o WhatsApp — que recorta o preview pequeno em quadrado —
 // pegava uma faixa do meio, deixando o logo cortado e ilegível. Com 1000×1000
@@ -18,6 +23,9 @@
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
+
+/** Nome versionado da imagem de preview — ver a nota sobre cache acima. */
+const OG_IMAGEM = 'og-v2.png';
 
 /** Escapa para inserir com segurança em atributo HTML. */
 function esc(s: string): string {
@@ -38,7 +46,7 @@ export function registerOuvirRoutes(app: Express, baseUrl: () => string) {
       void logEvent(null, 'musica_aberta', { seedId: req.params.seedId, titulo: s.music_title });
 
       const titulo = `${s.music_title}${s.music_artist ? ` — ${s.music_artist}` : ''}`;
-      const og = `${baseUrl()}/og.png`;
+      const og = `${baseUrl()}/${OG_IMAGEM}`;
 
       // O redirecionamento é por JS e por meta refresh, nunca por HTTP 302:
       // um 302 faria o rastreador do WhatsApp seguir até o Spotify e ler as
