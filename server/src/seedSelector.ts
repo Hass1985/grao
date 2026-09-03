@@ -43,6 +43,41 @@ export interface SelectedSeed {
  *  2. formato preferido pelo canal sensorial dominante
  *  3. sementes ainda não entregues
  */
+/**
+ * A semente JÁ entregue hoje, se houver — sem escolher outra.
+ *
+ * O app e o WhatsApp precisam mostrar a MESMA semente. Antes, cada consulta a
+ * /seed/today sorteava uma nova e registrava mais uma entrega: quem recebia
+ * pelo WhatsApp e abria o app via duas sementes diferentes, e cada abertura
+ * consumia uma das 380.
+ *
+ * "Hoje" é no fuso do usuário, não em UTC — senão a semente trocaria no meio
+ * da noite brasileira.
+ */
+export async function getTodaySeed(userId: string): Promise<SelectedSeed | null> {
+  const { rows } = await pool.query(
+    `SELECT s.* FROM seed_deliveries d
+       JOIN seeds s ON s.id = d.seed_id
+       JOIN users u ON u.id = d.user_id
+      WHERE d.user_id = $1
+        AND (d.delivered_at AT TIME ZONE u.timezone)::date
+          = (now() AT TIME ZONE u.timezone)::date
+      ORDER BY d.id DESC LIMIT 1`, [userId]);
+
+  if (!rows.length) return null;
+  const s = rows[0];
+  return {
+    id: s.id, family: s.family, type: s.type,
+    passage: s.passage, reference: s.reference,
+    reflection: s.reflection, prayer: s.prayer, practice: s.practice,
+    music: {
+      title: s.music_title || undefined, artist: s.music_artist || undefined,
+      spotifyUrl: s.music_spotify || undefined, youtubeUrl: s.music_youtube || undefined,
+    },
+    reason: { family: s.family, source: 'momento', preferredType: s.type },
+  };
+}
+
 export async function selectSeedForUser(userId: string): Promise<SelectedSeed | null> {
   const profile = await getProfile(userId);
   const moment = await getMoment(userId);

@@ -17,7 +17,7 @@ import {
   setMomentBySystem,
   logEvent,
 } from './db.js';
-import { selectSeedForUser } from './seedSelector.js';
+import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { registerWhatsAppRoutes } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
@@ -318,6 +318,12 @@ app.get('/profile/:userId/moment', async (req, res) => {
 
 // Semente do dia, escolhida pelo perfil + momento + canal.
 app.get('/seed/today/:userId', async (req, res) => {
+  // Se a pessoa já recebeu a semente hoje — pelo WhatsApp ou por uma abertura
+  // anterior do app — devolvemos A MESMA. Abrir o app não pode trocar a
+  // semente do dia nem consumir outra das 380.
+  const jaEntregue = await getTodaySeed(req.params.userId);
+  if (jaEntregue) return res.json(jaEntregue);
+
   const seed = await selectSeedForUser(req.params.userId);
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
   void logEvent(req.params.userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'app' });

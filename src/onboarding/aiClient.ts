@@ -30,6 +30,18 @@ export async function getUserId(): Promise<string> {
   return id;
 }
 
+/**
+ * Troca o id guardado no aparelho.
+ *
+ * Necessário depois de uma FUSÃO: quando a pessoa já tinha escrito para o
+ * Grão pelo WhatsApp, o backend junta os dois cadastros e o id do telefone
+ * prevalece. Sem gravar o novo, o app seguiria consultando um usuário que
+ * acabou de ser apagado — e a tela Hoje ficaria vazia.
+ */
+export async function setUserId(id: string): Promise<void> {
+  await AsyncStorage.setItem(USER_KEY, id);
+}
+
 export interface ApiMessage {
   role: 'user' | 'assistant';
   content: string;

@@ -15,7 +15,7 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
-import { getUserId, linkWhatsApp } from '../../onboarding/aiClient';
+import { getUserId, setUserId, linkWhatsApp } from '../../onboarding/aiClient';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -42,7 +42,9 @@ export default function WhatsApp({ navigation, route }: Props) {
     setSaving(true);
     try {
       const userId = await getUserId();
-      await linkWhatsApp(userId, phone, route?.params?.window ?? 'morning');
+      const r = await linkWhatsApp(userId, phone, route?.params?.window ?? 'morning');
+      // Se houve fusão, o id mudou: quem manda agora é o do telefone.
+      if (r && r.userId !== userId) await setUserId(r.userId);
     } finally {
       setSaving(false);
       navigation.navigate('Plan');
