@@ -29,6 +29,22 @@ const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
 export const JANELAS = ['dawn', 'noon', 'afternoon', 'evening'] as const;
 export type Janela = (typeof JANELAS)[number];
 
+/**
+ * Aceita a janela que o app manda, inclusive de uma versão antiga.
+ *
+ * O webapp publicado continua no ar enquanto o build novo não sobe, e ele
+ * ainda manda "morning". Sem esta tradução a gravação bateria na restrição do
+ * banco, o endpoint devolveria 500 e o opt-in falharia EM SILÊNCIO — que é
+ * justamente a falha mais cara que já tivemos aqui.
+ *
+ * Devolve null quando não reconhece, para o endpoint recusar com 400.
+ */
+export function normalizarJanela(bruta: string | undefined | null): Janela | null {
+  if (!bruta) return null;
+  const j = bruta === 'morning' ? 'dawn' : bruta;   // faixa antiga 8h-10h → Amanhecer 6h-10h
+  return (JANELAS as readonly string[]).includes(j) ? (j as Janela) : null;
+}
+
 /** Rótulo e faixa (hora de Brasília) de cada janela. Espelha a tela do app. */
 export const JANELA_INFO: Record<Janela, { rotulo: string; inicio: number; fim: number }> = {
   dawn: { rotulo: 'Amanhecer', inicio: 6, fim: 10 },
@@ -341,8 +357,8 @@ export function registerWhatsAppRoutes(app: Express) {
    */
   app.get('/whatsapp/due', exigeToken, async (req, res) => {
     try {
-      const janela = String(req.query.window ?? '');
-      if (!JANELAS.includes(janela as Janela)) {
+      const janela = normalizarJanela(String(req.query.window ?? ''));
+      if (!janela) {
         return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
       }
       const limite = Math.min(Number(req.query.limit ?? 200), 500);
@@ -416,7 +432,10 @@ export function registerWhatsAppRoutes(app: Express) {
 
       const e164 = normalizePhone(phone ?? '');
       if (!e164) return res.status(400).json({ error: 'phone inválido' });
-      if (janela && !JANELAS.includes(janela as Janela)) {
+      // Traduz a janela antiga do app publicado antes de gravar; sem isso o
+      // opt-in quebraria para quem ainda está no build velho.
+      const janelaOk = janela ? normalizarJanela(janela) : null;
+      if (janela && !janelaOk) {
         return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
       }
 
@@ -460,8 +479,8 @@ export function registerWhatsAppRoutes(app: Express) {
         `UPDATE users SET wa_opt_in_at = coalesce(wa_opt_in_at, now()),
                           delivery_window = coalesce($2, delivery_window),
                           timezone = coalesce($3, timezone)
-          WHERE id = $1`, [idFinal, janela ?? null, timezone ?? null]);
-      void logEvent(idFinal, 'wa_opt_in', { window: janela ?? null, origem: 'webapp' });
+          WHERE id = $1`, [idFinal, janelaOk, timezone ?? null]);
+      void logEvent(idFinal, 'wa_opt_in', { window: janelaOk, origem: 'webapp' });
 
       // Não é awaited: a primeira semente é um bônus, e a resposta do
       // onboarding não pode esperar a Meta nem quebrar se ela falhar.
@@ -481,7 +500,10 @@ export function registerWhatsAppRoutes(app: Express) {
         { phone?: string; window?: string; optIn?: boolean; timezone?: string };
       const e164 = normalizePhone(phone ?? '');
       if (!e164) return res.status(400).json({ error: 'phone inválido' });
-      if (janela && !JANELAS.includes(janela as Janela)) {
+      // Traduz a janela antiga do app publicado antes de gravar; sem isso o
+      // opt-in quebraria para quem ainda está no build velho.
+      const janelaOk = janela ? normalizarJanela(janela) : null;
+      if (janela && !janelaOk) {
         return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
       }
       const userId = await resolveUserByPhone(e164);
@@ -491,10 +513,10 @@ export function registerWhatsAppRoutes(app: Express) {
                 delivery_window = coalesce($3, delivery_window),
                 timezone = coalesce($4, timezone)
           WHERE id = $1`,
-        [userId, optIn, janela ?? null, timezone ?? null]);
-      void logEvent(userId, optIn ? 'wa_opt_in' : 'wa_opt_out', { window: janela ?? null });
+        [userId, optIn, janelaOk, timezone ?? null]);
+      void logEvent(userId, optIn ? 'wa_opt_in' : 'wa_opt_out', { window: janelaOk });
       if (optIn) void entregarSeJaEstaNaJanela(userId);
-      return res.json({ ok: true, userId, optIn, window: janela ?? null });
+      return res.json({ ok: true, userId, optIn, window: janelaOk });
     } catch (err: any) {
       console.error('[wa/opt-in]', err?.message || err);
       return res.status(500).json({ error: 'Falha ao registrar a preferência.' });
