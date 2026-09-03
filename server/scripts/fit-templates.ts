@@ -21,9 +21,9 @@ const MODEL = process.env.GRAO_MODEL || 'claude-opus-4-8';
 const GRAVAR = process.argv.includes('gravar');
 
 const LIMITE = 1024;
-// Texto fixo do template, sem as variáveis. O fecho vive no RODAPÉ, que é
-// campo separado e não consome o orçamento do corpo.
-const MOLDE = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 ';
+// Texto fixo do template, sem as variáveis. O fecho fica no corpo porque a
+// Meta não aceita corpo terminado em variável.
+const MOLDE = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 \n\nQue Deus te guarde. 🌱';
 const NOME_LONGO = 12;   // margem para nomes compridos
 
 const SYSTEM = `Você é o editor do Grão, um devocional diário para evangélicos brasileiros. Sua tarefa: encurtar UMA reflexão que não cabe no limite do WhatsApp, sem que o leitor perceba que ela foi encurtada.

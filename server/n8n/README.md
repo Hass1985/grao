@@ -56,12 +56,14 @@ Olá {{nome}}, sua semente de hoje 🌱
 Prática de hoje: {{pratica}}
 
 🎵 {{musica}}
+
+Que Deus te guarde. 🌱
 ```
 
-E no campo **Rodapé** (que não consome o limite do corpo):
+E no campo **Rodapé**, opcional e **sem emoji** (a Meta recusa emoji ali):
 
 ```
-Que Deus te guarde hoje. 🌱
+Grão · uma semente por dia
 ```
 
 Duas regras da Meta que derrubam o modelo se ignoradas:

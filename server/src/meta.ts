@@ -54,10 +54,14 @@ export function sendText(phone: string, texto: string) {
 const LIMITE_CORPO = 1024;
 
 /**
- * Texto fixo do template. O fecho ("Que Deus te guarde hoje") vive no RODAPÉ,
- * que é campo separado na Meta e não consome o orçamento do corpo.
+ * Texto fixo do template.
+ *
+ * O fecho fica no CORPO, não no rodapé, por uma regra da Meta: o corpo não
+ * pode terminar numa variável, e sem essa linha ele terminaria em
+ * {{musica}}. O rodapé leva só a assinatura da marca — e sem emoji, que a
+ * Meta recusa nesse campo.
  */
-const MOLDE_FIXO = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 ';
+const MOLDE_FIXO = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 \n\nQue Deus te guarde. 🌱';
 
 /**
  * REDE DE SEGURANÇA, não solução.
