@@ -18,7 +18,7 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import { pool } from './db.js';
-import { JANELA_INFO, type Janela } from './whatsapp.js';
+import { JANELA_INFO, BASE_URL, type Janela } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
 
 const TZ = 'America/Sao_Paulo';
@@ -264,17 +264,29 @@ async function montarPainel(dias: number) {
 
   // Presença de configuração, nunca o valor. Um painel que mostra segredo
   // deixa de ser painel e vira vazamento.
+  //
+  // Três estados, não dois. Nem toda variável ausente é problema: PUBLIC_BASE_URL
+  // tem um padrão no código que hoje aponta para o lugar certo, e marcá-la em
+  // vermelho ao lado de um segredo que falta de verdade manda a pessoa caçar um
+  // problema que não existe — foi exatamente o que aconteceu. 'padrao' é para
+  // isso: funciona, mas está implícito.
+  const estado = (v: boolean) => (v ? 'ok' : 'faltando');
   const config = [
-    ['Chave da Anthropic', !!process.env.ANTHROPIC_API_KEY, 'o cérebro emocional depende dela'],
-    ['Banco de dados', !!process.env.DATABASE_URL, 'Supabase'],
-    ['Credenciais da Meta', metaConfigurada(), 'envio pelo WhatsApp'],
-    ['Segredo do webhook', !!process.env.WA_APP_SECRET, 'valida a assinatura das mensagens recebidas'],
-    ['Token do webhook', !!process.env.WA_VERIFY_TOKEN, 'handshake da Meta'],
-    ['Token do cron', !!process.env.GRAO_API_TOKEN, 'disparo diário pelo GitHub Actions'],
-    ['Token do painel', !!process.env.GRAO_ADMIN_TOKEN, 'separado do token do cron'],
-    ['URL pública', !!process.env.PUBLIC_BASE_URL, 'imagem do preview do louvor'],
-    ['Origens liberadas (CORS)', !!process.env.CORS_ORIGINS, 'sem isso o webapp publicado não conversa com o backend'],
-  ].map(([rotulo, ok, nota]) => ({ rotulo, ok, nota }));
+    ['Chave da Anthropic', estado(!!process.env.ANTHROPIC_API_KEY), 'o cérebro emocional depende dela'],
+    ['Banco de dados', estado(!!process.env.DATABASE_URL), 'Supabase'],
+    ['Credenciais da Meta', estado(metaConfigurada()), 'envio pelo WhatsApp'],
+    ['Segredo do webhook', estado(!!process.env.WA_APP_SECRET), 'valida a assinatura das mensagens recebidas'],
+    ['Token do webhook', estado(!!process.env.WA_VERIFY_TOKEN), 'handshake da Meta'],
+    ['Token do cron', estado(!!process.env.GRAO_API_TOKEN), 'disparo diário pelo GitHub Actions'],
+    ['Token do painel', process.env.GRAO_ADMIN_TOKEN ? 'ok' : 'padrao',
+      process.env.GRAO_ADMIN_TOKEN ? 'separado do token do cron' : 'usando o token do cron — melhor separar'],
+    ['URL pública', process.env.PUBLIC_BASE_URL ? 'ok' : 'padrao',
+      `imagem do preview do louvor · em uso: ${BASE_URL()}`],
+    ['Origens liberadas (CORS)', process.env.CORS_ORIGINS ? 'ok' : 'aberto',
+      process.env.CORS_ORIGINS
+        ? `${process.env.CORS_ORIGINS.split(',').length} origem(ns) na lista`
+        : 'sem lista, qualquer site pode chamar a API'],
+  ].map(([rotulo, situacao, nota]) => ({ rotulo, situacao, nota }));
 
   return {
     geradoEm: new Date().toISOString(),

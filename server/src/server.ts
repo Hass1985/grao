@@ -19,7 +19,7 @@ import {
 } from './db.js';
 import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
-import { registerWhatsAppRoutes } from './whatsapp.js';
+import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
@@ -422,12 +422,9 @@ app.delete('/user/:userId', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Imagem do preview e página-ponte do louvor.
-//
-// PUBLIC_BASE_URL precisa ser a URL pública do backend: é ela que vai dentro
-// da og:image, e o rastreador do WhatsApp busca essa imagem de fora.
-const BASE_URL = () =>
-  (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
+// Imagem do preview e página-ponte do louvor. BASE_URL vem de whatsapp.ts,
+// que é quem também monta o link enviado na mensagem — os dois precisam
+// apontar para o mesmo lugar.
 app.use(express.static('public', { maxAge: '7d' }));
 registerOuvirRoutes(app, BASE_URL);
 

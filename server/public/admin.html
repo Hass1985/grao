@@ -765,11 +765,19 @@ function secSistema() {
       esc(dataHora(s.ultimoDisparo.quando)) + '</p>'
     : vazio('Nenhum disparo registrado ainda. O registro começou agora — se o cron estiver rodando, aparece no próximo horário.');
 
+  // Três estados, e só um deles é vermelho. Marcar de vermelho o que tem
+  // padrão funcionando manda a pessoa caçar problema que não existe.
+  var SITUACAO = {
+    ok: { classe: 'ok', texto: 'configurado' },
+    padrao: { classe: 'neutro', texto: 'padrão do código' },
+    aberto: { classe: 'neutro', texto: 'sem restrição' },
+    faltando: { classe: 'ruim', texto: 'faltando' },
+  };
   var config = '<div class="rolagem"><table><tbody>' + s.config.map(function (c) {
+    var st = SITUACAO[c.situacao] || SITUACAO.faltando;
     return '<tr><td class="forte">' + esc(c.rotulo) + '<br>' +
       '<span class="fraco" style="font-weight:400">' + esc(c.nota) + '</span></td>' +
-      '<td class="dir"><span class="selo ' + (c.ok ? 'ok' : 'ruim') + '">' +
-      (c.ok ? 'configurado' : 'faltando') + '</span></td></tr>';
+      '<td class="dir"><span class="selo ' + st.classe + '">' + st.texto + '</span></td></tr>';
   }).join('') + '</tbody></table></div>';
 
   var eventos = s.eventos.length

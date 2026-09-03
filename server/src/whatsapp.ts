@@ -86,7 +86,16 @@ export async function resolveUserByPhone(phone: string, name?: string): Promise<
  * Formatação: *negrito* e _itálico_ são o que o WhatsApp entende; nada de
  * markdown de cabeçalho, que aparece cru para o usuário.
  */
-const BASE_URL = () =>
+/**
+ * URL pública do backend. Vai dentro do link do louvor e da og:image que o
+ * rastreador do WhatsApp busca de fora — por isso não pode ser localhost.
+ *
+ * O padrão aponta para o Render de hoje, então a variável só passa a importar
+ * quando o backend mudar de endereço. Definida aqui e importada pelos outros
+ * módulos: duas cópias desta linha divergiriam no dia da mudança, e o link da
+ * música continuaria mandando todo mundo para o endereço antigo.
+ */
+export const BASE_URL = () =>
   (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
 
 export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
