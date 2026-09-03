@@ -80,6 +80,26 @@ async function main() {
     console.log('⚠ WA_PHONE_NUMBER_ID não configurado (não é segredo, pode editar o .env à mão).');
   }
 
+  // Estado do template: 'APPROVED' libera o disparo diário; 'PENDING' ainda
+  // está na fila da Meta; 'REJECTED' traz o motivo em rejected_reason.
+  if (WABA_ID) {
+    const nome = process.env.WA_TEMPLATE_NAME || 'semente_do_dia';
+    const t: any = await (await fetch(
+      `${GRAPH}/${WABA_ID}/message_templates?name=${encodeURIComponent(nome)}&access_token=${TOKEN}`)).json();
+    const achado = (t.data ?? []).find((x: any) => x.name === nome);
+    if (!achado) {
+      console.log(`\n✗ template "${nome}" não existe nesta conta — confira WA_TEMPLATE_NAME`);
+      falhas++;
+    } else {
+      const ok = achado.status === 'APPROVED';
+      console.log(`\ntemplate "${nome}": ${achado.status} · categoria ${achado.category} · ${achado.language}`);
+      if (achado.rejected_reason && achado.rejected_reason !== 'NONE') {
+        console.log(`  motivo da recusa: ${achado.rejected_reason}`);
+      }
+      if (!ok) console.log('  → o disparo diário só funciona depois de APPROVED');
+    }
+  }
+
   if (!APP_SECRET) {
     console.log('⚠ WA_APP_SECRET não configurado — necessário para validar a assinatura dos webhooks.');
   } else {
