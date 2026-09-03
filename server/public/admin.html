@@ -498,8 +498,8 @@ function secVisao() {
 
   html += '<p class="secao-titulo">Resumo</p><div class="grade g3">' +
     cartao('Funil', 'onde as pessoas param', funilCompacto()) +
-    cartao('Horários escolhidos', 'entre quem ligou o WhatsApp',
-      barras(D.janelas, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
+    cartao('Horários escolhidos', 'por hora do dia, entre quem ligou o WhatsApp',
+      barras(D.horarios, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
     cartao('Estoque de sementes', 'quanto falta para a pessoa mais adiantada repetir',
       '<div class="valor" style="font-size:30px;font-weight:600;letter-spacing:-.03em">' +
       n(c.menorRestante) + '</div>' +
@@ -565,8 +565,8 @@ function secAquisicao() {
 
   return '<div class="grade g-2-1">' +
       cartao('Funil de ativação', 'cada etapa comparada com o topo, e a queda em relação à anterior', degraus) +
-      cartao('Horários escolhidos', 'a janela em que a pessoa quer receber',
-        barras(D.janelas, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
+      cartao('Horários escolhidos', 'a hora em que a pessoa quer receber a semente',
+        barras(D.horarios, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
     '</div>' +
     '<p class="secao-titulo">Novos usuários por dia</p>' +
     '<div class="cartao">' + grafico(D.serie, [
@@ -739,7 +739,7 @@ function linhasPessoas(lista) {
   return lista.map(function (p) {
     return '<tr><td class="forte">' + esc(p.nome) + '</td>' +
       '<td class="fraco mono">' + esc(p.telefone || '—') + '</td>' +
-      '<td>' + esc(p.janela || '—') + '</td>' +
+      '<td class="mono">' + esc(p.horario || '—') + '</td>' +
       '<td><span class="selo ' + (p.completo ? 'ok' : 'neutro') + '">' + esc(p.etapa) + '</span></td>' +
       '<td class="fraco">' + esc(p.familia || '—') + '</td>' +
       '<td class="fraco">' + esc(p.plano || '—') + '</td>' +
@@ -760,10 +760,10 @@ function secSistema() {
   var disparo = s.ultimoDisparo
     ? '<div class="valor" style="font-size:26px;font-weight:600;letter-spacing:-.03em">' +
       esc(relativo(s.ultimoDisparo.quando)) + '</div>' +
-      '<p class="nota" style="margin-top:8px">Janela <b>' + esc(s.ultimoDisparo.janela) + '</b> · ' +
+      '<p class="nota" style="margin-top:8px">Origem <b>' + esc(s.ultimoDisparo.origem) + '</b> · ' +
       n(s.ultimoDisparo.enviadas) + ' enviada(s), ' + n(s.ultimoDisparo.falhas) + ' falha(s)<br>' +
       esc(dataHora(s.ultimoDisparo.quando)) + '</p>'
-    : vazio('Nenhum disparo registrado ainda. O registro começou agora — se o cron estiver rodando, aparece no próximo horário.');
+    : vazio('Nenhuma entrega automática registrada. A agenda só grava quando entrega alguma coisa — varredura vazia não vira linha.');
 
   // Três estados, e só um deles é vermelho. Marcar de vermelho o que tem
   // padrão funcionando manda a pessoa caçar problema que não existe.
@@ -792,7 +792,7 @@ function secSistema() {
 
   return '<div class="grade g-2-1">' +
       cartao('Configuração do servidor', 'presença, nunca o valor — um painel que mostra segredo vira vazamento', config) +
-      cartao('Último disparo automático', 'o cron do GitHub Actions chamando o backend', disparo) +
+      cartao('Última entrega automática', 'a agenda varre de minuto em minuto e respeita o horário de cada pessoa', disparo) +
     '</div>' +
     '<p class="secao-titulo">Últimos acontecimentos</p><div class="cartao">' + eventos + '</div>';
 }

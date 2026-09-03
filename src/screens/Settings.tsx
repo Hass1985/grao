@@ -31,16 +31,9 @@ import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { shadows } from '../theme/shadows';
 import { webScreenFill, webScroll } from '../theme/webScreen';
+import SeletorHorario, { periodoDoDia } from '../components/SeletorHorario';
 
 type Props = { navigation: any };
-
-// Precisa espelhar as janelas do onboarding (Notification.tsx) e do backend.
-const timeWindows = [
-  { id: 'dawn', label: 'Amanhecer', time: '6h às 10h' },
-  { id: 'noon', label: 'Meio-dia', time: '10h às 14h' },
-  { id: 'afternoon', label: 'Tarde', time: '14h às 18h' },
-  { id: 'evening', label: 'Noite', time: '18h às 22h' },
-];
 
 // -------- blocos reutilizáveis --------
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -92,7 +85,7 @@ export default function Settings({ navigation }: Props) {
   const [moment, setMomentState] = useState<EmotionalFamily | null>(null);
   const [showFeelings, setShowFeelings] = useState(false);
   const [showNotifOptions, setShowNotifOptions] = useState(false);
-  const [selectedTime, setSelectedTime] = useState('dawn');
+  const [selectedTime, setSelectedTime] = useState('07:00');
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [music, setMusic] = useState(true);
   const [privateProfile, setPrivateProfile] = useState(true);
@@ -231,7 +224,7 @@ export default function Settings({ navigation }: Props) {
 
         {/* Meu plano */}
         <Section title="Meu plano">
-          <Row label="Plantio" value="R$ 49/mês · renovação automática" onPress={() => {}} />
+          <Row label="Plantio" value="R$ 19,90/mês · renovação automática" onPress={() => {}} />
           <Row label="Gerenciar assinatura" onPress={() => {}} last />
         </Section>
 
@@ -252,28 +245,19 @@ export default function Settings({ navigation }: Props) {
           {notifEnabled &&
             (showNotifOptions ? (
               <View style={styles.optionsList}>
-                {timeWindows.map((w) => (
-                  <TouchableOpacity
-                    key={w.id}
-                    style={[styles.optionRow, selectedTime === w.id && styles.optionRowSelected]}
-                    onPress={() => {
-                      setSelectedTime(w.id);
-                      setShowNotifOptions(false);
-                    }}
-                  >
-                    <Text style={[styles.optionLabel, selectedTime === w.id && styles.optionLabelSelected]}>
-                      {w.label}
-                    </Text>
-                    <Text style={[styles.optionTime, selectedTime === w.id && styles.optionTimeSelected]}>
-                      {w.time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                <SeletorHorario valor={selectedTime} onChange={setSelectedTime} />
+                <TouchableOpacity
+                  style={styles.optionConfirmar}
+                  onPress={() => setShowNotifOptions(false)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.optionConfirmarTexto}>Pronto</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <Row
                 label="Horário"
-                value={`${timeWindows.find((w) => w.id === selectedTime)?.label} · ${timeWindows.find((w) => w.id === selectedTime)?.time}`}
+                value={`${selectedTime} · ${periodoDoDia(selectedTime)}`}
                 onPress={() => setShowNotifOptions(true)}
                 last
               />
@@ -469,6 +453,18 @@ const styles = StyleSheet.create({
 
   // notif options
   optionsList: { gap: 8, paddingBottom: 14 },
+  optionConfirmar: {
+    marginTop: 16,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  optionConfirmarTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.base,
+    color: colors.accentForeground,
+  },
   optionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

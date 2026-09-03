@@ -18,7 +18,7 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import { pool } from './db.js';
-import { JANELA_INFO, BASE_URL, type Janela } from './whatsapp.js';
+import { BASE_URL, horarioCurto } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
 
 const TZ = 'America/Sao_Paulo';
@@ -104,8 +104,8 @@ async function montarPainel(dias: number) {
   // ser um COUNT por etapa, mas assim o mesmo SELECT alimenta a lista de
   // pessoas, e as duas visões nunca discordam.
   const pessoas = await q(`
-    SELECT u.id, coalesce(u.name,'(sem nome)') nome, u.phone_e164, u.delivery_window,
-           u.created_at,
+    SELECT u.id, coalesce(u.name,'(sem nome)') nome, u.phone_e164,
+           u.delivery_time::text delivery_time, u.created_at,
            EXISTS (SELECT 1 FROM conversation_turns t
                     WHERE t.user_id = u.id AND t.role = 'user') abertura,
            EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = u.id) perfil,
@@ -153,20 +153,17 @@ async function montarPainel(dias: number) {
           AND (e.created_at AT TIME ZONE $1)::date = d.dia) mensagens
       FROM d ORDER BY d.dia`, [TZ, dias]);
 
-  // --- janelas de entrega --------------------------------------------------
-  const janelasBrutas = await q(`
-    SELECT coalesce(delivery_window, '(não definida)') janela, count(*)::int n
+  // --- horários de entrega -------------------------------------------------
+  // Agrupado por HORA, não pelo horário exato: com o horário livre, 250 pessoas
+  // produzem dezenas de valores distintos e a lista deixa de responder a única
+  // pergunta que importa aqui — em que parte do dia essa gente quer a semente.
+  // O horário exato de cada pessoa aparece na seção Pessoas.
+  const horarios = await q(`
+    SELECT to_char(date_trunc('hour', delivery_time), 'HH24') || 'h' rotulo,
+           count(*)::int n
       FROM users WHERE wa_opt_in_at IS NOT NULL
-     GROUP BY 1 ORDER BY 2 DESC`);
-  const janelas = janelasBrutas.map((r: any) => {
-    const info = JANELA_INFO[r.janela as Janela];
-    return {
-      janela: r.janela,
-      rotulo: info?.rotulo ?? r.janela,
-      faixa: info ? `${info.inicio}h – ${info.fim}h` : '—',
-      n: r.n,
-    };
-  });
+     GROUP BY date_trunc('hour', delivery_time)
+     ORDER BY date_trunc('hour', delivery_time)`);
 
   // --- planos --------------------------------------------------------------
   const planos = await q(`
@@ -254,8 +251,8 @@ async function montarPainel(dias: number) {
 
   // --- sistema -------------------------------------------------------------
   const [ultimoDisparo] = await q(`
-    SELECT payload->>'window' janela, payload->>'enviadas' enviadas,
-           payload->>'falhas' falhas, created_at
+    SELECT payload->>'enviadas' enviadas, payload->>'falhas' falhas,
+           coalesce(payload->>'origem', 'cron') origem, created_at
       FROM events WHERE type = 'wa_dispatch' ORDER BY id DESC LIMIT 1`);
   const eventosRecentes = await q(`
     SELECT e.type, coalesce(u.name,'—') nome, e.created_at, e.payload
@@ -310,7 +307,7 @@ async function montarPainel(dias: number) {
       novos: num(d.novos), entregas: num(d.entregas), plantios: num(d.plantios),
       ativos: num(d.ativos), mensagens: num(d.mensagens),
     })),
-    janelas,
+    horarios,
     engajamento,
     planos: {
       linhas: planos.map((p: any) => ({ plan: p.plan, status: p.status, n: p.n })),
@@ -346,11 +343,10 @@ async function montarPainel(dias: number) {
     },
     pessoas: pessoas.map((p: any) => {
       const parou = ETAPAS.find(({ chave }) => chave !== 'abriu' && !p[chave]);
-      const info = JANELA_INFO[p.delivery_window as Janela];
       return {
         nome: p.nome,
         telefone: mascarar(p.phone_e164),
-        janela: info?.rotulo ?? null,
+        horario: horarioCurto(p.delivery_time),
         etapa: parou ? parou.rotulo : 'Ciclo completo',
         completo: !parou,
         entregas: num(p.entregas),
@@ -364,7 +360,7 @@ async function montarPainel(dias: number) {
     sistema: {
       config,
       ultimoDisparo: ultimoDisparo ? {
-        janela: JANELA_INFO[ultimoDisparo.janela as Janela]?.rotulo ?? ultimoDisparo.janela,
+        origem: ultimoDisparo.origem,
         enviadas: num(ultimoDisparo.enviadas),
         falhas: num(ultimoDisparo.falhas),
         quando: ultimoDisparo.created_at,

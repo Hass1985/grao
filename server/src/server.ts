@@ -23,6 +23,7 @@ import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
+import { iniciarAgenda } from './agenda.js';
 
 const app = express();
 
@@ -439,4 +440,11 @@ registerMetaWebhookRoutes(app);
 registerAdminRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
-app.listen(port, () => console.log(`Grão backend em http://localhost:${port}`));
+app.listen(port, () => {
+  console.log(`Grão backend em http://localhost:${port}`);
+  // A agenda de entrega vive dentro do processo: com horário escolhido pela
+  // pessoa, o atraso de até duas horas do cron do GitHub deixou de ser
+  // aceitável. Ele continua chamando /whatsapp/dispatch de hora em hora, como
+  // reserva para o caso de o processo cair.
+  iniciarAgenda();
+});

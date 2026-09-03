@@ -15,10 +15,8 @@ import crypto from 'node:crypto';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser } from './seedSelector.js';
-import {
-  resolveUserByPhone, normalizePhone, formatSeed, replyFor,
-  entregarSemente, JANELAS,
-} from './whatsapp.js';
+import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
+import { despacharDevidos } from './agenda.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -215,76 +213,24 @@ async function processarEvento(corpo: any): Promise<void> {
   }
 }
 
-/**
- * Disparo da semente diária.
- *
- * Faz TUDO num só lugar — monta a fila e envia — para o agendador externo ser
- * burro: um cron que só sabe chamar uma URL. Foi o mesmo motivo de dispensar
- * o n8n; a diferença é que aqui não há mensalidade nem um segundo sistema
- * para manter de pé.
- *
- * Fora da janela de 24h a Meta só aceita template, então este disparo usa
- * sempre o template aprovado.
- */
-async function despachar(janela: string): Promise<{ enviadas: number; falhas: number; detalhes: string[] }> {
-  const { rows: usuarios } = await pool.query(
-    `SELECT u.id, u.phone_e164, u.name,
-            (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
-       FROM users u
-      WHERE u.delivery_window = $1
-        AND u.wa_opt_in_at IS NOT NULL
-        AND u.phone_e164 IS NOT NULL
-        AND NOT EXISTS (
-              SELECT 1 FROM seed_deliveries d
-               WHERE d.user_id = u.id
-                 AND (d.delivered_at AT TIME ZONE u.timezone)::date
-                   = (now() AT TIME ZONE u.timezone)::date)`, [janela]);
-
-  let enviadas = 0, falhas = 0;
-  const detalhes: string[] = [];
-
-  // O envio em si — inclusive a escolha entre texto livre e template, e o
-  // desfazimento em caso de falha — vive em entregarSemente. O opt-in usa a
-  // mesma função para mandar a primeira semente, e as duas não podem divergir.
-  for (const u of usuarios) {
-    const r = await entregarSemente(u, 'whatsapp_cron');
-    if (r.ok) {
-      enviadas++;
-    } else if (r.erro) {
-      falhas++;
-      detalhes.push(`${u.phone_e164}: ${r.erro}`);
-      console.error(`[wa/dispatch] ${u.phone_e164}: ${r.erro}`);
-    }
-  }
-  return { enviadas, falhas, detalhes };
-}
-
 export function registerMetaWebhookRoutes(app: Express) {
   /**
-   * Chamado pelo cron (GitHub Actions). Protegido pelo mesmo segredo dos
-   * outros endpoints internos.
+   * Varredura sob demanda, com o mesmo segredo dos outros endpoints internos.
+   *
+   * A agenda de dentro do processo já roda de minuto em minuto; este endereço
+   * existe como batimento de reserva (o cron do GitHub chama de hora em hora)
+   * e para forçar uma entrega na mão durante um teste. Não recebe mais janela:
+   * quem decide é o horário de cada pessoa.
    */
   app.post('/whatsapp/dispatch', async (req: Request, res: Response) => {
     const esperado = process.env.GRAO_API_TOKEN;
     if (!esperado) return res.status(503).json({ error: 'GRAO_API_TOKEN não configurado' });
     if (req.header('x-grao-token') !== esperado) return res.status(401).json({ error: 'token inválido' });
-
-    const janela = String(req.query.window ?? '');
-    if (!(JANELAS as readonly string[]).includes(janela)) {
-      return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
-    }
     if (!metaConfigurada()) return res.status(503).json({ error: 'credenciais da Meta ausentes' });
 
     try {
-      const r = await despachar(janela);
-      console.log(`[wa/dispatch] ${janela}: ${r.enviadas} enviadas, ${r.falhas} falhas`);
-      // Registra TODO disparo, inclusive o que não achou ninguém. Sem isso,
-      // "o cron está rodando?" só se responde no painel do GitHub — e um
-      // disparo que roda mas não entrega nada é indistinguível de um que
-      // nunca rodou. É a pergunta que já custou uma investigação inteira.
-      void logEvent(null, 'wa_dispatch',
-        { window: janela, enviadas: r.enviadas, falhas: r.falhas });
-      return res.json({ window: janela, ...r });
+      const r = await despacharDevidos();
+      return res.json(r);
     } catch (e: any) {
       console.error('[wa/dispatch]', e?.message || e);
       return res.status(500).json({ error: 'falha no disparo' });

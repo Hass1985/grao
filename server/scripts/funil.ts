@@ -30,7 +30,7 @@ async function main() {
            (u.phone_e164 IS NOT NULL AND u.wa_opt_in_at IS NOT NULL) whatsapp,
            EXISTS (SELECT 1 FROM seed_deliveries d WHERE d.user_id = u.id) aviso,
            EXISTS (SELECT 1 FROM seed_deliveries d WHERE d.user_id = u.id AND d.planted) plantou,
-           u.delivery_window
+           u.delivery_time
       FROM users u
      ORDER BY u.created_at DESC LIMIT 20`);
 

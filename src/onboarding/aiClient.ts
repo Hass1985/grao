@@ -104,14 +104,14 @@ export async function postOpening(
 export async function linkWhatsApp(
   userId: string,
   phone: string,
-  window: 'dawn' | 'noon' | 'afternoon' | 'evening',
+  time: string,                // "HH:MM", horário local escolhido pela pessoa
 ): Promise<{ userId: string; merged: boolean } | null> {
   if (!API_URL) return null;   // modo demo, sem backend
   try {
     const res = await fetch(`${API_URL}/profile/${userId}/whatsapp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, window, timezone: 'America/Sao_Paulo' }),
+      body: JSON.stringify({ phone, time, timezone: 'America/Sao_Paulo' }),
     });
     if (!res.ok) return null;
     const j = await res.json();

@@ -18,40 +18,92 @@ const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
- * Janelas de entrega — cobrem o dia inteiro das 6h às 22h, sem buraco.
+ * HORÁRIO da entrega, escolhido pela própria pessoa.
  *
- * A versão anterior tinha quatro faixas estreitas (6-8, 8-10, 12-13, 20-22) e
- * deixava 6 horas do dia descobertas. Quem ligava o WhatsApp às 13h40 escolhia
- * "Meio-dia", cujo disparo já tinha passado às 12h, e não recebia nada — foi
- * exatamente o que aconteceu no teste do Samir. Faixas contíguas de 4 horas
- * eliminam o buraco; `entregarSeJaEstaNaJanela` resolve o resto.
+ * Substituiu as quatro janelas de 4 horas. A janela resolvia o buraco da
+ * agenda, mas não a promessa: quem escolhia "Tarde" recebia às 15h mesmo que a
+ * rotina só abrisse às 16h30. E aqui o horário pesa mais que num app comum —
+ * a semente chega com o botão "Plantar", e só toca nele quem está disponível
+ * na hora. Errar o horário não atrasa a leitura: cancela o gesto.
+ *
+ * O horário é sempre LOCAL, lido junto com users.timezone.
  */
-export const JANELAS = ['dawn', 'noon', 'afternoon', 'evening'] as const;
-export type Janela = (typeof JANELAS)[number];
+const HORARIO_PADRAO = '07:00';
 
 /**
- * Aceita a janela que o app manda, inclusive de uma versão antiga.
+ * Aceita "7:5", "07:05", "0705" e devolve "07:05". Null se não for horário.
  *
- * O webapp publicado continua no ar enquanto o build novo não sobe, e ele
- * ainda manda "morning". Sem esta tradução a gravação bateria na restrição do
- * banco, o endpoint devolveria 500 e o opt-in falharia EM SILÊNCIO — que é
- * justamente a falha mais cara que já tivemos aqui.
- *
- * Devolve null quando não reconhece, para o endpoint recusar com 400.
+ * Permissivo na entrada de propósito: o campo vem de um seletor no app, mas
+ * também de scripts e de clientes futuros, e recusar por causa de um zero à
+ * esquerda faria alguém deixar de receber sem entender por quê.
  */
-export function normalizarJanela(bruta: string | undefined | null): Janela | null {
-  if (!bruta) return null;
-  const j = bruta === 'morning' ? 'dawn' : bruta;   // faixa antiga 8h-10h → Amanhecer 6h-10h
-  return (JANELAS as readonly string[]).includes(j) ? (j as Janela) : null;
+export function normalizarHorario(bruto: string | undefined | null): string | null {
+  if (!bruto) return null;
+  const texto = String(bruto).trim();
+  let h: number, m: number;
+
+  // Com separador, quem manda é ele: "7:5" são 7h05, e adivinhar pela
+  // quantidade de dígitos leria 75 e recusaria.
+  const comSeparador = /^(\d{1,2})\s*[:h.]\s*(\d{1,2})?$/i.exec(texto);
+  if (comSeparador) {
+    h = +comSeparador[1];
+    m = +(comSeparador[2] ?? 0);
+  } else {
+    const digitos = texto.replace(/\D/g, '');
+    if (digitos.length === 3) { h = +digitos.slice(0, 1); m = +digitos.slice(1); }
+    else if (digitos.length === 4) { h = +digitos.slice(0, 2); m = +digitos.slice(2); }
+    else if (digitos.length === 1 || digitos.length === 2) { h = +digitos; m = 0; }
+    else return null;
+  }
+
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h > 23 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/** Rótulo e faixa (hora de Brasília) de cada janela. Espelha a tela do app. */
-export const JANELA_INFO: Record<Janela, { rotulo: string; inicio: number; fim: number }> = {
-  dawn: { rotulo: 'Amanhecer', inicio: 6, fim: 10 },
-  noon: { rotulo: 'Meio-dia', inicio: 10, fim: 14 },
-  afternoon: { rotulo: 'Tarde', inicio: 14, fim: 18 },
-  evening: { rotulo: 'Noite', inicio: 18, fim: 22 },
+/**
+ * Traduz a janela antiga para horário.
+ *
+ * O webapp publicado continua no ar enquanto o build novo não sobe, e ele
+ * manda `window`, não `time`. Sem esta tradução o opt-in dele passaria a
+ * gravar nada e a pessoa ficaria sem receber EM SILÊNCIO — a falha mais cara
+ * que já tivemos aqui.
+ *
+ * Cada janela vira o horário em que ela de fato disparava, não o começo da
+ * faixa: quem escolheu "Amanhecer" já recebia 7h.
+ */
+const JANELA_PARA_HORARIO: Record<string, string> = {
+  dawn: '07:00',
+  morning: '07:00',      // faixa que existiu entre 8h e 10h, ver 009_janelas.sql
+  noon: '11:00',
+  afternoon: '15:00',
+  evening: '19:00',
 };
+
+/**
+ * Horário a gravar, a partir do que o cliente mandou.
+ *
+ * Devolve null quando veio algo que não dá para interpretar, para o endpoint
+ * recusar com 400 em vez de gravar um horário que ninguém escolheu.
+ */
+export function horarioDeEntrada(
+  time?: string | null,
+  window?: string | null,
+): { horario: string | null; erro?: string } {
+  if (time) {
+    const h = normalizarHorario(time);
+    return h ? { horario: h } : { horario: null, erro: 'time deve estar no formato HH:MM' };
+  }
+  if (window) {
+    const h = JANELA_PARA_HORARIO[window];
+    return h ? { horario: h } : { horario: null, erro: 'window desconhecida' };
+  }
+  return { horario: null };   // nada informado: mantém o que já estava
+}
+
+/** "07:05:00" (como o Postgres devolve) → "07:05". */
+export function horarioCurto(bruto: string | null | undefined): string | null {
+  return bruto ? String(bruto).slice(0, 5) : null;
+}
 
 /** Telefone em E.164 (+5511999999999). Devolve null se não der para normalizar. */
 export function normalizePhone(raw: string): string | null {
@@ -180,30 +232,31 @@ export async function entregarSemente(
 }
 
 /**
- * Primeira semente logo depois do opt-in, quando a janela escolhida JÁ abriu
+ * Primeira semente logo depois do opt-in, quando o horário escolhido JÁ passou
  * hoje.
  *
- * Sem isto, quem liga o WhatsApp depois do horário do próprio disparo fica até
- * o dia seguinte sem nenhum sinal de que a integração funcionou — e conclui
- * que não funcionou. Foi o que aconteceu no teste do Samir: ele escolheu
- * "Meio-dia" às 13h40, e o disparo daquela janela tinha passado.
+ * Sem isto, quem liga o WhatsApp depois do próprio horário fica até o dia
+ * seguinte sem nenhum sinal de que a integração funcionou — e conclui que não
+ * funcionou. Foi o que aconteceu no teste do Samir.
  *
- * Quem liga ANTES da janela abrir não recebe nada aqui: o cron entrega no
- * horário que a pessoa pediu, que é o certo.
+ * Aqui, ao contrário da agenda, NÃO existe limite de atraso: a pessoa acabou
+ * de pedir para receber, e mostrar que funciona vale mais do que respeitar um
+ * horário que ela ainda nem viu acontecer. Quem liga antes do horário não
+ * recebe nada agora — a agenda entrega na hora que ela pediu, que é o certo.
  *
  * Falha de propósito em silêncio — é um bônus, não pode derrubar o opt-in.
  */
-export async function entregarSeJaEstaNaJanela(userId: string): Promise<boolean> {
+export async function entregarSeJaPassouOHorario(userId: string): Promise<boolean> {
   if (!metaConfigurada()) return false;
   try {
     const { rows: [u] } = await pool.query(
-      `SELECT u.id, u.phone_e164, u.name, u.delivery_window,
-              extract(hour from (now() AT TIME ZONE u.timezone))::int hora_local,
+      `SELECT u.id, u.phone_e164, u.name,
               (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
          FROM users u
         WHERE u.id = $1
           AND u.wa_opt_in_at IS NOT NULL
           AND u.phone_e164 IS NOT NULL
+          AND (now() AT TIME ZONE u.timezone)::time >= u.delivery_time
           AND NOT EXISTS (
                 SELECT 1 FROM seed_deliveries d
                  WHERE d.user_id = u.id
@@ -211,9 +264,6 @@ export async function entregarSeJaEstaNaJanela(userId: string): Promise<boolean>
                      = (now() AT TIME ZONE u.timezone)::date)`, [userId]);
 
     if (!u) return false;
-    const info = JANELA_INFO[(u.delivery_window ?? 'dawn') as Janela];
-    if (!info || u.hora_local < info.inicio) return false;
-
     const r = await entregarSemente(u, 'whatsapp_optin');
     if (!r.ok) console.warn(`[wa/opt-in] entrega imediata falhou: ${r.erro}`);
     return r.ok;
@@ -366,24 +416,23 @@ export function registerWhatsAppRoutes(app: Express) {
    */
   app.get('/whatsapp/due', exigeToken, async (req, res) => {
     try {
-      const janela = normalizarJanela(String(req.query.window ?? ''));
-      if (!janela) {
-        return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
-      }
       const limite = Math.min(Number(req.query.limit ?? 200), 500);
 
+      // Não recebe mais janela: quem decide é o horário de cada pessoa, e a
+      // condição é a mesma da agenda interna (agenda.ts) — as duas não podem
+      // discordar sobre quem está na hora de receber.
       const { rows: usuarios } = await pool.query(
         `SELECT u.id, u.phone_e164, u.name
            FROM users u
-          WHERE u.delivery_window = $1
-            AND u.wa_opt_in_at IS NOT NULL
+          WHERE u.wa_opt_in_at IS NOT NULL
             AND u.phone_e164 IS NOT NULL
+            AND (now() AT TIME ZONE u.timezone)::time >= u.delivery_time
             AND NOT EXISTS (
                   SELECT 1 FROM seed_deliveries d
                    WHERE d.user_id = u.id
                      AND (d.delivered_at AT TIME ZONE u.timezone)::date
                        = (now() AT TIME ZONE u.timezone)::date)
-          LIMIT $2`, [janela, limite]);
+          LIMIT $1`, [limite]);
 
       const entregas = [];
       for (const u of usuarios) {
@@ -413,7 +462,7 @@ export function registerWhatsAppRoutes(app: Express) {
           },
         });
       }
-      return res.json({ window: janela, total: entregas.length, entregas });
+      return res.json({ total: entregas.length, entregas });
     } catch (err: any) {
       console.error('[wa/due]', err?.message || err);
       return res.status(500).json({ error: 'Falha ao montar a fila de entrega.' });
@@ -436,17 +485,16 @@ export function registerWhatsAppRoutes(app: Express) {
   app.post('/profile/:userId/whatsapp', async (req, res) => {
     try {
       const { userId } = req.params;
-      const { phone, window: janela, timezone } = req.body as
-        { phone?: string; window?: string; timezone?: string };
+      const { phone, time, window: janela, timezone } = req.body as
+        { phone?: string; time?: string; window?: string; timezone?: string };
 
       const e164 = normalizePhone(phone ?? '');
       if (!e164) return res.status(400).json({ error: 'phone inválido' });
-      // Traduz a janela antiga do app publicado antes de gravar; sem isso o
-      // opt-in quebraria para quem ainda está no build velho.
-      const janelaOk = janela ? normalizarJanela(janela) : null;
-      if (janela && !janelaOk) {
-        return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
-      }
+      // `time` é o campo novo; `window` ainda chega do webapp publicado, e é
+      // traduzido para horário. Sem isso o opt-in do build velho gravaria nada
+      // e a pessoa ficaria sem receber, em silêncio.
+      const { horario, erro } = horarioDeEntrada(time, janela);
+      if (erro) return res.status(400).json({ error: erro });
 
       const { rows: [dono] } = await pool.query(
         `SELECT id FROM users WHERE phone_e164 = $1`, [e164]);
@@ -486,46 +534,42 @@ export function registerWhatsAppRoutes(app: Express) {
 
       await pool.query(
         `UPDATE users SET wa_opt_in_at = coalesce(wa_opt_in_at, now()),
-                          delivery_window = coalesce($2, delivery_window),
+                          delivery_time = coalesce($2::time, delivery_time),
                           timezone = coalesce($3, timezone)
-          WHERE id = $1`, [idFinal, janelaOk, timezone ?? null]);
-      void logEvent(idFinal, 'wa_opt_in', { window: janelaOk, origem: 'webapp' });
+          WHERE id = $1`, [idFinal, horario, timezone ?? null]);
+      void logEvent(idFinal, 'wa_opt_in', { time: horario, origem: 'webapp' });
 
       // Não é awaited: a primeira semente é um bônus, e a resposta do
       // onboarding não pode esperar a Meta nem quebrar se ela falhar.
-      void entregarSeJaEstaNaJanela(idFinal);
+      void entregarSeJaPassouOHorario(idFinal);
 
-      return res.json({ ok: true, userId: idFinal, merged: idFinal !== userId });
+      return res.json({ ok: true, userId: idFinal, merged: idFinal !== userId, time: horario });
     } catch (err: any) {
       console.error('[wa/link]', err?.message || err);
       return res.status(500).json({ error: 'Falha ao ligar o WhatsApp ao perfil.' });
     }
   });
 
-  /** Opt-in e janela de horário — chamado pelo app ou por um fluxo de cadastro. */
+  /** Opt-in e horário de entrega — chamado pelo app ou por um fluxo de cadastro. */
   app.post('/whatsapp/opt-in', exigeToken, async (req, res) => {
     try {
-      const { phone, window: janela, optIn = true, timezone } = req.body as
-        { phone?: string; window?: string; optIn?: boolean; timezone?: string };
+      const { phone, time, window: janela, optIn = true, timezone } = req.body as
+        { phone?: string; time?: string; window?: string; optIn?: boolean; timezone?: string };
       const e164 = normalizePhone(phone ?? '');
       if (!e164) return res.status(400).json({ error: 'phone inválido' });
-      // Traduz a janela antiga do app publicado antes de gravar; sem isso o
-      // opt-in quebraria para quem ainda está no build velho.
-      const janelaOk = janela ? normalizarJanela(janela) : null;
-      if (janela && !janelaOk) {
-        return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
-      }
+      const { horario, erro } = horarioDeEntrada(time, janela);
+      if (erro) return res.status(400).json({ error: erro });
       const userId = await resolveUserByPhone(e164);
       await pool.query(
         `UPDATE users
             SET wa_opt_in_at = CASE WHEN $2 THEN coalesce(wa_opt_in_at, now()) ELSE NULL END,
-                delivery_window = coalesce($3, delivery_window),
+                delivery_time = coalesce($3::time, delivery_time),
                 timezone = coalesce($4, timezone)
           WHERE id = $1`,
-        [userId, optIn, janelaOk, timezone ?? null]);
-      void logEvent(userId, optIn ? 'wa_opt_in' : 'wa_opt_out', { window: janelaOk });
-      if (optIn) void entregarSeJaEstaNaJanela(userId);
-      return res.json({ ok: true, userId, optIn, window: janelaOk });
+        [userId, optIn, horario, timezone ?? null]);
+      void logEvent(userId, optIn ? 'wa_opt_in' : 'wa_opt_out', { time: horario });
+      if (optIn) void entregarSeJaPassouOHorario(userId);
+      return res.json({ ok: true, userId, optIn, time: horario });
     } catch (err: any) {
       console.error('[wa/opt-in]', err?.message || err);
       return res.status(500).json({ error: 'Falha ao registrar a preferência.' });

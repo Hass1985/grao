@@ -1,65 +1,38 @@
-# Disparo da semente diária pelo WhatsApp.
+# Batimento de reserva da entrega diária.
 #
-# O agendador é de propósito burro: só chama uma URL. Toda a decisão — quem
-# recebe, qual semente, se já recebeu hoje — fica no backend, onde dá para
-# testar. Foi o mesmo motivo de dispensar o n8n, sem a mensalidade.
+# A entrega de verdade acontece DENTRO do backend (server/src/agenda.ts), que
+# varre de minuto em minuto e respeita o horário escolhido por cada pessoa.
+# Este workflow existe só para o caso de o processo estar fora do ar: chama a
+# mesma varredura de hora em hora, e ela é idempotente — quem já recebeu hoje
+# não recebe de novo.
 #
-# Antes de funcionar, cadastre em Settings → Secrets and variables → Actions:
+# Por que não é ele quem entrega: o agendador do GitHub atrasa. Já vimos
+# execuções saindo duas horas depois do horário marcado, o que era tolerável
+# para janelas de 4 horas e é inaceitável para quem pediu 6h45.
+#
+# Cadastre em Settings → Secrets and variables → Actions:
 #   GRAO_API_TOKEN  — o mesmo valor que está no Render
 #   GRAO_API_URL    — https://grao-backend.onrender.com
 
-name: Semente diária
+name: Semente diária (reserva)
 
 on:
   schedule:
-    # O GitHub agenda em UTC. Brasília é UTC-3, então somamos 3 horas.
-    #
-    # Cada disparo sai UMA HORA depois da janela abrir: a pessoa escolheu uma
-    # faixa de 4 horas, não um instante, e sobra folga para o atraso do próprio
-    # agendador do GitHub (que não é pontual em horário de pico).
-    - cron: '0 10 * * *'   #  7h em Brasília → dawn      (6h-10h)
-    - cron: '0 14 * * *'   # 11h             → noon      (10h-14h)
-    - cron: '0 18 * * *'   # 15h             → afternoon (14h-18h)
-    - cron: '0 22 * * *'   # 19h             → evening   (18h-22h)
+    - cron: '7 * * * *'   # de hora em hora, no minuto 7
   workflow_dispatch:
-    inputs:
-      window:
-        description: 'Janela a disparar manualmente'
-        required: true
-        default: dawn
-        type: choice
-        options: [dawn, noon, afternoon, evening]
 
 jobs:
   disparar:
     runs-on: ubuntu-latest
     steps:
-      - name: Descobrir a janela
-        id: janela
-        run: |
-          if [ -n "${{ inputs.window }}" ]; then
-            echo "w=${{ inputs.window }}" >> "$GITHUB_OUTPUT"
-          else
-            # Hora de Brasília no momento do disparo
-            H=$(TZ=America/Sao_Paulo date +%H)
-            if   [ "$H" -lt 10 ]; then W=dawn
-            elif [ "$H" -lt 14 ]; then W=noon
-            elif [ "$H" -lt 18 ]; then W=afternoon
-            else                       W=evening
-            fi
-            echo "w=$W" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Disparar
+      - name: Varrer quem está na hora
         env:
           URL: ${{ secrets.GRAO_API_URL }}
           TOKEN: ${{ secrets.GRAO_API_TOKEN }}
-          W: ${{ steps.janela.outputs.w }}
         run: |
-          echo "Janela: $W"
           # --fail-with-body faz o passo quebrar em erro HTTP mas ainda mostrar
           # a resposta; sem isso uma falha de disparo passaria como sucesso.
           curl -sS --fail-with-body -X POST \
             --max-time 600 \
             -H "x-grao-token: $TOKEN" \
-            "$URL/whatsapp/dispatch?window=$W"
+            "$URL/whatsapp/dispatch"

@@ -19,7 +19,7 @@ import { getUserId, setUserId, linkWhatsApp } from '../../onboarding/aiClient';
 
 type Props = {
   navigation: StackNavigationProp<any>;
-  route?: { params?: { window?: 'dawn' | 'noon' | 'afternoon' | 'evening' } };
+  route?: { params?: { time?: string } };
 };
 
 export default function WhatsApp({ navigation, route }: Props) {
@@ -42,7 +42,7 @@ export default function WhatsApp({ navigation, route }: Props) {
     setSaving(true);
     try {
       const userId = await getUserId();
-      const r = await linkWhatsApp(userId, phone, route?.params?.window ?? 'dawn');
+      const r = await linkWhatsApp(userId, phone, route?.params?.time ?? '07:00');
       // Se houve fusão, o id mudou: quem manda agora é o do telefone.
       if (r && r.userId !== userId) await setUserId(r.userId);
     } finally {

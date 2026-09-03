@@ -11,26 +11,23 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { webScreenFill } from '../../theme/webScreen';
+import SeletorHorario from '../../components/SeletorHorario';
 
 type Props = {
   navigation: StackNavigationProp<any>;
 };
 
-// Faixas contíguas de 4 horas, cobrindo das 6h às 22h.
-//
-// As faixas antigas eram estreitas e deixavam 6 horas do dia sem janela
-// nenhuma. Quem escolhia "Meio-dia" às 13h40 já tinha perdido o disparo das
-// 12h e não recebia nada — foi o que aconteceu no teste. Os ids viajam até o
-// banco e o cron: mudar um deles exige migração (ver 009_janelas.sql).
-const windows = [
-  { id: 'dawn', label: 'Amanhecer', time: '6h – 10h', description: 'Comece o dia com a semente' },
-  { id: 'noon', label: 'Meio-dia', time: '10h – 14h', description: 'Uma pausa no seu dia' },
-  { id: 'afternoon', label: 'Tarde', time: '14h – 18h', description: 'Retome o ritmo' },
-  { id: 'evening', label: 'Noite', time: '18h – 22h', description: 'Encerre o dia com calma' },
-];
+/**
+ * Horário padrão: 7h.
+ *
+ * Não é neutro — é o horário que a maioria de quem já testou escolheu, e ficar
+ * em branco custaria uma decisão a mais logo no começo. Quem quiser outro,
+ * troca com um toque.
+ */
+const PADRAO = '07:00';
 
 export default function Notification({ navigation }: Props) {
-  const [selected, setSelected] = useState('dawn');
+  const [horario, setHorario] = useState(PADRAO);
 
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
@@ -42,36 +39,18 @@ export default function Notification({ navigation }: Props) {
       <View style={styles.content}>
         <View>
           <Text style={styles.eyebrow}>RITMO · PASSO 2</Text>
-          <Text style={styles.title}>Quando quer receber sua semente?</Text>
+          <Text style={styles.title}>Que horas você quer receber?</Text>
           <Text style={styles.subtitle}>
-            Você vai receber via WhatsApp. Pode mudar isso depois.
+            Escolha um horário em que você costuma ter um minuto livre — é nele que
+            a semente chega, pelo WhatsApp. Pode mudar depois.
           </Text>
 
-        <View style={styles.list}>
-          {windows.map((w) => (
-            <TouchableOpacity
-              key={w.id}
-              style={[styles.item, selected === w.id && styles.itemSelected]}
-              onPress={() => setSelected(w.id)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.itemLeft}>
-                <Text style={[styles.itemLabel, selected === w.id && styles.itemLabelSelected]}>
-                  {w.label}
-                </Text>
-                <Text style={styles.itemDesc}>{w.description}</Text>
-              </View>
-              <Text style={[styles.itemTime, selected === w.id && styles.itemTimeSelected]}>
-                {w.time}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          <SeletorHorario valor={horario} onChange={setHorario} />
         </View>
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('WhatsApp', { window: selected })}
+          onPress={() => navigation.navigate('WhatsApp', { time: horario })}
           activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>Continuar</Text>
@@ -112,43 +91,8 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.base,
     color: colors.foregroundMuted,
     lineHeight: 24,
-    marginBottom: 28,
+    marginBottom: 20,
   },
-  list: { gap: 10 },
-  item: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...(shadows.sm as object),
-  },
-  itemSelected: {
-    borderColor: colors.accent,
-    borderWidth: 2,
-    backgroundColor: colors.surfaceAccent,
-  },
-  itemLeft: { gap: 4 },
-  itemLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.foreground,
-  },
-  itemLabelSelected: { color: colors.accent },
-  itemDesc: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
-  },
-  itemTime: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundSubtle,
-  },
-  itemTimeSelected: { color: colors.accent },
   button: {
     backgroundColor: colors.accent,
     borderRadius: 8,

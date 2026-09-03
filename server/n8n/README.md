@@ -136,9 +136,12 @@ se a pessoa pediu a semente; o n8n não precisa interpretar intenção.
 `needsCare: true` sinaliza sofrimento intenso. A resposta já inclui o CVV (188),
 mas é o gancho para você acionar um alerta interno, se quiser.
 
-### `GET /whatsapp/due?window=morning`
+### `GET /whatsapp/due`
 
-Janelas: `dawn` (6h–8h), `morning` (8h–10h), `noon` (12h–13h), `evening` (20h–22h).
+Não recebe mais janela. Cada pessoa escolhe o **horário exato** em que quer a
+semente, e o endpoint devolve quem já passou desse horário hoje. Os fluxos JSON
+deste diretório ainda calculam uma janela e a enviam — o parâmetro é ignorado,
+e eles precisariam ser refeitos se este caminho voltasse a ser usado.
 
 Devolve quem ainda **não recebeu hoje**, no fuso de cada usuário, com a
 mensagem já renderizada. Isso torna o disparo idempotente: um cron que roda
