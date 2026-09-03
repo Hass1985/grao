@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,15 @@ import {
 import GraoSymbol from '../components/GraoSymbol';
 import ProfileButton from '../components/ProfileButton';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
+import { fetchHistory } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-function buildSeedMap(): Record<string, Seed> {
+function buildSeedMap(sementes: Seed[]): Record<string, Seed> {
   const map: Record<string, Seed> = {};
-  pastSeeds.forEach((s) => { map[s.date] = s; });
-  const todayStr = new Date().toISOString().split('T')[0];
-  map[todayStr] = todaySeed;
+  sementes.forEach((s) => { map[s.date] = s; });
   return map;
 }
 
@@ -31,7 +30,20 @@ export default function Campo({ navigation }: { navigation: any }) {
   const firstDayOfWeek = new Date(year, month, 1).getDay();
 
   const monthName = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  const seedMap = buildSeedMap();
+
+  // O histórico vem do servidor: são as sementes que a pessoa recebeu de
+  // verdade, pelo app ou pelo WhatsApp. A lista local é só reserva do demo.
+  const [sementes, setSementes] = useState<Seed[]>([...pastSeeds, todaySeed]);
+  const carregar = useCallback(async () => {
+    try { setSementes(await fetchHistory()); } catch { /* mantém a reserva */ }
+  }, []);
+  useEffect(() => {
+    carregar();
+    const un = navigation?.addListener?.('focus', carregar);
+    return un;
+  }, [carregar, navigation]);
+
+  const seedMap = buildSeedMap(sementes);
 
   const plantedCount = Object.values(seedMap).filter((s) => s.planted).length;
 

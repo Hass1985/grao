@@ -106,3 +106,24 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 
   return { seed, family, source, channel };
 }
+
+/**
+ * Histórico real de sementes entregues — Campo e Raiz.
+ *
+ * Sem backend (modo demo) devolve a lista embutida, para as telas não ficarem
+ * vazias durante uma demonstração. Com backend, devolve só o que a pessoa
+ * realmente recebeu.
+ */
+export async function fetchHistory(): Promise<Seed[]> {
+  if (!API_URL) return pastSeeds;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/seeds/history/${userId}`);
+    if (!res.ok) return pastSeeds;
+    const lista = await res.json();
+    if (!Array.isArray(lista)) return pastSeeds;
+    return lista.map((j: any) => ({ ...daApi(j), date: j.date, planted: !!j.planted }));
+  } catch {
+    return pastSeeds;
+  }
+}

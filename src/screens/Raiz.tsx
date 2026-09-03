@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList } from 'react-native';
 import ProfileButton from '../components/ProfileButton';
 import SeedCard from '../components/SeedCard';
 import MusicCard from '../components/MusicCard';
 import { pastSeeds, Seed } from '../data/seeds';
+import { fetchHistory } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 
@@ -35,10 +36,21 @@ function SeedEntry({ seed }: { seed: Seed }) {
 }
 
 export default function Raiz({ navigation }: { navigation: any }) {
+  // Mesmo histórico do Campo: o que a pessoa recebeu de verdade.
+  const [sementes, setSementes] = useState<Seed[]>(pastSeeds);
+  const carregar = useCallback(async () => {
+    try { setSementes(await fetchHistory()); } catch { /* mantém a reserva */ }
+  }, []);
+  useEffect(() => {
+    carregar();
+    const un = navigation?.addListener?.('focus', carregar);
+    return un;
+  }, [carregar, navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={pastSeeds}
+        data={sementes}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
@@ -54,7 +66,7 @@ export default function Raiz({ navigation }: { navigation: any }) {
         renderItem={({ item, index }) => (
           <>
             <SeedEntry seed={item} />
-            {index < pastSeeds.length - 1 && <View style={styles.separator} />}
+            {index < sementes.length - 1 && <View style={styles.separator} />}
           </>
         )}
       />

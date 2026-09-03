@@ -330,6 +330,53 @@ app.get('/seed/today/:userId', async (req, res) => {
   res.json(seed);
 });
 
+/**
+ * Histórico de sementes da pessoa — alimenta as telas Campo e Raiz.
+ *
+ * Elas liam de uma lista fixa dentro do app, ou seja, mostravam o mesmo
+ * histórico inventado para todo mundo. Agora vem daqui: só o que foi
+ * realmente entregue, na data em que foi, no fuso do usuário.
+ */
+app.get('/seeds/history/:userId', async (req, res) => {
+  try {
+    const limite = Math.min(Number(req.query.limit ?? 120), 400);
+    const { rows } = await pool.query(
+      `SELECT s.id, s.family, s.type, s.passage, s.reference, s.reflection,
+              s.prayer, s.practice, s.music_title, s.music_artist,
+              s.music_spotify, s.music_youtube,
+              d.planted,
+              (d.delivered_at AT TIME ZONE u.timezone)::date AS data
+         FROM seed_deliveries d
+         JOIN seeds s ON s.id = d.seed_id
+         JOIN users u ON u.id = d.user_id
+        WHERE d.user_id = $1
+        ORDER BY d.delivered_at DESC
+        LIMIT $2`, [req.params.userId, limite]);
+
+    res.json(rows.map((r: any) => ({
+      id: r.id,
+      date: r.data instanceof Date ? r.data.toISOString().slice(0, 10) : String(r.data).slice(0, 10),
+      family: r.family,
+      type: r.type,
+      passage: r.passage,
+      reference: r.reference,
+      reflection: r.reflection,
+      prayer: r.prayer,
+      practice: r.practice,
+      planted: r.planted,
+      music: {
+        title: r.music_title ?? '',
+        artist: r.music_artist ?? '',
+        spotifyUrl: r.music_spotify ?? undefined,
+        youtubeUrl: r.music_youtube ?? undefined,
+      },
+    })));
+  } catch (err: any) {
+    console.error('[history]', err?.message || err);
+    res.status(500).json({ error: 'Falha ao carregar o histórico.' });
+  }
+});
+
 // LGPD: exclusão total dos dados do usuário.
 app.delete('/user/:userId', async (req, res) => {
   await deleteUserData(req.params.userId);
