@@ -21,16 +21,24 @@
 // reta nas laterais. Foram três tentativas erradas antes de eu procurar o
 // arquivo real: desenhei uma elipse fechada, com traço fino demais.
 //
-// O traço vale 5,77% do quadro. Com margem pequena e 400×400, ele chega a
-// ~3px na miniatura de 64px que o WhatsApp gera — grosso o bastante para
-// sobreviver à recompressão em JPEG, que era a origem das franjas coloridas.
-// Resolução MAIOR pioraria: quanto mais a imagem encolhe, mais fino o traço.
+// O traço vale 5,77% do quadro. Três decisões vieram de comparar as opções
+// numa simulação da miniatura, e não de intuição:
+//
+//  - 256×256, perto do tamanho exibido. Resolução MAIOR piora: cada redução
+//    suaviza a borda, e o WhatsApp ainda reduz de novo por cima.
+//  - margem de 2%. Quanto maior a marca dentro do quadro, mais grosso o traço
+//    fica em pixels absolutos na miniatura — é o que mais melhora a nitidez.
+//  - realce de borda depois da redução, para recuperar o contraste que o
+//    reamostrar tira.
+//
+// Limite honesto: o WhatsApp embute uma miniatura JPEG pequena na própria
+// mensagem. Existe um piso de nitidez que não depende do nosso arquivo.
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
 
 /** Nome versionado da imagem de preview — ver a nota sobre cache acima. */
-const OG_IMAGEM = 'og-v5.png';
+const OG_IMAGEM = 'og-v6.png';
 
 /** Escapa para inserir com segurança em atributo HTML. */
 function esc(s: string): string {
@@ -67,8 +75,8 @@ export function registerOuvirRoutes(app: Express, baseUrl: () => string) {
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="O louvor da sua semente de hoje. 🌱">
 <meta property="og:image" content="${esc(og)}">
-<meta property="og:image:width" content="400">
-<meta property="og:image:height" content="400">
+<meta property="og:image:width" content="256">
+<meta property="og:image:height" content="256">
 <meta property="og:image:alt" content="Grão">
 <meta name="twitter:card" content="summary">
 <meta http-equiv="refresh" content="0;url=${esc(s.url)}">
