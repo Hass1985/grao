@@ -28,8 +28,10 @@
 //    suaviza a borda, e o WhatsApp ainda reduz de novo por cima.
 //  - margem de 2%. Quanto maior a marca dentro do quadro, mais grosso o traço
 //    fica em pixels absolutos na miniatura — é o que mais melhora a nitidez.
-//  - realce de borda depois da redução, para recuperar o contraste que o
-//    reamostrar tira.
+//  - traço de largura CONSTANTE, carimbando círculos ao longo da curva. O
+//    outline do PIL varia a espessura conforme a curvatura: numa elipse
+//    achatada como esta, a lateral saía fina e o topo grosso, e a borda
+//    ficava suja. Foi a última fonte de borrão que restava.
 //
 // Limite honesto: o WhatsApp embute uma miniatura JPEG pequena na própria
 // mensagem. Existe um piso de nitidez que não depende do nosso arquivo.
@@ -38,7 +40,7 @@ import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
 
 /** Nome versionado da imagem de preview — ver a nota sobre cache acima. */
-const OG_IMAGEM = 'og-v6.png';
+const OG_IMAGEM = 'og-v7.png';
 
 /** Escapa para inserir com segurança em atributo HTML. */
 function esc(s: string): string {
