@@ -15,16 +15,39 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import { getUserId, linkWhatsApp } from '../../onboarding/aiClient';
 
 type Props = {
   navigation: StackNavigationProp<any>;
+  route?: { params?: { window?: 'dawn' | 'morning' | 'noon' | 'evening' } };
 };
 
-export default function WhatsApp({ navigation }: Props) {
+export default function WhatsApp({ navigation, route }: Props) {
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const canContinue = phone.replace(/\D/g, '').length >= 10 && consent;
+  const canContinue = phone.replace(/\D/g, '').length >= 10 && consent && !saving;
+
+  /**
+   * Aqui o cadastro do site vira um usuário de WhatsApp de verdade.
+   *
+   * O consentimento é pré-requisito: só chamamos o backend depois que ela
+   * marcou a caixa. E a falha é silenciosa de propósito — se a rede cair, ela
+   * segue para o plano e o WhatsApp fica pendente, em vez de travar o
+   * onboarding num erro que ela não pode resolver.
+   */
+  async function continuar() {
+    if (!canContinue) return;
+    setSaving(true);
+    try {
+      const userId = await getUserId();
+      await linkWhatsApp(userId, phone, route?.params?.window ?? 'morning');
+    } finally {
+      setSaving(false);
+      navigation.navigate('Plan');
+    }
+  }
 
   const formatPhone = (text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -95,7 +118,7 @@ export default function WhatsApp({ navigation }: Props) {
 
           <TouchableOpacity
             style={[styles.button, !canContinue && styles.buttonDisabled]}
-            onPress={() => canContinue && navigation.navigate('Plan')}
+            onPress={continuar}
             activeOpacity={canContinue ? 0.85 : 1}
           >
             <Text style={styles.buttonText}>Continuar</Text>

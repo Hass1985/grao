@@ -271,6 +271,81 @@ export function registerWhatsAppRoutes(app: Express) {
     }
   });
 
+  /**
+   * Liga o cadastro do WEBAPP ao canal do WhatsApp.
+   *
+   * Sem isto o produto se parte em dois: a pessoa faz a Abertura no site, o
+   * cérebro monta o perfil dela — e o WhatsApp nunca descobre quem é, porque
+   * lá a identidade é o telefone e aqui é o userId do navegador.
+   *
+   * O caso difícil é quando a pessoa JÁ escreveu para o Grão antes de fazer o
+   * onboarding: existem dois registros para a mesma pessoa. Aqui eles são
+   * fundidos — o histórico do webapp migra para o registro do telefone, que é
+   * o que o WhatsApp consegue encontrar. O endpoint devolve o id sobrevivente,
+   * e o app precisa passar a usar esse.
+   */
+  app.post('/profile/:userId/whatsapp', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { phone, window: janela, timezone } = req.body as
+        { phone?: string; window?: string; timezone?: string };
+
+      const e164 = normalizePhone(phone ?? '');
+      if (!e164) return res.status(400).json({ error: 'phone inválido' });
+      if (janela && !JANELAS.includes(janela as Janela)) {
+        return res.status(400).json({ error: `window deve ser um de: ${JANELAS.join(', ')}` });
+      }
+
+      const { rows: [dono] } = await pool.query(
+        `SELECT id FROM users WHERE phone_e164 = $1`, [e164]);
+
+      let idFinal = userId;
+
+      if (dono && dono.id !== userId) {
+        // Fusão: o telefone manda, porque é a chave que o WhatsApp usa.
+        idFinal = dono.id;
+        await pool.query(`UPDATE conversation_turns SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
+        await pool.query(`UPDATE emotional_readings SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
+        await pool.query(`UPDATE events SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
+        // Entregas e momento podem colidir na chave: só migra o que não existir.
+        await pool.query(
+          `UPDATE seed_deliveries d SET user_id = $2 WHERE d.user_id = $1
+            AND NOT EXISTS (SELECT 1 FROM seed_deliveries x WHERE x.user_id = $2 AND x.seed_id = d.seed_id)`,
+          [userId, dono.id]);
+        // Perfil e momento têm o user_id como chave: mover só funciona se o
+        // destino não tiver o seu. O perfil do webapp é o mais recente (acabou
+        // de sair da Abertura), então ele prevalece.
+        for (const tabela of ['profiles', 'user_moment']) {
+          await pool.query(
+            `DELETE FROM ${tabela} WHERE user_id = $2
+              AND EXISTS (SELECT 1 FROM ${tabela} WHERE user_id = $1)`, [userId, dono.id]);
+          await pool.query(`UPDATE ${tabela} SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
+        }
+        // O nome vindo do WhatsApp costuma ser o do perfil do aparelho; o do
+        // onboarding é o que a pessoa escolheu. Este vence.
+        await pool.query(
+          `UPDATE users SET name = coalesce((SELECT name FROM users WHERE id = $1), name)
+            WHERE id = $2`, [userId, dono.id]);
+        await pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
+        void logEvent(idFinal, 'user_merged', { de: userId, motivo: 'telefone já existia' });
+      } else if (!dono) {
+        await pool.query(`UPDATE users SET phone_e164 = $2 WHERE id = $1`, [userId, e164]);
+      }
+
+      await pool.query(
+        `UPDATE users SET wa_opt_in_at = coalesce(wa_opt_in_at, now()),
+                          delivery_window = coalesce($2, delivery_window),
+                          timezone = coalesce($3, timezone)
+          WHERE id = $1`, [idFinal, janela ?? null, timezone ?? null]);
+      void logEvent(idFinal, 'wa_opt_in', { window: janela ?? null, origem: 'webapp' });
+
+      return res.json({ ok: true, userId: idFinal, merged: idFinal !== userId });
+    } catch (err: any) {
+      console.error('[wa/link]', err?.message || err);
+      return res.status(500).json({ error: 'Falha ao ligar o WhatsApp ao perfil.' });
+    }
+  });
+
   /** Opt-in e janela de horário — chamado pelo app ou por um fluxo de cadastro. */
   app.post('/whatsapp/opt-in', exigeToken, async (req, res) => {
     try {

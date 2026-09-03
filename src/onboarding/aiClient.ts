@@ -78,3 +78,35 @@ export async function postOpening(
   if (!res.ok) throw new Error(`opening falhou: ${res.status}`);
   return (await res.json()) as OpeningResponse;
 }
+
+/**
+ * Liga o cadastro feito aqui ao canal do WhatsApp.
+ *
+ * É o passo que junta as duas metades do produto: sem ele a Abertura fica só
+ * no navegador e o WhatsApp nunca descobre quem é a pessoa, porque lá a
+ * identidade é o telefone.
+ *
+ * Se ela já tiver escrito para o Grão antes, o backend funde os dois cadastros
+ * e devolve o id que sobreviveu — por isso o retorno precisa ser guardado.
+ */
+export async function linkWhatsApp(
+  userId: string,
+  phone: string,
+  window: 'dawn' | 'morning' | 'noon' | 'evening',
+): Promise<{ userId: string; merged: boolean } | null> {
+  if (!API_URL) return null;   // modo demo, sem backend
+  try {
+    const res = await fetch(`${API_URL}/profile/${userId}/whatsapp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, window, timezone: 'America/Sao_Paulo' }),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return { userId: j.userId, merged: !!j.merged };
+  } catch {
+    // Falha de rede não pode travar o onboarding: a pessoa segue, e o
+    // WhatsApp fica pendente até ela ajustar nas configurações.
+    return null;
+  }
+}

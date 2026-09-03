@@ -65,7 +65,7 @@ export default function Notification({ navigation }: Props) {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('WhatsApp')}
+          onPress={() => navigation.navigate('WhatsApp', { window: selected })}
           activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>Continuar</Text>
