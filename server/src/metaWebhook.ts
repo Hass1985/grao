@@ -191,6 +191,13 @@ async function processarEvento(corpo: any): Promise<void> {
           if (!e164) continue;
           const { rows: [u] } = await pool.query(`SELECT id FROM users WHERE phone_e164 = $1`, [e164]);
           if (!u) continue;
+          // Sem isto a falha só existia no console do Render: a entrega sumia
+          // do banco e não sobrava rastro de por quê.
+          void logEvent(u.id, 'wa_send_failed', {
+            code: st.errors?.[0]?.code ?? null,
+            title: st.errors?.[0]?.title ?? null,
+            details: st.errors?.[0]?.error_data?.details ?? st.errors?.[0]?.message ?? null,
+          });
           const { rowCount } = await pool.query(
             `DELETE FROM seed_deliveries
               WHERE id = (SELECT max(id) FROM seed_deliveries
