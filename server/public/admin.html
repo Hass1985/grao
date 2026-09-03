@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Painel do Grão</title>
+<style>
+  :root{
+    --papel:#F7F3EA; --carta:#FFFDF8; --tinta:#3A3227; --tinta-suave:#7A6E5E;
+    --tinta-fraca:#A79986; --linha:#E5DCCB; --acento:#B4762A; --acento-fraco:#F2E7D4;
+    --verde:#4E7A52; --alerta:#A8542B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--papel);color:var(--tinta);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .env{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+  header{padding:36px 0 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .selo{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--acento);font-weight:600}
+  .quando{margin-left:auto;font-size:12px;color:var(--tinta-fraca)}
+  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-suave);
+    font-weight:600;margin:38px 0 12px}
+  .cartao{background:var(--carta);border:1px solid var(--linha);border-radius:10px;padding:18px 20px}
+
+  /* topo */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .kpi .n{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+  .kpi .r{font-size:12px;color:var(--tinta-suave);margin-top:4px}
+  .kpi .sub{font-size:11px;color:var(--tinta-fraca);margin-top:2px}
+
+  /* funil */
+  .etapa{display:grid;grid-template-columns:1fr 46px;gap:12px;align-items:center;margin-bottom:10px}
+  .etapa .rot{font-size:13px;margin-bottom:4px}
+  .trilho{height:9px;background:var(--acento-fraco);border-radius:99px;overflow:hidden}
+  .trilho i{display:block;height:100%;background:var(--acento);border-radius:99px}
+  .etapa .v{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;color:var(--tinta-suave)}
+  .queda{font-size:11px;color:var(--alerta);margin-left:8px}
+
+  /* gráfico */
+  .grafico{width:100%;height:150px;display:block}
+  .legenda{display:flex;gap:16px;font-size:12px;color:var(--tinta-suave);margin-top:8px}
+  .legenda i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+
+  .duas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.duas{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--tinta-fraca);font-weight:600;padding:0 8px 8px 0}
+  td{padding:7px 8px 7px 0;border-top:1px solid var(--linha)}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  .rolagem{overflow-x:auto}
+  .etiqueta{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;
+    background:var(--acento-fraco);color:var(--acento)}
+  .etiqueta.ok{background:#E4EFE4;color:var(--verde)}
+
+  .aviso{border-left:3px solid var(--acento);background:#FBF4E7;border-radius:0 8px 8px 0;
+    padding:12px 16px;font-size:13px;margin-bottom:12px}
+  .aviso b{display:block;margin-bottom:2px}
+
+  /* porta de entrada */
+  #porta{max-width:380px;margin:14vh auto;text-align:center}
+  #porta input{width:100%;padding:11px 13px;font:inherit;border:1px solid var(--linha);
+    border-radius:8px;background:var(--carta);margin:14px 0 10px}
+  button{font:inherit;background:var(--acento);color:#fff;border:0;border-radius:8px;
+    padding:11px 20px;cursor:pointer}
+  button.leve{background:none;color:var(--tinta-suave);border:1px solid var(--linha);padding:6px 12px;font-size:12px}
+  #erro{color:var(--alerta);font-size:13px;min-height:20px}
+  .oculto{display:none}
+</style>
+</head>
+<body>
+
+<div id="porta">
+  <div class="selo">Grão</div>
+  <h1>Painel de controle</h1>
+  <p style="color:var(--tinta-suave);font-size:14px">Cole o token de acesso.</p>
+  <input id="token" type="password" placeholder="token" autocomplete="off">
+  <button onclick="entrar()">Entrar</button>
+  <p id="erro"></p>
+</div>
+
+<div class="env oculto" id="painel">
+  <header>
+    <div>
+      <div class="selo">Grão</div>
+      <h1>Painel de controle</h1>
+    </div>
+    <div class="quando">
+      <span id="quando"></span>
+      <button class="leve" onclick="carregar()">atualizar</button>
+      <button class="leve" onclick="sair()">sair</button>
+    </div>
+  </header>
+
+  <div id="avisos"></div>
+
+  <h2>Agora</h2>
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Funil — onde as pessoas param</h2>
+  <div class="cartao" id="funil"></div>
+
+  <h2>Últimos 30 dias</h2>
+  <div class="cartao">
+    <svg class="grafico" id="gr" viewBox="0 0 720 150" preserveAspectRatio="none"></svg>
+    <div class="legenda">
+      <span><i style="background:var(--acento)"></i>sementes entregues</span>
+      <span><i style="background:var(--verde)"></i>plantadas</span>
+      <span><i style="background:var(--tinta-fraca)"></i>novos usuários</span>
+    </div>
+  </div>
+
+  <h2>Planos</h2>
+  <div class="cartao" id="planos"></div>
+
+  <div class="duas">
+    <div>
+      <h2>WhatsApp</h2>
+      <div class="cartao" id="wa"></div>
+    </div>
+    <div>
+      <h2>Horários escolhidos</h2>
+      <div class="cartao" id="janelas"></div>
+    </div>
+  </div>
+
+  <div class="duas">
+    <div>
+      <h2>Conteúdo entregue (30 dias)</h2>
+      <div class="cartao" id="familias"></div>
+    </div>
+    <div>
+      <h2>Louvores mais abertos</h2>
+      <div class="cartao" id="louvores"></div>
+    </div>
+  </div>
+
+  <h2>Pessoas</h2>
+  <div class="cartao rolagem" id="pessoas"></div>
+</div>
+
+<script>
+// Sem framework e sem template literal de propósito: a página é um leitor do
+// JSON de /admin/api/painel. Qualquer número aqui pode ser conferido abrindo
+// aquele endereço direto.
+var CHAVE = 'grao.admin.token';
+var D = null;
+
+function esc(s){ return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function el(id){ return document.getElementById(id); }
+function nfmt(n){ return Number(n || 0).toLocaleString('pt-BR'); }
+function reais(v){ return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',
+  {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function dataCurta(s){
+  if(!s) return '—';
+  // "2026-09-03" é dia civil, não instante: passar pelo Date faria o
+  // navegador lê-lo como UTC e mostrar o dia anterior no fuso do Brasil.
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s));
+  if(m) return m[3] + '/' + m[2];
+  return new Date(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+}
+function quandoRel(s){
+  if(!s) return '—';
+  var h = (Date.now() - new Date(s).getTime()) / 3600000;
+  if(h < 1) return 'agora há pouco';
+  if(h < 24) return Math.round(h) + 'h atrás';
+  return Math.round(h/24) + 'd atrás';
+}
+
+function entrar(){
+  var t = el('token').value.trim();
+  if(!t) return;
+  sessionStorage.setItem(CHAVE, t);
+  carregar();
+}
+function sair(){
+  sessionStorage.removeItem(CHAVE);
+  location.reload();
+}
+
+function carregar(){
+  var t = sessionStorage.getItem(CHAVE);
+  if(!t) return;
+  el('erro').textContent = 'carregando…';
+  fetch('/admin/api/painel', { headers: { 'x-grao-token': t } })
+    .then(function(r){
+      if(r.status === 401) throw new Error('Token não confere.');
+      if(r.status === 503) throw new Error('Falta configurar GRAO_ADMIN_TOKEN no servidor.');
+      if(!r.ok) throw new Error('Erro ' + r.status + ' ao buscar os dados.');
+      return r.json();
+    })
+    .then(function(d){
+      D = d;
+      el('porta').classList.add('oculto');
+      el('painel').classList.remove('oculto');
+      desenhar();
+    })
+    .catch(function(e){
+      el('erro').textContent = e.message;
+      sessionStorage.removeItem(CHAVE);
+    });
+}
+
+function desenhar(){
+  el('quando').textContent = 'atualizado ' +
+    new Date(D.geradoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' · ';
+
+  avisos();
+  kpis();
+  funil();
+  grafico();
+  planos();
+  whatsapp();
+  janelas();
+  listaSimples('familias', D.conteudo.familias, 'family', 'n', 'Nenhuma semente entregue nos últimos 30 dias.');
+  listaSimples('louvores', D.conteudo.louvores, 'titulo', 'n', 'Ninguém abriu um louvor ainda.');
+  pessoas();
+}
+
+function avisos(){
+  var a = [];
+  if(!D.tokenDedicado){
+    a.push(['Este painel está usando o token do cron.',
+      'Crie um GRAO_ADMIN_TOKEN separado no Render: assim dá para trocar o acesso ao painel sem derrubar o disparo diário.']);
+  }
+  if(!D.planos.cobrancaAtiva){
+    a.push(['Ainda não existe cobrança de verdade.',
+      'Nenhum gateway está ligado — nada é debitado de ninguém. O que aparece em Planos é a escolha declarada no onboarding mais o período de teste.']);
+  }
+  if(D.whatsapp.falhas7d > 0){
+    a.push([D.whatsapp.falhas7d + ' envio(s) falharam nos últimos 7 dias.',
+      'Detalhes no bloco WhatsApp, abaixo.']);
+  }
+  if(D.conteudo.menorRestante < 30){
+    a.push(['Restam ' + D.conteudo.menorRestante + ' sementes inéditas para quem já viu mais.',
+      'Vale ampliar a base antes de alguém começar a repetir.']);
+  }
+  el('avisos').innerHTML = a.map(function(x){
+    return '<div class="aviso"><b>' + esc(x[0]) + '</b>' + esc(x[1]) + '</div>';
+  }).join('');
+}
+
+function kpis(){
+  var r = D.resumo;
+  var itens = [
+    [nfmt(r.usuarios), 'pessoas cadastradas', nfmt(r.ativos7d) + ' ativas em 7 dias'],
+    [nfmt(r.comWhatsapp), 'com WhatsApp ligado',
+      r.usuarios ? Math.round(r.comWhatsapp / r.usuarios * 100) + '% do total' : '—'],
+    [nfmt(r.sementesHoje), 'sementes entregues hoje', nfmt(r.entregas7d) + ' em 7 dias'],
+    [r.taxaPlantio7d + '%', 'plantadas em 7 dias',
+      nfmt(r.plantios7d) + ' de ' + nfmt(r.entregas7d) + ' entregas'],
+    [nfmt(r.assinaturas), 'planos escolhidos', reais(D.planos.mrrReais) + '/mês se virarem pagos'],
+  ];
+  el('kpis').innerHTML = itens.map(function(i){
+    return '<div class="cartao kpi"><div class="n">' + esc(i[0]) + '</div>' +
+      '<div class="r">' + esc(i[1]) + '</div>' +
+      '<div class="sub">' + esc(i[2]) + '</div></div>';
+  }).join('');
+}
+
+function funil(){
+  var anterior = null;
+  el('funil').innerHTML = D.funil.map(function(e){
+    // A queda entre etapas é o que interessa: o número absoluto esconde onde
+    // as pessoas desistem.
+    var queda = '';
+    if(anterior !== null && anterior > 0 && e.n < anterior){
+      queda = '<span class="queda">−' + Math.round((1 - e.n / anterior) * 100) + '%</span>';
+    }
+    anterior = e.n;
+    return '<div class="etapa"><div><div class="rot">' + esc(e.rotulo) + queda + '</div>' +
+      '<div class="trilho"><i style="width:' + e.pct + '%"></i></div></div>' +
+      '<div class="v">' + nfmt(e.n) + '</div></div>';
+  }).join('');
+}
+
+function grafico(){
+  var dias = D.dias, L = 720, A = 150, base = A - 18;
+  var max = Math.max(1, Math.max.apply(null, dias.map(function(d){
+    return Math.max(d.entregas, d.novos); })));
+  var largura = L / dias.length, barra = Math.max(3, largura - 4);
+  var p = [];
+  dias.forEach(function(d, i){
+    var x = i * largura + (largura - barra) / 2;
+    var h = d.entregas / max * (base - 6);
+    var hp = d.plantios / max * (base - 6);
+    if(h > 0) p.push('<rect x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
+      '" width="' + barra.toFixed(1) + '" height="' + h.toFixed(1) +
+      '" fill="var(--acento)" opacity=".85" rx="2"></rect>');
+    if(hp > 0) p.push('<rect x="' + x.toFixed(1) + '" y="' + (base - hp).toFixed(1) +
+      '" width="' + barra.toFixed(1) + '" height="' + hp.toFixed(1) +
+      '" fill="var(--verde)" rx="2"></rect>');
+    if(d.novos > 0){
+      var y = base - d.novos / max * (base - 6);
+      p.push('<circle cx="' + (x + barra / 2).toFixed(1) + '" cy="' + y.toFixed(1) +
+        '" r="2.5" fill="var(--tinta-fraca)"></circle>');
+    }
+    // Só o primeiro, o meio e o último dia levam rótulo: 30 datas viram borrão.
+    if(i === 0 || i === dias.length - 1 || i === Math.floor(dias.length / 2)){
+      p.push('<text x="' + (x + barra / 2).toFixed(1) + '" y="' + (A - 4) +
+        '" font-size="9" fill="var(--tinta-fraca)" text-anchor="middle">' +
+        dataCurta(dias[i].dia) + '</text>');
+    }
+  });
+  p.push('<line x1="0" y1="' + base + '" x2="' + L + '" y2="' + base +
+    '" stroke="var(--linha)"></line>');
+  el('gr').innerHTML = p.join('');
+}
+
+function planos(){
+  var P = D.planos;
+  var h = '';
+  if(!P.linhas.length){
+    h = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
+      'Ninguém escolheu plano ainda. A escolha passa a ser gravada quando o app ' +
+      'atualizado for publicado.</p>';
+  } else {
+    h = '<table><tr><th>Plano</th><th>Situação</th><th style="text-align:right">Pessoas</th></tr>' +
+      P.linhas.map(function(l){
+        return '<tr><td>' + esc(l.plan) + '</td><td><span class="etiqueta' +
+          (l.status === 'ativa' ? ' ok' : '') + '">' + esc(l.status) + '</span></td>' +
+          '<td class="n">' + nfmt(l.n) + '</td></tr>';
+      }).join('') + '</table>' +
+      '<p style="font-size:13px;color:var(--tinta-suave);margin:14px 0 0">' +
+      'Receita mensal se todos virarem pagantes: <b>' + reais(P.mrrReais) + '</b> ' +
+      '(o plano anual entra dividido por 12).</p>';
+  }
+  if(P.trialsTerminando.length){
+    h += '<p style="font-size:13px;margin:14px 0 4px"><b>Testes terminando:</b></p><table>' +
+      P.trialsTerminando.map(function(t){
+        return '<tr><td>' + esc(t.nome) + '</td><td>' + esc(t.plan) + '</td>' +
+          '<td class="n">' + dataCurta(t.termina) + '</td></tr>';
+      }).join('') + '</table>';
+  }
+  el('planos').innerHTML = h;
+}
+
+function whatsapp(){
+  var w = D.whatsapp;
+  el('wa').innerHTML = '<table>' +
+    linha('Avisos enviados (7 dias)', nfmt(w.avisos7d)) +
+    linha('Sementes inteiras, sem custo', nfmt(w.gratuitas7d)) +
+    linha('Mensagens recebidas', nfmt(w.recebidas7d)) +
+    linha('Falhas de envio', nfmt(w.falhas7d)) +
+    linha('Com janela de 24h aberta agora', nfmt(w.janelaAbertaAgora)) +
+    linha('Custo estimado (7 dias)', reais(w.custoEstimado7d)) +
+    '</table>' +
+    '<p style="font-size:11px;color:var(--tinta-fraca);margin:10px 0 0">' +
+    'Estimativa a ' + reais(w.custoUnitario) + ' por aviso — a Meta remarca por país e período. ' +
+    'A fatura real está no painel da Meta.</p>' +
+    (w.falhasRecentes.length
+      ? '<p style="font-size:13px;margin:14px 0 4px"><b>Últimas falhas:</b></p><table>' +
+        w.falhasRecentes.map(function(f){
+          return '<tr><td>' + esc(f.nome) + '</td><td style="color:var(--alerta)">' +
+            esc(f.motivo) + '</td><td class="n">' + dataCurta(f.quando) + '</td></tr>';
+        }).join('') + '</table>'
+      : '');
+}
+function linha(r, v){
+  return '<tr><td>' + esc(r) + '</td><td class="n">' + esc(v) + '</td></tr>';
+}
+
+function janelas(){
+  if(!D.janelas.length){
+    el('janelas').innerHTML = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
+      'Ninguém ligou o WhatsApp ainda.</p>';
+    return;
+  }
+  el('janelas').innerHTML = '<table>' + D.janelas.map(function(j){
+    return '<tr><td>' + esc(j.rotulo) + '</td>' +
+      '<td style="color:var(--tinta-fraca)">' + esc(j.faixa) + '</td>' +
+      '<td class="n">' + nfmt(j.n) + '</td></tr>';
+  }).join('') + '</table>';
+}
+
+function listaSimples(alvo, itens, campo, valor, vazio){
+  if(!itens.length){
+    el(alvo).innerHTML = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
+      esc(vazio) + '</p>';
+    return;
+  }
+  var max = Math.max.apply(null, itens.map(function(i){ return i[valor]; }));
+  el(alvo).innerHTML = itens.map(function(i){
+    return '<div class="etapa"><div><div class="rot">' + esc(i[campo]) + '</div>' +
+      '<div class="trilho"><i style="width:' + (i[valor] / max * 100) + '%"></i></div></div>' +
+      '<div class="v">' + nfmt(i[valor]) + '</div></div>';
+  }).join('');
+}
+
+function pessoas(){
+  el('pessoas').innerHTML = '<table><tr><th>Pessoa</th><th>WhatsApp</th><th>Horário</th>' +
+    // "Etapa em falta", não "onde parou": mostramos a PRIMEIRA etapa não
+    // cumprida, e há quem pule uma e siga adiante mesmo assim.
+    '<th>Etapa em falta</th><th>Plano</th><th style="text-align:right">Sementes</th>' +
+    '<th style="text-align:right">Atividade</th></tr>' +
+    D.pessoas.map(function(p){
+      return '<tr><td>' + esc(p.nome) + '</td>' +
+        '<td style="color:var(--tinta-fraca)">' + esc(p.telefone || '—') + '</td>' +
+        '<td>' + esc(p.janela || '—') + '</td>' +
+        '<td><span class="etiqueta' + (p.completo ? ' ok' : '') + '">' +
+          esc(p.etapa) + '</span></td>' +
+        '<td>' + esc(p.plano || '—') + '</td>' +
+        '<td class="n">' + nfmt(p.entregas) + '</td>' +
+        '<td class="n" style="color:var(--tinta-fraca)">' + esc(quandoRel(p.ultimaAtividade)) + '</td></tr>';
+    }).join('') + '</table>';
+}
+
+if(sessionStorage.getItem(CHAVE)) carregar();
+el('token').addEventListener('keydown', function(e){ if(e.key === 'Enter') entrar(); });
+</script>
+</body>
+</html>

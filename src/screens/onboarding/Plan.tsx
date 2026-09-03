@@ -11,6 +11,7 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import { getUserId, escolherPlano } from '../../onboarding/aiClient';
 
 type Props = {
   onFinish: () => void;
@@ -54,6 +55,16 @@ const plans = [
 
 export default function Plan({ onFinish, navigation }: Props) {
   const [selected, setSelected] = useState('plantio');
+
+  // Grava a escolha e segue na hora. Não esperamos a resposta: o registro é
+  // para o painel, não para a pessoa — deixá-la olhando um botão parado por
+  // causa de uma chamada de rede seria pior do que perder um dado.
+  async function concluir() {
+    getUserId()
+      .then((id) => escolherPlano(id, selected as 'plantio' | 'anual'))
+      .catch(() => {});
+    onFinish();
+  }
 
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
@@ -124,7 +135,7 @@ export default function Plan({ onFinish, navigation }: Props) {
           })}
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={onFinish} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.button} onPress={concluir} activeOpacity={0.85}>
           <Text style={styles.buttonText}>Começar 7 dias grátis</Text>
         </TouchableOpacity>
 

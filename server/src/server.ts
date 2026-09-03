@@ -22,6 +22,7 @@ import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { registerWhatsAppRoutes } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
+import { registerAdminRoutes } from './admin.js';
 
 const app = express();
 
@@ -317,6 +318,43 @@ app.get('/profile/:userId/moment', async (req, res) => {
   res.json({ family });
 });
 
+/**
+ * Plano escolhido no fim do onboarding.
+ *
+ * Não cobra nada: não há gateway ligado. Registra a INTENÇÃO e abre os 7 dias
+ * de teste que a tela promete — sem isso a escolha morria na tela e o painel
+ * não teria como responder quantas pessoas quiseram qual plano, que é metade
+ * do que se olha num Trial.
+ *
+ * Quando entrar um Stripe/Asaas, é aqui que a assinatura passa a nascer com
+ * provider preenchido, e o webhook dele só precisa atualizar `status`.
+ */
+const PRECOS: Record<string, number> = { plantio: 1990, anual: 19900 };
+app.post('/profile/:userId/plan', async (req, res) => {
+  const { plan } = req.body as { plan?: string };
+  if (!plan || !(plan in PRECOS)) {
+    return res.status(400).json({ error: `plan deve ser um de: ${Object.keys(PRECOS).join(', ')}` });
+  }
+  try {
+    await ensureUser(req.params.userId);
+    // Trocar de plano no meio do teste não reinicia os 7 dias: trial_ends_at
+    // só é definido na primeira vez.
+    await pool.query(
+      `INSERT INTO subscriptions (user_id, plan, status, price_cents, trial_ends_at)
+            VALUES ($1, $2, 'trial', $3, now() + interval '7 days')
+       ON CONFLICT (user_id) DO UPDATE
+              SET plan = excluded.plan,
+                  price_cents = excluded.price_cents,
+                  updated_at = now()`,
+      [req.params.userId, plan, PRECOS[plan]]);
+    void logEvent(req.params.userId, 'plan_selected', { plan, priceCents: PRECOS[plan] });
+    res.json({ ok: true, plan, trialDias: 7 });
+  } catch (err: any) {
+    console.error('[plan]', err?.message || err);
+    res.status(500).json({ error: 'Falha ao registrar o plano.' });
+  }
+});
+
 // Semente do dia, escolhida pelo perfil + momento + canal.
 app.get('/seed/today/:userId', async (req, res) => {
   // Se a pessoa já recebeu a semente hoje — pelo WhatsApp ou por uma abertura
@@ -399,6 +437,9 @@ registerOuvirRoutes(app, BASE_URL);
 // assinatura HMAC — é o caminho em uso.
 registerWhatsAppRoutes(app);
 registerMetaWebhookRoutes(app);
+
+// Painel de controle (/admin). Protegido por GRAO_ADMIN_TOKEN.
+registerAdminRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => console.log(`Grão backend em http://localhost:${port}`));

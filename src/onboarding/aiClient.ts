@@ -104,7 +104,7 @@ export async function postOpening(
 export async function linkWhatsApp(
   userId: string,
   phone: string,
-  window: 'dawn' | 'morning' | 'noon' | 'evening',
+  window: 'dawn' | 'noon' | 'afternoon' | 'evening',
 ): Promise<{ userId: string; merged: boolean } | null> {
   if (!API_URL) return null;   // modo demo, sem backend
   try {
@@ -120,5 +120,26 @@ export async function linkWhatsApp(
     // Falha de rede não pode travar o onboarding: a pessoa segue, e o
     // WhatsApp fica pendente até ela ajustar nas configurações.
     return null;
+  }
+}
+
+/**
+ * Registra o plano escolhido e abre os 7 dias de teste.
+ *
+ * Não cobra nada — não há gateway ligado. Serve para o painel saber quantas
+ * pessoas escolheram qual plano; antes disso a escolha morria na tela.
+ * Silencioso de propósito: ninguém pode ficar preso na última tela do
+ * onboarding por causa de uma falha de rede.
+ */
+export async function escolherPlano(userId: string, plan: 'plantio' | 'anual'): Promise<void> {
+  if (!API_URL) return;
+  try {
+    await fetch(`${API_URL}/profile/${userId}/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+  } catch {
+    /* segue o fluxo */
   }
 }
