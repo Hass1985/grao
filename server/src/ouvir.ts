@@ -11,34 +11,26 @@
 // Bônus: como todo toque passa por aqui, dá para saber quais louvores as
 // pessoas realmente ouvem.
 //
-// O NOME da imagem é versionado (og-v2.png) porque o WhatsApp guarda cache
-// pela URL da IMAGEM, não da página. Trocar o conteúdo de /og.png não adianta:
-// ele reusa o que já baixou, mesmo num link de semente inédito. Ao mudar o
-// desenho, incremente a versão aqui.
+// O NOME da imagem é versionado porque o WhatsApp guarda cache pela URL da
+// IMAGEM, não da página. Trocar o conteúdo do arquivo não adianta: ele reusa
+// o que já baixou. Ao mudar o desenho, incremente a versão.
 //
-// A imagem é QUADRADA de propósito. A primeira versão usava o banner de
-// 1200×630 do site, e o WhatsApp — que recorta o preview pequeno em quadrado —
-// pegava uma faixa do meio, deixando o logo cortado e ilegível.
+// A imagem reproduz o SVG do site, com os números exatos (viewBox 26):
+//   ellipse cx=13 cy=13 rx=14.95 ry=9.75 stroke-width=1.5
+// O rx é MAIOR que a metade do quadro — é por isso que a elipse é cortada em
+// reta nas laterais. Foram três tentativas erradas antes de eu procurar o
+// arquivo real: desenhei uma elipse fechada, com traço fino demais.
 //
-// A segunda foi quadrada, mas com o traço fino do símbolo original: o
-// WhatsApp reduz a miniatura para ~64px e recomprime, e um traço de 0,75% da
-// largura vira menos de meio pixel — a compressão inventa franjas coloridas e
-// o logo parece mal feito.
-//
-// A terceira engrossou o traço e ainda ficava esfumaçada: contorno fino sobre
-// branco vira ruído quando o WhatsApp reduz para ~64px e recomprime em JPEG.
-// Não é falta de resolução — resolução MAIOR piora, porque a redução é maior.
-//
-// A atual usa a variante SÓLIDA da marca (o próprio GraoSymbol tem o modo
-// `filled`), com a elipse cortada nas laterais como no logo oficial. Área
-// cheia sobrevive à compressão; linha fina não. Comparado lado a lado numa
-// simulação de 64px antes de publicar.
+// O traço vale 5,77% do quadro. Com margem pequena e 400×400, ele chega a
+// ~3px na miniatura de 64px que o WhatsApp gera — grosso o bastante para
+// sobreviver à recompressão em JPEG, que era a origem das franjas coloridas.
+// Resolução MAIOR pioraria: quanto mais a imagem encolhe, mais fino o traço.
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
 
 /** Nome versionado da imagem de preview — ver a nota sobre cache acima. */
-const OG_IMAGEM = 'og-v4.png';
+const OG_IMAGEM = 'og-v5.png';
 
 /** Escapa para inserir com segurança em atributo HTML. */
 function esc(s: string): string {
@@ -75,8 +67,8 @@ export function registerOuvirRoutes(app: Express, baseUrl: () => string) {
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="O louvor da sua semente de hoje. 🌱">
 <meta property="og:image" content="${esc(og)}">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
+<meta property="og:image:width" content="400">
+<meta property="og:image:height" content="400">
 <meta property="og:image:alt" content="Grão">
 <meta name="twitter:card" content="summary">
 <meta http-equiv="refresh" content="0;url=${esc(s.url)}">
