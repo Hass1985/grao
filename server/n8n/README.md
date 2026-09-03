@@ -46,18 +46,14 @@ com variáveis e mande a semente já no primeiro disparo. O endpoint devolve
 Texto para submeter à aprovação (categoria `UTILITY`):
 
 ```
-Olá {{nome}}, esta é a sua semente de hoje 🌱
+Olá {{nome}}, sua semente de hoje já está pronta 🌱
 
-A palavra: {{passagem}}
+A palavra vem de {{referencia}}.
 
-{{reflexao}}
-
-Prática de hoje: {{pratica}}
-
-Para ouvir: 🎵 {{musica}}
-
-Que Deus te guarde. 🌱
+Toque em Plantar para receber a reflexão, a prática e o louvor.
 ```
+
+Botão de **resposta rápida**: `Plantar`.
 
 E no campo **Rodapé**, opcional e **sem emoji** (a Meta recusa emoji ali):
 

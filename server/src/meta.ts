@@ -48,96 +48,26 @@ export function sendText(phone: string, texto: string) {
 }
 
 /**
- * O limite de 1024 caracteres do corpo do template vale para a mensagem
- * MONTADA, não para o modelo com os espaços vazios.
+ * Aviso de que a semente do dia está pronta.
+ *
+ * Por que um AVISO e não a semente inteira: a Meta rejeitou o template
+ * completo por categoria — versículo, reflexão e link de música são conteúdo,
+ * e a categoria Utilidade cobre "mensagem sobre uma conta ou pedido
+ * existente". Marketing aprovaria, mas custa muito mais por mensagem, todo
+ * dia, por assinante.
+ *
+ * O aviso é, de fato, uma notificação sobre a assinatura. E ele resolve mais
+ * do que a categoria: o toque no botão abre a janela de 24h, e a semente
+ * completa segue como TEXTO LIVRE — gratuito, sem o teto de 1024 caracteres
+ * e com formatação melhor. Sumiu junto a necessidade de encurtar reflexão.
+ *
+ * O toque, aliás, é o próprio gesto de plantar. A fricção virou o ritual.
  */
-const LIMITE_CORPO = 1024;
-
-/**
- * Texto fixo do template. Três regras da Meta moldam este texto:
- *
- *  1. o corpo não pode começar nem TERMINAR numa variável — daí a saudação e
- *     a linha de fecho;
- *  2. DENSIDADE: é exigido no mínimo 3 × (nº de variáveis) + 1 palavras de
- *     texto fixo. A primeira versão tinha 12 palavras para 6 variáveis e foi
- *     rejeitada; um template quase todo feito de variáveis é recusado porque
- *     a Meta não consegue prever o que será enviado. Os rótulos ("A palavra:",
- *     "Para pensar:") existem por isso — e de quebra deixam a mensagem mais
- *     legível;
- *  3. o rodapé não aceita emoji.
- *
- * A referência foi fundida na variável `passagem` para baixar de 6 para 5
- * variáveis, o que reduz a exigência de palavras.
- */
-const MOLDE_FIXO = 'Olá , esta é a sua semente de hoje 🌱\n\nA palavra: \n\n\n\nPrática de hoje: \n\nPara ouvir: 🎵 \n\nQue Deus te guarde. 🌱';
-
-/**
- * REDE DE SEGURANÇA, não solução.
- *
- * O certo é a semente já caber, e é isso que `content:fit` garante: ele
- * reescreve editorialmente as reflexões longas, produzindo texto completo e
- * mais enxuto. Cortar no envio entregaria uma reflexão terminada em "…", e a
- * pessoa pensaria que faltou alguma coisa.
- *
- * Esta função só existe para o caso de uma semente nova escapar da revisão.
- * Quando ela dispara, grita no log: é anomalia a corrigir na origem, não
- * comportamento esperado.
- */
-function couberNoLimite(
-  p: { name: string; passage: string; reference: string; reflection: string; practice: string },
-  musica: string,
-): string {
-  const fixo = MOLDE_FIXO.length + (p.name?.trim() || 'tudo bem').length +
-    p.passage.length + p.reference.length + p.practice.length + musica.length;
-  const orcamento = LIMITE_CORPO - fixo;
-
-  if (p.reflection.length <= orcamento) return p.reflection;
-
-  console.error(
-    `[wa] ANOMALIA: reflexão de ${p.reflection.length} caracteres não cabe em ${orcamento}. ` +
-    `Rode "npm run content:fit -- gravar" para reescrever na origem; o corte abaixo é paliativo.`);
-
-  if (orcamento < 60) return '—';   // nem um fragmento faria sentido
-
-  const corte = p.reflection.slice(0, orcamento - 1);
-  const fimDeFrase = Math.max(corte.lastIndexOf('. '), corte.lastIndexOf('! '), corte.lastIndexOf('? '));
-  return (fimDeFrase > orcamento * 0.5 ? corte.slice(0, fimDeFrase + 1) : corte.trimEnd()) + '…';
-}
-
-/**
- * Template aprovado — o único caminho fora da janela de 24h.
- *
- * A Meta passou a exigir variáveis NOMEADAS ({{nome}}) em vez de numeradas
- * ({{1}}) na criação de templates novos. No envio, cada parâmetro carrega
- * `parameter_name`, e aí a ordem do array deixa de importar — o casamento é
- * pelo nome. Os nomes aqui têm que ser idênticos aos do corpo submetido.
- *
- * WA_TEMPLATE_POSITIONAL=true volta ao formato antigo, para o caso de um
- * template legado numerado.
- */
-export function sendSeedTemplate(phone: string, partes: {
-  name: string; passage: string; reference: string; reflection: string;
-  practice: string; musicTitle?: string; musicArtist?: string; musicUrl?: string;
-}) {
-  const musica = partes.musicTitle
-    ? [`${partes.musicTitle}${partes.musicArtist ? `, de ${partes.musicArtist}` : ''}`, partes.musicUrl]
-        .filter(Boolean).join(' — ')
-    : 'sem música hoje';
-
-  // Passagem e referência viajam juntas: uma variável a menos baixa a
-  // exigência de densidade da Meta em 3 palavras.
-  const passagem = `"${partes.passage}" — ${partes.reference}`;
-  const reflexao = couberNoLimite({ ...partes, passage: passagem, reference: '' }, musica);
-
+export function sendSeedNotice(phone: string, partes: { name: string; reference: string }) {
   const campos: Array<[string, string]> = [
-    // template não aceita variável vazia; o fallback mantém a frase natural
-    ['nome', partes.name?.trim() || 'tudo bem'],
-    ['passagem', passagem],
-    ['reflexao', reflexao],
-    ['pratica', partes.practice],
-    ['musica', musica],
+    ['nome', partes.name?.trim() || 'tudo bem'],   // variável vazia é recusada
+    ['referencia', partes.reference],
   ];
-
   const posicional = process.env.WA_TEMPLATE_POSITIONAL === 'true';
   const parameters = campos.map(([nome, text]) =>
     posicional ? { type: 'text', text } : { type: 'text', parameter_name: nome, text });

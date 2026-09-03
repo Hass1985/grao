@@ -16,7 +16,7 @@ import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMome
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser } from './seedSelector.js';
 import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
-import { sendText, sendSeedTemplate, markRead, metaConfigurada } from './meta.js';
+import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
 const SO_TEXTO =
@@ -59,16 +59,39 @@ interface MsgMeta {
  * que alimenta o Campo e a Raiz.
  */
 async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
-  const { rowCount } = await pool.query(
-    `UPDATE seed_deliveries SET planted = true
-      WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)
-        AND planted = false`, [userId]);
+  // A entrega registrada mais recente é a semente que foi anunciada hoje.
+  // d.id precisa de apelido: s.* traz s.id (texto) e sobrescreveria o id
+  // numérico da entrega, quebrando o UPDATE lá embaixo.
+  const { rows: [entrega] } = await pool.query(
+    `SELECT d.id AS entrega_id, s.* FROM seed_deliveries d
+       JOIN seeds s ON s.id = d.seed_id
+      WHERE d.user_id = $1
+      ORDER BY d.id DESC LIMIT 1`, [userId]);
 
-  void logEvent(userId, 'seed_planted', { source: 'whatsapp_botao' });
+  if (!entrega) {
+    await sendText(msg.from, 'Estou aqui. Me conta como você está hoje?');
+    return;
+  }
 
-  await sendText(msg.from, rowCount
-    ? 'Plantada. 🌱 Que ela cresça em você hoje. Se quiser conversar sobre o que está vivendo, é só me escrever.'
-    : 'Estou aqui. Me conta como você está hoje?');
+  // Texto livre: sem teto de 1024, com negrito e itálico, e gratuito porque o
+  // toque acabou de abrir a janela de 24h.
+  const perfil = await getProfile(userId);
+  const texto = formatSeed({
+    id: entrega.id, family: entrega.family, type: entrega.type,
+    passage: entrega.passage, reference: entrega.reference,
+    reflection: entrega.reflection, prayer: entrega.prayer, practice: entrega.practice,
+    music: {
+      title: entrega.music_title || undefined, artist: entrega.music_artist || undefined,
+      spotifyUrl: entrega.music_spotify || undefined, youtubeUrl: entrega.music_youtube || undefined,
+    },
+    reason: { family: entrega.family, source: 'momento', preferredType: entrega.type },
+  }, perfil ? null : undefined);
+
+  const r = await sendText(msg.from, texto);
+  if (!r.ok) { console.error(`[wa] falha ao entregar a semente: ${r.erro}`); return; }
+
+  await pool.query(`UPDATE seed_deliveries SET planted = true WHERE id = $1`, [entrega.entrega_id]);
+  void logEvent(userId, 'seed_planted', { seedId: entrega.id, source: 'whatsapp_botao' });
 }
 
 /** Processa UMA mensagem: cérebro, resposta e (se pedida) semente. */
@@ -193,20 +216,16 @@ async function despachar(janela: string): Promise<{ enviadas: number; falhas: nu
     const seed = await selectSeedForUser(u.id);
     if (!seed) continue;
 
-    const r = await sendSeedTemplate(u.phone_e164, {
+    // Só o AVISO é pago. A semente completa sai quando a pessoa toca em
+    // Plantar — como texto livre, dentro da janela de 24h, de graça.
+    const r = await sendSeedNotice(u.phone_e164, {
       name: u.name ?? '',
-      passage: seed.passage,
       reference: seed.reference,
-      reflection: seed.reflection,
-      practice: seed.practice,
-      musicTitle: seed.music.title,
-      musicArtist: seed.music.artist,
-      musicUrl: seed.music.spotifyUrl || seed.music.youtubeUrl,
     });
 
     if (r.ok) {
       enviadas++;
-      void logEvent(u.id, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'whatsapp_cron' });
+      void logEvent(u.id, 'seed_announced', { seedId: seed.id, family: seed.family, source: 'whatsapp_cron' });
     } else {
       falhas++;
       detalhes.push(`${u.phone_e164}: ${r.erro}`);
