@@ -29,7 +29,8 @@
     "content:gestures": "tsx scripts/label-gestures.ts",
     "content:simulate": "tsx scripts/simulate-year.ts",
     "wa:check": "tsx scripts/check-wa.ts",
-    "api:token": "bash scripts/set-api-token.sh"
+    "api:token": "bash scripts/set-api-token.sh",
+    "content:fit": "tsx scripts/fit-templates.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

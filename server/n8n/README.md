@@ -56,7 +56,11 @@ Olá {{nome}}, sua semente de hoje 🌱
 Prática de hoje: {{pratica}}
 
 🎵 {{musica}}
+```
 
+E no campo **Rodapé** (que não consome o limite do corpo):
+
+```
 Que Deus te guarde hoje. 🌱
 ```
 
@@ -67,9 +71,12 @@ Duas regras da Meta que derrubam o modelo se ignoradas:
 2. **O corpo não pode terminar (nem começar) numa variável.** É por isso que
    existe a linha de fecho no final.
 3. **O limite de 1024 caracteres vale para a mensagem MONTADA**, não para o
-   modelo com os espaços vazios. Medindo a base: 16 das 380 sementes
-   estouravam esse teto. O `sendSeedTemplate` encurta a reflexão — e só ela —
-   até caber, cortando no fim de uma frase.
+   modelo com os espaços vazios. Medindo a base, 16 das 380 sementes
+   estouravam o teto. A solução é na ORIGEM: `npm run content:fit` reescreve
+   editorialmente as reflexões longas, entregando texto **completo** e mais
+   enxuto. Cortar no envio deixaria a reflexão terminando em "…" e a pessoa
+   pensaria que faltou alguma coisa. O corte no `sendSeedTemplate` continua lá
+   só como rede de segurança, e grita no log quando dispara.
 
 No envio, cada parâmetro leva `parameter_name` com esses mesmos nomes.
 

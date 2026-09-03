@@ -49,22 +49,27 @@ export function sendText(phone: string, texto: string) {
 
 /**
  * O limite de 1024 caracteres do corpo do template vale para a mensagem
- * MONTADA, não para o modelo com os espaços vazios. Medindo a base real:
- * 16 das 380 sementes estouram esse teto, e a maior chega a 1174. Sem esta
- * trava elas falhariam no envio — em silêncio, para ~4% das entregas.
+ * MONTADA, não para o modelo com os espaços vazios.
  */
 const LIMITE_CORPO = 1024;
 
-/** Texto fixo do template (tudo que não é variável), para calcular o orçamento. */
-const MOLDE_FIXO = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 \n\nQue Deus te guarde hoje. 🌱';
+/**
+ * Texto fixo do template. O fecho ("Que Deus te guarde hoje") vive no RODAPÉ,
+ * que é campo separado na Meta e não consome o orçamento do corpo.
+ */
+const MOLDE_FIXO = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 ';
 
 /**
- * Encurta a REFLEXÃO até a mensagem caber, cortando no fim de uma frase.
+ * REDE DE SEGURANÇA, não solução.
  *
- * A reflexão é o campo sacrificado de propósito: é o mais longo e o único que
- * sobrevive a um corte. Passagem, referência, prática e música ou vão
- * inteiras ou não fazem sentido — cortar um versículo pela metade seria pior
- * que não enviar.
+ * O certo é a semente já caber, e é isso que `content:fit` garante: ele
+ * reescreve editorialmente as reflexões longas, produzindo texto completo e
+ * mais enxuto. Cortar no envio entregaria uma reflexão terminada em "…", e a
+ * pessoa pensaria que faltou alguma coisa.
+ *
+ * Esta função só existe para o caso de uma semente nova escapar da revisão.
+ * Quando ela dispara, grita no log: é anomalia a corrigir na origem, não
+ * comportamento esperado.
  */
 function couberNoLimite(
   p: { name: string; passage: string; reference: string; reflection: string; practice: string },
@@ -75,12 +80,12 @@ function couberNoLimite(
   const orcamento = LIMITE_CORPO - fixo;
 
   if (p.reflection.length <= orcamento) return p.reflection;
-  if (orcamento < 60) {
-    // Caso patológico: nem uma reflexão mínima cabe. Melhor mandar sem ela do
-    // que mandar um fragmento sem sentido.
-    console.warn(`[wa] semente longa demais para template (sobra ${orcamento} caracteres para a reflexão)`);
-    return '—';
-  }
+
+  console.error(
+    `[wa] ANOMALIA: reflexão de ${p.reflection.length} caracteres não cabe em ${orcamento}. ` +
+    `Rode "npm run content:fit -- gravar" para reescrever na origem; o corte abaixo é paliativo.`);
+
+  if (orcamento < 60) return '—';   // nem um fragmento faria sentido
 
   const corte = p.reflection.slice(0, orcamento - 1);
   const fimDeFrase = Math.max(corte.lastIndexOf('. '), corte.lastIndexOf('! '), corte.lastIndexOf('? '));
