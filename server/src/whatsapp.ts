@@ -52,6 +52,9 @@ export async function resolveUserByPhone(phone: string, name?: string): Promise<
  * Formatação: *negrito* e _itálico_ são o que o WhatsApp entende; nada de
  * markdown de cabeçalho, que aparece cru para o usuário.
  */
+const BASE_URL = () =>
+  (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
+
 export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
   const saudacao = nome ? `${nome}, sua semente de hoje 🌱` : 'Sua semente de hoje 🌱';
   const partes = [
@@ -67,9 +70,12 @@ export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
     `*Prática de hoje*\n${seed.practice}`,
   ];
   if (seed.music.title) {
-    const link = seed.music.spotifyUrl || seed.music.youtubeUrl;
+    // O link passa pela nossa página-ponte para o preview do WhatsApp mostrar
+    // o Grão, e não a miniatura borrada do Spotify.
     partes.push('', `🎵 *${seed.music.title}* — ${seed.music.artist ?? ''}`.trimEnd());
-    if (link) partes.push(link);
+    if (seed.music.spotifyUrl || seed.music.youtubeUrl) {
+      partes.push(`${BASE_URL()}/ouvir/${seed.id}`);
+    }
   }
   return partes.join('\n');
 }

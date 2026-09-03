@@ -21,6 +21,7 @@ import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { registerWhatsAppRoutes } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
+import { registerOuvirRoutes } from './ouvir.js';
 
 const app = express();
 
@@ -382,6 +383,15 @@ app.delete('/user/:userId', async (req, res) => {
   await deleteUserData(req.params.userId);
   res.json({ ok: true });
 });
+
+// Imagem do preview e página-ponte do louvor.
+//
+// PUBLIC_BASE_URL precisa ser a URL pública do backend: é ela que vai dentro
+// da og:image, e o rastreador do WhatsApp busca essa imagem de fora.
+const BASE_URL = () =>
+  (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
+app.use(express.static('public', { maxAge: '7d' }));
+registerOuvirRoutes(app, BASE_URL);
 
 // Canal WhatsApp. As rotas /whatsapp/inbound|due|opt-in são protegidas por
 // GRAO_API_TOKEN e existem para um orquestrador externo (n8n). O webhook
