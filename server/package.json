@@ -30,7 +30,8 @@
     "content:simulate": "tsx scripts/simulate-year.ts",
     "wa:check": "tsx scripts/check-wa.ts",
     "api:token": "bash scripts/set-api-token.sh",
-    "content:backup": "tsx scripts/backup-seeds.ts"
+    "content:backup": "tsx scripts/backup-seeds.ts",
+    "funil": "tsx scripts/funil.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",
