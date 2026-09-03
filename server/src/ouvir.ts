@@ -25,14 +25,20 @@
 // largura vira menos de meio pixel — a compressão inventa franjas coloridas e
 // o logo parece mal feito.
 //
-// A atual é 512×512 (menos redução) com traço de 3,5% da largura, quase cinco
-// vezes mais grosso. Line art fina não sobrevive a miniatura; área sólida sim.
+// A terceira engrossou o traço e ainda ficava esfumaçada: contorno fino sobre
+// branco vira ruído quando o WhatsApp reduz para ~64px e recomprime em JPEG.
+// Não é falta de resolução — resolução MAIOR piora, porque a redução é maior.
+//
+// A atual usa a variante SÓLIDA da marca (o próprio GraoSymbol tem o modo
+// `filled`), com a elipse cortada nas laterais como no logo oficial. Área
+// cheia sobrevive à compressão; linha fina não. Comparado lado a lado numa
+// simulação de 64px antes de publicar.
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
 
 /** Nome versionado da imagem de preview — ver a nota sobre cache acima. */
-const OG_IMAGEM = 'og-v3.png';
+const OG_IMAGEM = 'og-v4.png';
 
 /** Escapa para inserir com segurança em atributo HTML. */
 function esc(s: string): string {
