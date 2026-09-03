@@ -6,410 +6,867 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Painel do Grão</title>
 <style>
-  :root{
-    --papel:#F7F3EA; --carta:#FFFDF8; --tinta:#3A3227; --tinta-suave:#7A6E5E;
-    --tinta-fraca:#A79986; --linha:#E5DCCB; --acento:#B4762A; --acento-fraco:#F2E7D4;
-    --verde:#4E7A52; --alerta:#A8542B;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--papel);color:var(--tinta);
-    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  .env{max-width:1080px;margin:0 auto;padding:0 20px 80px}
-  header{padding:36px 0 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-  h1{font-size:26px;margin:0;letter-spacing:-.02em}
-  .selo{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--acento);font-weight:600}
-  .quando{margin-left:auto;font-size:12px;color:var(--tinta-fraca)}
-  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-suave);
-    font-weight:600;margin:38px 0 12px}
-  .cartao{background:var(--carta);border:1px solid var(--linha);border-radius:10px;padding:18px 20px}
+/* ===========================================================================
+   Painel do Grão — uma página, oito seções, um único fetch.
+   A navegação é por hash (#pessoas), então recarregar mantém onde você estava.
+   =========================================================================== */
+:root{
+  --papel:#F4F0E8; --carta:#FFFFFF; --fundo-fraco:#FAF7F1;
+  --tinta:#1C1813; --tinta-media:#6B6154; --tinta-fraca:#9C9081;
+  --linha:#E7DFD1; --linha-fraca:#F0EAE0;
+  --acento:#B4762A; --acento-claro:#F6EBD9; --acento-escuro:#8E5B1D;
+  --verde:#4E7A52; --verde-claro:#E6EFE6;
+  --alerta:#A8542B; --alerta-claro:#F8E9E1;
+  --teal:#3E6B6B; --barro:#9B5F3E;
+  --lateral:#1E1913; --lateral-tinta:#CFC5B4; --lateral-ativo:#2E271D;
+  --sombra:0 1px 2px rgba(28,24,19,.04), 0 8px 24px -18px rgba(28,24,19,.35);
+  --raio:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--papel);color:var(--tinta);
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-variant-numeric:tabular-nums}
+.oculto{display:none !important}
 
-  /* topo */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .kpi .n{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
-  .kpi .r{font-size:12px;color:var(--tinta-suave);margin-top:4px}
-  .kpi .sub{font-size:11px;color:var(--tinta-fraca);margin-top:2px}
+/* ---------- porta de entrada ---------- */
+#porta{max-width:360px;margin:0 auto;padding:16vh 24px;text-align:center}
+#porta .marca-grande{display:flex;justify-content:center;margin-bottom:20px}
+#porta h1{font-size:24px;margin:0 0 6px;letter-spacing:-.02em}
+#porta p{color:var(--tinta-media);font-size:14px;margin:0 0 20px}
+#porta input{width:100%;padding:11px 14px;font:inherit;border:1px solid var(--linha);
+  border-radius:8px;background:var(--carta);margin-bottom:10px}
+#porta input:focus{outline:2px solid var(--acento);outline-offset:1px;border-color:transparent}
+#erro{color:var(--alerta);font-size:13px;min-height:20px;margin-top:12px}
 
-  /* funil */
-  .etapa{display:grid;grid-template-columns:1fr 46px;gap:12px;align-items:center;margin-bottom:10px}
-  .etapa .rot{font-size:13px;margin-bottom:4px}
-  .trilho{height:9px;background:var(--acento-fraco);border-radius:99px;overflow:hidden}
-  .trilho i{display:block;height:100%;background:var(--acento);border-radius:99px}
-  .etapa .v{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;color:var(--tinta-suave)}
-  .queda{font-size:11px;color:var(--alerta);margin-left:8px}
+/* ---------- esqueleto ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
 
-  /* gráfico */
-  .grafico{width:100%;height:150px;display:block}
-  .legenda{display:flex;gap:16px;font-size:12px;color:var(--tinta-suave);margin-top:8px}
-  .legenda i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+/* ---------- lateral ---------- */
+.lateral{
+  background:var(--lateral);color:var(--lateral-tinta);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+}
+.marca{display:flex;align-items:center;gap:10px;padding:22px 20px 18px}
+.marca .nome{color:#F2ECE1;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.marca .sub{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:#8B8071;font-weight:600;margin-top:4px}
+.lateral nav{padding:6px 12px;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.lateral a{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;
+  color:var(--lateral-tinta);text-decoration:none;font-size:14px;line-height:1.2;
+  transition:background .12s,color .12s;
+}
+.lateral a svg{flex:none;opacity:.72}
+.lateral a:hover{background:#26201A;color:#F2ECE1}
+/* O item ativo precisa se distinguir do hover: só a diferença de fundo entre
+   #26201A e #2E271D é imperceptível, e a pessoa perde de vista onde está. */
+.lateral a.ativo{background:var(--lateral-ativo);color:#FFF;font-weight:500;position:relative}
+.lateral a.ativo::before{content:"";position:absolute;left:0;top:7px;bottom:7px;
+  width:3px;border-radius:0 3px 3px 0;background:var(--acento)}
+.lateral a.ativo svg{opacity:1;color:var(--acento)}
+.lateral a .pino{margin-left:auto;font-size:11px;padding:1px 7px;border-radius:99px;
+  background:var(--alerta);color:#fff;font-variant-numeric:tabular-nums}
+.rodape-lateral{margin-top:auto;padding:14px 20px 18px;border-top:1px solid #2C251B;
+  font-size:11px;color:#7C7263;display:flex;flex-direction:column;gap:8px}
+.rodape-lateral button{background:none;border:1px solid #38301F;color:#9C9081;
+  border-radius:6px;padding:5px 10px;font:inherit;font-size:11px;cursor:pointer;align-self:flex-start}
+.rodape-lateral button:hover{color:#E8E0D2;border-color:#584B33}
 
-  .duas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:720px){.duas{grid-template-columns:1fr}}
+/* ---------- topo ---------- */
+main{min-width:0;display:flex;flex-direction:column}
+/* Grade em vez de flex: com flex-wrap, uma descrição mais longa empurrava os
+   controles para a linha de baixo, e o cabeçalho mudava de altura a cada
+   seção. Aqui título e ações ficam sempre lado a lado, e a descrição ocupa a
+   linha inteira embaixo. */
+.topo{
+  position:sticky;top:0;z-index:5;background:rgba(244,240,232,.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--linha);
+  padding:20px 32px;display:grid;grid-template-columns:1fr auto;
+  align-items:center;column-gap:20px;row-gap:4px;
+}
+.topo h1{font-size:22px;margin:0;letter-spacing:-.02em;line-height:1.2;min-width:0}
+.topo .desc{color:var(--tinta-media);font-size:13px;margin:0;grid-column:1/-1;max-width:78ch}
+.acoes{display:flex;align-items:center;gap:8px}
+select,.botao{
+  font:inherit;font-size:13px;background:var(--carta);color:var(--tinta);
+  border:1px solid var(--linha);border-radius:7px;padding:7px 10px;cursor:pointer;
+}
+select:hover,.botao:hover{border-color:var(--tinta-fraca)}
+.botao.forte{background:var(--acento);border-color:var(--acento);color:#fff}
+.botao.forte:hover{background:var(--acento-escuro);border-color:var(--acento-escuro)}
+.carimbo{font-size:11px;color:var(--tinta-fraca);white-space:nowrap}
+.conteudo{padding:26px 32px 72px;flex:1}
 
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
-    color:var(--tinta-fraca);font-weight:600;padding:0 8px 8px 0}
-  td{padding:7px 8px 7px 0;border-top:1px solid var(--linha)}
-  td.n{text-align:right;font-variant-numeric:tabular-nums}
-  .rolagem{overflow-x:auto}
-  .etiqueta{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;
-    background:var(--acento-fraco);color:var(--acento)}
-  .etiqueta.ok{background:#E4EFE4;color:var(--verde)}
+/* ---------- blocos ---------- */
+.grade{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-2-1{grid-template-columns:2fr 1fr}
+@media(max-width:1080px){.g4{grid-template-columns:repeat(2,1fr)}
+  .g3,.g2,.g-2-1{grid-template-columns:1fr}}
 
-  .aviso{border-left:3px solid var(--acento);background:#FBF4E7;border-radius:0 8px 8px 0;
-    padding:12px 16px;font-size:13px;margin-bottom:12px}
-  .aviso b{display:block;margin-bottom:2px}
+.cartao{background:var(--carta);border:1px solid var(--linha);border-radius:var(--raio);
+  padding:18px 20px;box-shadow:var(--sombra)}
+.cartao h3{font-size:13px;font-weight:600;margin:0 0 2px;letter-spacing:-.005em}
+.cartao .nota{font-size:12px;color:var(--tinta-fraca);margin:0 0 14px}
+.cartao h3+.tabela,.cartao h3+.lista,.cartao h3+svg{margin-top:14px}
 
-  /* porta de entrada */
-  #porta{max-width:380px;margin:14vh auto;text-align:center}
-  #porta input{width:100%;padding:11px 13px;font:inherit;border:1px solid var(--linha);
-    border-radius:8px;background:var(--carta);margin:14px 0 10px}
-  button{font:inherit;background:var(--acento);color:#fff;border:0;border-radius:8px;
-    padding:11px 20px;cursor:pointer}
-  button.leve{background:none;color:var(--tinta-suave);border:1px solid var(--linha);padding:6px 12px;font-size:12px}
-  #erro{color:var(--alerta);font-size:13px;min-height:20px}
-  .oculto{display:none}
+.kpi .rotulo{font-size:12px;color:var(--tinta-media);margin:0 0 6px}
+.kpi .valor{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.kpi .apoio{font-size:12px;color:var(--tinta-fraca);margin:6px 0 0}
+.kpi .apoio b{color:var(--tinta-media);font-weight:500}
+
+.secao-titulo{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tinta-fraca);margin:30px 0 12px}
+.secao-titulo:first-child{margin-top:0}
+
+/* ---------- listas com barra ---------- */
+.lista{display:flex;flex-direction:column;gap:11px}
+.item .cima{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:5px}
+.item .rot{font-size:13px}
+.item .val{font-size:13px;color:var(--tinta-media);font-variant-numeric:tabular-nums;flex:none}
+.trilho{height:7px;background:var(--linha-fraca);border-radius:99px;overflow:hidden}
+.trilho i{display:block;height:100%;background:var(--acento);border-radius:99px}
+.trilho i.verde{background:var(--verde)}
+
+/* ---------- funil ---------- */
+.degrau{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--linha-fraca)}
+.degrau:last-child{border-bottom:0}
+.degrau .ordem{width:22px;height:22px;border-radius:99px;background:var(--acento-claro);
+  color:var(--acento-escuro);font-size:11px;font-weight:600;display:grid;place-items:center;flex:none}
+.degrau .corpo{flex:1;min-width:0}
+.degrau .rot{font-size:13px;margin-bottom:5px;display:flex;justify-content:space-between;gap:10px}
+.degrau .queda{color:var(--alerta);font-size:11px;font-weight:500;white-space:nowrap}
+.degrau .direita{text-align:right;flex:none;width:74px}
+.degrau .n{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.degrau .pct{font-size:11px;color:var(--tinta-fraca)}
+
+/* ---------- tabelas ---------- */
+.rolagem{overflow-x:auto;margin:0 -20px;padding:0 20px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--tinta-fraca);font-weight:600;padding:0 12px 9px 0;white-space:nowrap}
+td{padding:9px 12px 9px 0;border-top:1px solid var(--linha-fraca);vertical-align:top}
+tbody tr:hover{background:var(--fundo-fraco)}
+td.dir,th.dir{text-align:right;padding-right:0}
+.mono{font-variant-numeric:tabular-nums}
+.fraco{color:var(--tinta-fraca)}
+.forte{font-weight:500}
+
+.selo{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;
+  background:var(--acento-claro);color:var(--acento-escuro);white-space:nowrap}
+.selo.ok{background:var(--verde-claro);color:var(--verde)}
+.selo.ruim{background:var(--alerta-claro);color:var(--alerta)}
+.selo.neutro{background:var(--linha-fraca);color:var(--tinta-media)}
+
+/* ---------- avisos ---------- */
+.aviso{display:flex;gap:12px;border:1px solid var(--linha);border-left:3px solid var(--acento);
+  background:var(--carta);border-radius:0 var(--raio) var(--raio) 0;padding:13px 16px;font-size:13px}
+.aviso.grave{border-left-color:var(--alerta)}
+.aviso b{display:block;margin-bottom:2px}
+.aviso p{margin:0;color:var(--tinta-media)}
+
+/* ---------- gráficos ---------- */
+svg.gr{width:100%;height:auto;display:block;overflow:visible}
+.legenda{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--tinta-media);margin-top:12px}
+.legenda span{display:flex;align-items:center;gap:6px}
+.legenda i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+.vazio{color:var(--tinta-fraca);font-size:13px;padding:6px 0;margin:0}
+
+/* ---------- busca ---------- */
+.busca{width:100%;max-width:280px;padding:7px 11px;font:inherit;font-size:13px;
+  border:1px solid var(--linha);border-radius:7px;background:var(--carta)}
+
+/* ---------- linha do tempo ---------- */
+.tempo{display:flex;flex-direction:column}
+.tempo .ev{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--linha-fraca);font-size:13px}
+.tempo .ev:last-child{border-bottom:0}
+.tempo .hora{color:var(--tinta-fraca);font-size:12px;width:88px;flex:none;font-variant-numeric:tabular-nums}
+.tempo .quem{font-weight:500;width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tempo .oque{color:var(--tinta-media);min-width:0}
+.tempo .ev.falha .oque{color:var(--alerta)}
+
+@media(max-width:860px){
+  /* O cabeçalho em duas colunas tem largura mínima própria (título + relógio +
+     seletor + botão). Abaixo de ~430px isso estoura a tela e a página inteira
+     ganha rolagem horizontal. Empilhado, não estoura. */
+  .topo{grid-template-columns:1fr}
+  .acoes{flex-wrap:wrap}
+  .app{grid-template-columns:1fr}
+  .lateral{position:static;height:auto}
+  .lateral nav{flex-direction:row;overflow-x:auto;padding:0 12px 12px}
+  .lateral a{white-space:nowrap}
+  .lateral a .pino{margin-left:6px}
+  .rodape-lateral{flex-direction:row;align-items:center;justify-content:space-between}
+  .topo,.conteudo{padding-left:20px;padding-right:20px}
+}
 </style>
 </head>
 <body>
 
+<!-- ====================== porta de entrada ====================== -->
 <div id="porta">
-  <div class="selo">Grão</div>
-  <h1>Painel de controle</h1>
-  <p style="color:var(--tinta-suave);font-size:14px">Cole o token de acesso.</p>
+  <div class="marca-grande">
+    <svg width="46" height="46" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+      <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#B4762A" stroke-width="1.5"/>
+      <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#B4762A" stroke-width="1.5"/>
+    </svg>
+  </div>
+  <h1>Painel do Grão</h1>
+  <p>Cole o token de acesso.</p>
   <input id="token" type="password" placeholder="token" autocomplete="off">
-  <button onclick="entrar()">Entrar</button>
+  <button class="botao forte" style="width:100%;padding:11px" onclick="entrar()">Entrar</button>
   <p id="erro"></p>
 </div>
 
-<div class="env oculto" id="painel">
-  <header>
-    <div>
-      <div class="selo">Grão</div>
-      <h1>Painel de controle</h1>
+<!-- ====================== painel ====================== -->
+<div class="app oculto" id="app">
+  <aside class="lateral">
+    <div class="marca">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+        <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#B4762A" stroke-width="1.5"/>
+        <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#B4762A" stroke-width="1.5"/>
+      </svg>
+      <div><span class="nome">Grão</span><span class="sub">Painel</span></div>
     </div>
-    <div class="quando">
-      <span id="quando"></span>
-      <button class="leve" onclick="carregar()">atualizar</button>
-      <button class="leve" onclick="sair()">sair</button>
+    <nav id="menu"></nav>
+    <div class="rodape-lateral">
+      <span id="rodapeInfo"></span>
+      <button onclick="sair()">Sair</button>
     </div>
-  </header>
+  </aside>
 
-  <div id="avisos"></div>
-
-  <h2>Agora</h2>
-  <div class="kpis" id="kpis"></div>
-
-  <h2>Funil — onde as pessoas param</h2>
-  <div class="cartao" id="funil"></div>
-
-  <h2>Últimos 30 dias</h2>
-  <div class="cartao">
-    <svg class="grafico" id="gr" viewBox="0 0 720 150" preserveAspectRatio="none"></svg>
-    <div class="legenda">
-      <span><i style="background:var(--acento)"></i>sementes entregues</span>
-      <span><i style="background:var(--verde)"></i>plantadas</span>
-      <span><i style="background:var(--tinta-fraca)"></i>novos usuários</span>
+  <main>
+    <div class="topo">
+      <div>
+        <h1 id="tituloSecao">Visão geral</h1>
+        <p class="desc" id="descSecao"></p>
+      </div>
+      <div class="acoes">
+        <span class="carimbo" id="carimbo"></span>
+        <select id="periodo" onchange="trocarPeriodo()">
+          <option value="7">7 dias</option>
+          <option value="30" selected>30 dias</option>
+          <option value="90">90 dias</option>
+          <option value="365">1 ano</option>
+        </select>
+        <button class="botao" onclick="carregar()">Atualizar</button>
+      </div>
     </div>
-  </div>
-
-  <h2>Planos</h2>
-  <div class="cartao" id="planos"></div>
-
-  <div class="duas">
-    <div>
-      <h2>WhatsApp</h2>
-      <div class="cartao" id="wa"></div>
-    </div>
-    <div>
-      <h2>Horários escolhidos</h2>
-      <div class="cartao" id="janelas"></div>
-    </div>
-  </div>
-
-  <div class="duas">
-    <div>
-      <h2>Conteúdo entregue (30 dias)</h2>
-      <div class="cartao" id="familias"></div>
-    </div>
-    <div>
-      <h2>Louvores mais abertos</h2>
-      <div class="cartao" id="louvores"></div>
-    </div>
-  </div>
-
-  <h2>Pessoas</h2>
-  <div class="cartao rolagem" id="pessoas"></div>
+    <div class="conteudo" id="conteudo"></div>
+  </main>
 </div>
 
 <script>
-// Sem framework e sem template literal de propósito: a página é um leitor do
-// JSON de /admin/api/painel. Qualquer número aqui pode ser conferido abrindo
-// aquele endereço direto.
+'use strict';
+
+// ===========================================================================
+// Estado
+// ===========================================================================
 var CHAVE = 'grao.admin.token';
-var D = null;
+var D = null;                 // resposta inteira de /admin/api/painel
+var dias = 30;
+var secaoAtual = 'visao';
 
-function esc(s){ return String(s == null ? '' : s)
-  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function el(id){ return document.getElementById(id); }
-function nfmt(n){ return Number(n || 0).toLocaleString('pt-BR'); }
-function reais(v){ return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',
-  {minimumFractionDigits:2, maximumFractionDigits:2}); }
-function dataCurta(s){
-  if(!s) return '—';
-  // "2026-09-03" é dia civil, não instante: passar pelo Date faria o
-  // navegador lê-lo como UTC e mostrar o dia anterior no fuso do Brasil.
-  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s));
-  if(m) return m[3] + '/' + m[2];
-  return new Date(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+// ===========================================================================
+// Utilidades
+// ===========================================================================
+var el = function (id) { return document.getElementById(id); };
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-function quandoRel(s){
-  if(!s) return '—';
+function n(v) { return Number(v || 0).toLocaleString('pt-BR'); }
+function pct(a, b) { return b ? Math.round((a / b) * 100) : 0; }
+function reais(v) {
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function diaCurto(s) {
+  // "2026-09-03" é dia civil, não instante: passar pelo Date faria o navegador
+  // lê-lo como UTC e mostrar o dia anterior no fuso do Brasil.
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  return m ? m[3] + '/' + m[2] : '—';
+}
+function dataHora(s) {
+  if (!s) return '—';
+  return new Date(s).toLocaleString('pt-BR',
+    { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+function relativo(s) {
+  if (!s) return 'nunca';
   var h = (Date.now() - new Date(s).getTime()) / 3600000;
-  if(h < 1) return 'agora há pouco';
-  if(h < 24) return Math.round(h) + 'h atrás';
-  return Math.round(h/24) + 'd atrás';
+  if (h < 1) return 'agora há pouco';
+  if (h < 24) return Math.round(h) + 'h atrás';
+  var d = Math.round(h / 24);
+  return d + (d === 1 ? ' dia atrás' : ' dias atrás');
+}
+function vazio(texto) { return '<p class="vazio">' + esc(texto) + '</p>'; }
+
+function cartao(titulo, nota, corpo) {
+  return '<div class="cartao"><h3>' + esc(titulo) + '</h3>' +
+    (nota ? '<p class="nota">' + esc(nota) + '</p>' : '') + corpo + '</div>';
+}
+function kpi(rotulo, valor, apoio) {
+  return '<div class="cartao kpi"><p class="rotulo">' + esc(rotulo) + '</p>' +
+    '<div class="valor">' + esc(valor) + '</div>' +
+    '<p class="apoio">' + (apoio || '') + '</p></div>';
 }
 
-function entrar(){
-  var t = el('token').value.trim();
-  if(!t) return;
-  sessionStorage.setItem(CHAVE, t);
-  carregar();
-}
-function sair(){
-  sessionStorage.removeItem(CHAVE);
-  location.reload();
+// ===========================================================================
+// Gráficos — SVG à mão, sem biblioteca. A página é servida pelo nosso próprio
+// backend e precisa abrir mesmo sem CDN nenhuma.
+// ===========================================================================
+
+/**
+ * Escala do eixo Y: passo inteiro e "redondo", entre 3 e 6 linhas de grade.
+ *
+ * A conta ingênua (teto = maior valor) produz eixos como 0 · 2,25 · 4,5 · 6,75
+ * · 9 — decimais para contar pessoas, que ninguém lê. Aqui o passo sai de
+ * 1/2/5 × potência de dez, e o teto é o primeiro múltiplo dele acima do maior
+ * valor: 9 vira 0 · 2 · 4 · 6 · 8 · 10.
+ */
+function escala(maior) {
+  if (maior <= 4) return { teto: 4, passo: 1, linhas: 4 };
+  for (var e = 0; e < 9; e++) {
+    // 2,5 entra só quando o passo continua inteiro (250, 2500…): um eixo de
+    // 2,5 em 2,5 pessoas não existe.
+    var bases = [1, 2, 2.5, 5];
+    for (var i = 0; i < bases.length; i++) {
+      var passo = bases[i] * Math.pow(10, e);
+      if (passo % 1) continue;
+      var linhas = Math.ceil(maior / passo);
+      if (linhas >= 3 && linhas <= 6) return { teto: passo * linhas, passo: passo, linhas: linhas };
+    }
+  }
+  return { teto: maior, passo: maior / 4, linhas: 4 };
 }
 
-function carregar(){
+/** Linhas com área, uma ou mais séries, eixo Y com grade e rótulos. */
+function grafico(dados, series, altura) {
+  altura = altura || 240;
+  var L = 780, A = altura, m = { t: 12, r: 8, b: 26, l: 38 };
+  if (!dados.length) return vazio('Sem dados no período.');
+
+  var todos = [];
+  series.forEach(function (s) { dados.forEach(function (d) { todos.push(d[s.campo]); }); });
+  var e = escala(Math.max.apply(null, todos.concat([0])));
+  var teto = e.teto;
+
+  var x = function (i) { return m.l + (i * (L - m.l - m.r)) / Math.max(1, dados.length - 1); };
+  var y = function (v) { return m.t + (1 - v / teto) * (A - m.t - m.b); };
+
+  var p = [];
+  // grade + rótulos do eixo Y
+  for (var g = 0; g <= e.linhas; g++) {
+    var v = e.passo * g, yy = y(v);
+    p.push('<line x1="' + m.l + '" y1="' + yy.toFixed(1) + '" x2="' + (L - m.r) +
+      '" y2="' + yy.toFixed(1) + '" stroke="var(--linha-fraca)"/>');
+    p.push('<text x="' + (m.l - 8) + '" y="' + (yy + 3.5).toFixed(1) +
+      '" font-size="10" fill="var(--tinta-fraca)" text-anchor="end">' + n(Math.round(v)) + '</text>');
+  }
+  // rótulos do eixo X: no máximo 6, senão vira borrão
+  var salto = Math.max(1, Math.ceil(dados.length / 6));
+  dados.forEach(function (d, i) {
+    if (i % salto && i !== dados.length - 1) return;
+    p.push('<text x="' + x(i).toFixed(1) + '" y="' + (A - 6) +
+      '" font-size="10" fill="var(--tinta-fraca)" text-anchor="middle">' + diaCurto(d.dia) + '</text>');
+  });
+  // séries
+  series.forEach(function (s) {
+    var linha = dados.map(function (d, i) {
+      return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(d[s.campo]).toFixed(1);
+    }).join(' ');
+    var area = linha + ' L' + x(dados.length - 1).toFixed(1) + ' ' + y(0).toFixed(1) +
+      ' L' + x(0).toFixed(1) + ' ' + y(0).toFixed(1) + ' Z';
+    p.push('<path d="' + area + '" fill="' + s.cor + '" opacity=".08"/>');
+    p.push('<path d="' + linha + '" fill="none" stroke="' + s.cor +
+      '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+    // Ponto só onde há valor: um círculo em cada zero polui e não informa.
+    dados.forEach(function (d, i) {
+      if (!d[s.campo]) return;
+      p.push('<circle cx="' + x(i).toFixed(1) + '" cy="' + y(d[s.campo]).toFixed(1) +
+        '" r="3" fill="var(--carta)" stroke="' + s.cor + '" stroke-width="2">' +
+        '<title>' + esc(diaCurto(d.dia) + ' · ' + s.rotulo + ': ' + n(d[s.campo])) + '</title></circle>');
+    });
+  });
+
+  return '<svg class="gr" viewBox="0 0 ' + L + ' ' + A + '">' + p.join('') + '</svg>' +
+    '<div class="legenda">' + series.map(function (s) {
+      return '<span><i style="background:' + s.cor + '"></i>' + esc(s.rotulo) + '</span>';
+    }).join('') + '</div>';
+}
+
+/** Barras horizontais com rótulo e valor. */
+function barras(itens, campoRot, campoVal, opcoes) {
+  opcoes = opcoes || {};
+  if (!itens || !itens.length) return vazio(opcoes.vazio || 'Sem dados.');
+  var max = Math.max.apply(null, itens.map(function (i) { return i[campoVal]; }).concat([1]));
+  var soma = itens.reduce(function (s, i) { return s + i[campoVal]; }, 0);
+  return '<div class="lista">' + itens.map(function (i) {
+    var v = i[campoVal];
+    return '<div class="item"><div class="cima">' +
+      '<span class="rot">' + esc(i[campoRot]) + '</span>' +
+      '<span class="val">' + n(v) + (opcoes.comPct ? ' · ' + pct(v, soma) + '%' : '') + '</span>' +
+      '</div><div class="trilho"><i class="' + (opcoes.verde ? 'verde' : '') +
+      '" style="width:' + (v / max * 100) + '%"></i></div></div>';
+  }).join('') + '</div>';
+}
+
+/** Rosca com legenda ao lado. */
+function rosca(itens, campoRot, campoVal) {
+  if (!itens || !itens.length) return vazio('Sem dados no período.');
+  var cores = ['var(--acento)', 'var(--teal)', 'var(--verde)', 'var(--barro)', 'var(--tinta-fraca)'];
+  var soma = itens.reduce(function (s, i) { return s + i[campoVal]; }, 0) || 1;
+  var raio = 52, grossura = 18, C = 2 * Math.PI * raio, deslocado = 0;
+  var arcos = itens.map(function (i, k) {
+    var frac = i[campoVal] / soma;
+    var s = '<circle cx="70" cy="70" r="' + raio + '" fill="none" stroke="' + cores[k % cores.length] +
+      '" stroke-width="' + grossura + '" stroke-dasharray="' + (frac * C).toFixed(2) + ' ' + C.toFixed(2) +
+      '" stroke-dashoffset="' + (-deslocado * C).toFixed(2) +
+      '" transform="rotate(-90 70 70)"><title>' +
+      esc(i[campoRot] + ': ' + n(i[campoVal])) + '</title></circle>';
+    deslocado += frac;
+    return s;
+  }).join('');
+  return '<div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">' +
+    '<svg width="140" height="140" viewBox="0 0 140 140" style="flex:none">' + arcos +
+    '<text x="70" y="68" text-anchor="middle" font-size="22" font-weight="600" fill="var(--tinta)">' +
+    n(soma) + '</text>' +
+    '<text x="70" y="84" text-anchor="middle" font-size="10" fill="var(--tinta-fraca)">no total</text>' +
+    '</svg><div class="legenda" style="flex-direction:column;gap:9px;margin:0">' +
+    itens.map(function (i, k) {
+      return '<span><i style="background:' + cores[k % cores.length] + '"></i>' +
+        esc(i[campoRot]) + ' · <b style="font-weight:500">' + n(i[campoVal]) + '</b>' +
+        ' <span class="fraco">(' + pct(i[campoVal], soma) + '%)</span></span>';
+    }).join('') + '</div></div>';
+}
+
+// ===========================================================================
+// Seções
+// ===========================================================================
+var SECOES = [
+  { id: 'visao', titulo: 'Visão geral', desc: 'O estado do Grão hoje, em números.',
+    icone: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', render: secVisao },
+  { id: 'aquisicao', titulo: 'Aquisição', desc: 'Quem chega, e onde as pessoas param antes de virar usuário de verdade.',
+    icone: 'M3 4h18l-7 8v7l-4 2v-9z', render: secAquisicao },
+  { id: 'engajamento', titulo: 'Engajamento', desc: 'Quem volta, com que frequência, e quanto do conteúdo ainda resta.',
+    icone: 'M3 12h4l3 8 4-16 3 8h4', render: secEngajamento },
+  { id: 'whatsapp', titulo: 'WhatsApp', desc: 'Envios, custo e falhas do canal principal.',
+    icone: 'M21 12a9 9 0 1 1-4.2-7.6L21 3l-1.4 4.2A8.9 8.9 0 0 1 21 12zM3 21l2.5-4.5', render: secWhatsapp },
+  { id: 'conteudo', titulo: 'Conteúdo', desc: 'O que as 380 sementes estão entregando na prática.',
+    icone: 'M4 4h16v16H4zM8 8h8M8 12h8M8 16h5', render: secConteudo },
+  { id: 'planos', titulo: 'Planos', desc: 'Escolha de plano e receita projetada.',
+    icone: 'M2 7h20v12H2zM2 11h20M6 15h4', render: secPlanos },
+  { id: 'pessoas', titulo: 'Pessoas', desc: 'Cada testador, em que etapa está e há quanto tempo não aparece.',
+    icone: 'M16 20v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', render: secPessoas },
+  { id: 'sistema', titulo: 'Sistema', desc: 'Configuração, disparo automático e os últimos acontecimentos.',
+    icone: 'M4 5h16v6H4zM4 13h16v6H4zM7 8h.01M7 16h.01', render: secSistema },
+];
+
+// --- visão geral -----------------------------------------------------------
+function secVisao() {
+  var r = D.resumo, p = D.planos, c = D.conteudo;
+  var html = '';
+
+  var alertas = montarAlertas();
+  if (alertas) html += '<div class="grade" style="margin-bottom:26px">' + alertas + '</div>';
+
+  html += '<div class="grade g4">' +
+    kpi('Pessoas cadastradas', n(r.usuarios),
+      '<b>' + n(r.usuariosPeriodo) + '</b> no período · <b>' + n(r.ativos7d) + '</b> ativas em 7 dias') +
+    kpi('Com WhatsApp ligado', n(r.comWhatsapp),
+      pct(r.comWhatsapp, r.usuarios) + '% de quem se cadastrou') +
+    kpi('Sementes entregues hoje', n(r.sementesHoje),
+      '<b>' + n(r.entregas) + '</b> no período') +
+    kpi('Taxa de plantio', r.taxaPlantio + '%',
+      n(r.plantios) + ' de ' + n(r.entregas) + ' entregas foram abertas') +
+    '</div>';
+
+  html += '<p class="secao-titulo">Atividade nos últimos ' + D.periodoDias + ' dias</p>';
+  html += '<div class="cartao">' + grafico(D.serie, [
+    { campo: 'entregas', cor: 'var(--acento)', rotulo: 'sementes entregues' },
+    { campo: 'plantios', cor: 'var(--verde)', rotulo: 'plantadas' },
+    { campo: 'novos', cor: 'var(--teal)', rotulo: 'novos usuários' },
+  ], 250) + '</div>';
+
+  html += '<p class="secao-titulo">Resumo</p><div class="grade g3">' +
+    cartao('Funil', 'onde as pessoas param', funilCompacto()) +
+    cartao('Horários escolhidos', 'entre quem ligou o WhatsApp',
+      barras(D.janelas, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
+    cartao('Estoque de sementes', 'quanto falta para a pessoa mais adiantada repetir',
+      '<div class="valor" style="font-size:30px;font-weight:600;letter-spacing:-.03em">' +
+      n(c.menorRestante) + '</div>' +
+      '<p class="apoio" style="font-size:12px;color:var(--tinta-fraca);margin-top:6px">' +
+      'sementes inéditas de ' + n(c.estoqueTotal) + ' · ' +
+      Math.floor(c.menorRestante / 30) + ' meses de uso diário</p>') +
+    '</div>';
+  return html;
+}
+
+function funilCompacto() {
+  return '<div class="lista">' + D.funil.map(function (e) {
+    return '<div class="item"><div class="cima"><span class="rot">' + esc(e.rotulo) + '</span>' +
+      '<span class="val">' + n(e.n) + ' · ' + e.pct + '%</span></div>' +
+      '<div class="trilho"><i style="width:' + e.pct + '%"></i></div></div>';
+  }).join('') + '</div>';
+}
+
+function montarAlertas() {
+  var a = [];
+  if (!D.tokenDedicado) {
+    a.push(['', 'Este painel está usando o token do cron.',
+      'Crie um GRAO_ADMIN_TOKEN separado no Render: assim dá para trocar o acesso ao painel sem derrubar o disparo diário.']);
+  }
+  if (!D.planos.cobrancaAtiva && D.planos.linhas.length) {
+    a.push(['', 'Ainda não existe cobrança de verdade.',
+      'Nenhum gateway está ligado. O que aparece em Planos é a escolha declarada no onboarding mais o período de teste.']);
+  }
+  if (D.whatsapp.falhas > 0) {
+    a.push(['grave', D.whatsapp.falhas + ' envio(s) falharam no período.',
+      'O motivo de cada um está na seção WhatsApp.']);
+  }
+  if (D.conteudo.menorRestante < 30) {
+    a.push(['grave', 'Restam ' + D.conteudo.menorRestante + ' sementes inéditas para quem já viu mais.',
+      'Vale ampliar a base antes de alguém começar a repetir.']);
+  }
+  var semWa = D.funil[2].n - D.funil[3].n;
+  if (semWa > 0) {
+    a.push(['', semWa + ' pessoa(s) montaram o perfil mas não ligaram o WhatsApp.',
+      'É o maior vazamento do funil. A ligação falha em silêncio de propósito, para não travar o onboarding — o preço é este.']);
+  }
+  return a.map(function (x) {
+    return '<div class="aviso ' + x[0] + '"><div><b>' + esc(x[1]) + '</b><p>' + esc(x[2]) + '</p></div></div>';
+  }).join('');
+}
+
+// --- aquisição -------------------------------------------------------------
+function secAquisicao() {
+  var anterior = null;
+  var degraus = D.funil.map(function (e, i) {
+    var queda = '';
+    if (anterior !== null && anterior > 0 && e.n < anterior) {
+      queda = '<span class="queda">−' + Math.round((1 - e.n / anterior) * 100) +
+        '% (' + (anterior - e.n) + ' pessoas)</span>';
+    }
+    anterior = e.n;
+    return '<div class="degrau"><div class="ordem">' + (i + 1) + '</div>' +
+      '<div class="corpo"><div class="rot"><span>' + esc(e.rotulo) + '</span>' + queda + '</div>' +
+      '<div class="trilho"><i style="width:' + e.pct + '%"></i></div></div>' +
+      '<div class="direita"><div class="n">' + n(e.n) + '</div>' +
+      '<div class="pct">' + e.pct + '% do topo</div></div></div>';
+  }).join('');
+
+  return '<div class="grade g-2-1">' +
+      cartao('Funil de ativação', 'cada etapa comparada com o topo, e a queda em relação à anterior', degraus) +
+      cartao('Horários escolhidos', 'a janela em que a pessoa quer receber',
+        barras(D.janelas, 'rotulo', 'n', { vazio: 'Ninguém ligou o WhatsApp ainda.', comPct: true })) +
+    '</div>' +
+    '<p class="secao-titulo">Novos usuários por dia</p>' +
+    '<div class="cartao">' + grafico(D.serie, [
+      { campo: 'novos', cor: 'var(--teal)', rotulo: 'novos usuários' },
+    ], 210) + '</div>';
+}
+
+// --- engajamento -----------------------------------------------------------
+function secEngajamento() {
+  var r = D.resumo, c = D.conteudo;
+  var mediaDias = D.pessoas.length
+    ? (D.pessoas.reduce(function (s, p) { return s + p.diasAtivos; }, 0) / D.pessoas.length) : 0;
+
+  return '<div class="grade g4">' +
+      kpi('Ativas em 7 dias', n(r.ativos7d), pct(r.ativos7d, r.usuarios) + '% da base') +
+      kpi('Taxa de plantio', r.taxaPlantio + '%', 'sementes abertas de ' + n(r.entregas) + ' entregues') +
+      kpi('Média de dias com semente', mediaDias.toFixed(1), 'por pessoa cadastrada') +
+      kpi('Sementes inéditas restantes', n(c.menorRestante),
+        'para a pessoa mais adiantada, de ' + n(c.estoqueTotal)) +
+    '</div>' +
+    '<p class="secao-titulo">Entregas e plantios</p>' +
+    '<div class="cartao">' + grafico(D.serie, [
+      { campo: 'entregas', cor: 'var(--acento)', rotulo: 'sementes entregues' },
+      { campo: 'plantios', cor: 'var(--verde)', rotulo: 'plantadas' },
+      { campo: 'ativos', cor: 'var(--barro)', rotulo: 'pessoas ativas' },
+    ], 250) + '</div>' +
+    '<p class="secao-titulo">Hábito</p><div class="grade g2">' +
+      cartao('Dias com semente por pessoa',
+        'num devocional, uma pessoa com 12 dias vale mais que doze pessoas com 1 dia',
+        barras(D.engajamento, 'rotulo', 'n', { vazio: 'Ninguém recebeu semente ainda.' })) +
+      cartao('Conversas recebidas', 'mensagens que as pessoas escreveram no WhatsApp',
+        grafico(D.serie, [{ campo: 'mensagens', cor: 'var(--teal)', rotulo: 'mensagens recebidas' }], 190)) +
+    '</div>';
+}
+
+// --- whatsapp --------------------------------------------------------------
+function secWhatsapp() {
+  var w = D.whatsapp;
+  var falhas = w.falhasRecentes.length
+    ? '<div class="rolagem"><table><thead><tr><th>Pessoa</th><th>Motivo</th><th class="dir">Quando</th></tr></thead><tbody>' +
+      w.falhasRecentes.map(function (f) {
+        return '<tr><td class="forte">' + esc(f.nome) + '</td>' +
+          '<td style="color:var(--alerta)">' + esc(f.motivo) + '</td>' +
+          '<td class="dir fraco mono">' + esc(dataHora(f.quando)) + '</td></tr>';
+      }).join('') + '</tbody></table></div>'
+    : vazio('Nenhuma falha registrada. 🌱');
+
+  return '<div class="grade g4">' +
+      kpi('Avisos enviados', n(w.avisos), 'template pago, fora da janela de 24h') +
+      kpi('Sementes sem custo', n(w.gratuitas), 'texto livre dentro da janela de 24h') +
+      kpi('Custo estimado', reais(w.custoEstimado),
+        'a ' + reais(w.custoUnitario) + ' por aviso') +
+      kpi('Falhas de envio', n(w.falhas), w.falhas ? 'veja os motivos abaixo' : 'nenhuma no período') +
+    '</div>' +
+    '<p class="secao-titulo">Economia do canal</p><div class="grade g2">' +
+      cartao('Pago x gratuito',
+        'quem conversa com o Grão nas últimas 24h recebe a semente inteira sem custo',
+        rosca([{ rotulo: 'avisos pagos', n: w.avisos }, { rotulo: 'sementes gratuitas', n: w.gratuitas }],
+          'rotulo', 'n')) +
+      cartao('Agora', 'estado do canal neste instante',
+        '<div class="rolagem"><table><tbody>' +
+        linhaTabela('Pessoas com a janela de 24h aberta', n(w.janelaAbertaAgora)) +
+        linhaTabela('Mensagens recebidas no período', n(w.recebidas)) +
+        linhaTabela('Toques em "Plantar"', n(w.plantados)) +
+        linhaTabela('Custo por aviso usado no cálculo', reais(w.custoUnitario)) +
+        '</tbody></table></div>' +
+        '<p class="nota" style="margin:12px 0 0">A Meta remarca por país e período. ' +
+        'A fatura real está no painel da Meta — este número é estimativa.</p>') +
+    '</div>' +
+    '<p class="secao-titulo">Falhas recentes</p><div class="cartao">' + falhas + '</div>';
+}
+function linhaTabela(rot, val) {
+  return '<tr><td>' + esc(rot) + '</td><td class="dir mono forte">' + esc(val) + '</td></tr>';
+}
+
+// --- conteúdo --------------------------------------------------------------
+function secConteudo() {
+  var c = D.conteudo;
+  var top = c.topSementes.length
+    ? '<div class="rolagem"><table><thead><tr><th>Semente</th><th>Passagem</th><th>Família</th>' +
+      '<th class="dir">Entregue</th><th class="dir">Plantada</th></tr></thead><tbody>' +
+      c.topSementes.map(function (s) {
+        return '<tr><td class="mono fraco">' + esc(s.id) + '</td>' +
+          '<td class="forte">' + esc(s.reference) + '</td>' +
+          '<td><span class="selo">' + esc(s.family) + '</span></td>' +
+          '<td class="dir mono">' + n(s.n) + '</td>' +
+          '<td class="dir mono fraco">' + n(s.plantadas) + '</td></tr>';
+      }).join('') + '</tbody></table></div>'
+    : vazio('Nenhuma semente entregue ainda.');
+
+  return '<div class="grade g3">' +
+      kpi('Sementes na base', n(c.estoqueTotal), n(c.comGesto) + ' com gesto classificado') +
+      kpi('Inéditas restantes', n(c.menorRestante), 'para a pessoa mais adiantada') +
+      kpi('Louvores abertos', n(c.louvores.reduce(function (s, l) { return s + l.n; }, 0)),
+        'toques no link da música') +
+    '</div>' +
+    '<p class="secao-titulo">O que foi entregue nos últimos ' + D.periodoDias + ' dias</p>' +
+    '<div class="grade g2">' +
+      cartao('Famílias emocionais', 'a leitura que o cérebro fez de cada pessoa',
+        barras(c.familias, 'rotulo', 'n', { vazio: 'Nenhuma semente entregue no período.', comPct: true })) +
+      cartao('Formatos', 'reflexão, oração ou prática — escolhido pelo canal sensorial',
+        rosca(c.tipos, 'rotulo', 'n')) +
+    '</div>' +
+    '<p class="secao-titulo">Sementes mais entregues</p><div class="cartao">' + top + '</div>' +
+    '<p class="secao-titulo">Louvores mais abertos</p><div class="cartao">' +
+      barras(c.louvores, 'rotulo', 'n', { vazio: 'Ninguém abriu um louvor ainda.' }) + '</div>';
+}
+
+// --- planos ----------------------------------------------------------------
+function secPlanos() {
+  var p = D.planos;
+  var aviso = '<div class="aviso" style="margin-bottom:20px"><div>' +
+    '<b>Ainda não existe cobrança.</b><p>Nenhum gateway está ligado — nada é debitado de ninguém. ' +
+    'O que está aqui é a escolha declarada no onboarding mais o período de 7 dias de teste. ' +
+    'Quando entrar um Asaas ou Stripe, o webhook dele só precisa atualizar a situação.</p></div></div>';
+
+  if (!p.linhas.length) {
+    return aviso + '<div class="cartao">' +
+      vazio('Ninguém escolheu plano ainda. A gravação passa a acontecer quando o app atualizado for publicado.') +
+      '</div>';
+  }
+  var totalPessoas = p.linhas.reduce(function (s, l) { return s + l.n; }, 0);
+  var tabela = '<div class="rolagem"><table><thead><tr><th>Plano</th><th>Situação</th>' +
+    '<th class="dir">Pessoas</th></tr></thead><tbody>' +
+    p.linhas.map(function (l) {
+      return '<tr><td class="forte">' + esc(l.plan) + '</td>' +
+        '<td><span class="selo ' + (l.status === 'ativa' ? 'ok' : 'neutro') + '">' +
+        esc(l.status) + '</span></td>' +
+        '<td class="dir mono">' + n(l.n) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  var trials = p.trialsTerminando.length
+    ? '<div class="rolagem"><table><thead><tr><th>Pessoa</th><th>Plano</th>' +
+      '<th class="dir">Termina</th></tr></thead><tbody>' +
+      p.trialsTerminando.map(function (t) {
+        return '<tr><td class="forte">' + esc(t.nome) + '</td><td>' + esc(t.plan) + '</td>' +
+          '<td class="dir mono">' + esc(dataHora(t.termina)) + '</td></tr>';
+      }).join('') + '</tbody></table></div>'
+    : vazio('Nenhum teste terminando nos próximos 3 dias.');
+
+  return aviso + '<div class="grade g3">' +
+      kpi('Planos escolhidos', n(totalPessoas), 'incluindo quem está em teste') +
+      kpi('Receita projetada', reais(p.mrrReais), 'por mês, se todos virarem pagantes') +
+      kpi('Conversão do cadastro', pct(totalPessoas, D.resumo.usuarios) + '%',
+        'de quem se cadastrou escolheu um plano') +
+    '</div>' +
+    '<p class="secao-titulo">Distribuição</p><div class="grade g2">' +
+      cartao('Por plano e situação', 'o anual entra na receita dividido por 12', tabela) +
+      cartao('Testes terminando', 'próximos 3 dias', trials) +
+    '</div>';
+}
+
+// --- pessoas ---------------------------------------------------------------
+function secPessoas() {
+  return '<div class="cartao">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px">' +
+      '<div><h3>Todas as pessoas</h3>' +
+      '<p class="nota" style="margin:2px 0 0">' + n(D.pessoas.length) +
+      ' cadastros · telefone parcialmente oculto de propósito</p></div>' +
+      '<input class="busca" id="buscaPessoas" placeholder="Buscar por nome…" oninput="filtrarPessoas()">' +
+    '</div>' +
+    '<div class="rolagem"><table><thead><tr>' +
+      '<th>Pessoa</th><th>WhatsApp</th><th>Horário</th><th>Etapa em falta</th>' +
+      '<th>Momento</th><th>Plano</th><th class="dir">Sementes</th><th class="dir">Dias</th>' +
+      '<th class="dir">Última atividade</th>' +
+    '</tr></thead><tbody id="corpoPessoas">' + linhasPessoas(D.pessoas) + '</tbody></table></div></div>';
+}
+function linhasPessoas(lista) {
+  if (!lista.length) return '<tr><td colspan="9" class="fraco">Ninguém encontrado.</td></tr>';
+  return lista.map(function (p) {
+    return '<tr><td class="forte">' + esc(p.nome) + '</td>' +
+      '<td class="fraco mono">' + esc(p.telefone || '—') + '</td>' +
+      '<td>' + esc(p.janela || '—') + '</td>' +
+      '<td><span class="selo ' + (p.completo ? 'ok' : 'neutro') + '">' + esc(p.etapa) + '</span></td>' +
+      '<td class="fraco">' + esc(p.familia || '—') + '</td>' +
+      '<td class="fraco">' + esc(p.plano || '—') + '</td>' +
+      '<td class="dir mono">' + n(p.entregas) + '</td>' +
+      '<td class="dir mono">' + n(p.diasAtivos) + '</td>' +
+      '<td class="dir fraco">' + esc(relativo(p.ultimaAtividade)) + '</td></tr>';
+  }).join('');
+}
+function filtrarPessoas() {
+  var t = el('buscaPessoas').value.trim().toLowerCase();
+  el('corpoPessoas').innerHTML = linhasPessoas(
+    D.pessoas.filter(function (p) { return !t || p.nome.toLowerCase().indexOf(t) >= 0; }));
+}
+
+// --- sistema ---------------------------------------------------------------
+function secSistema() {
+  var s = D.sistema;
+  var disparo = s.ultimoDisparo
+    ? '<div class="valor" style="font-size:26px;font-weight:600;letter-spacing:-.03em">' +
+      esc(relativo(s.ultimoDisparo.quando)) + '</div>' +
+      '<p class="nota" style="margin-top:8px">Janela <b>' + esc(s.ultimoDisparo.janela) + '</b> · ' +
+      n(s.ultimoDisparo.enviadas) + ' enviada(s), ' + n(s.ultimoDisparo.falhas) + ' falha(s)<br>' +
+      esc(dataHora(s.ultimoDisparo.quando)) + '</p>'
+    : vazio('Nenhum disparo registrado ainda. O registro começou agora — se o cron estiver rodando, aparece no próximo horário.');
+
+  var config = '<div class="rolagem"><table><tbody>' + s.config.map(function (c) {
+    return '<tr><td class="forte">' + esc(c.rotulo) + '<br>' +
+      '<span class="fraco" style="font-weight:400">' + esc(c.nota) + '</span></td>' +
+      '<td class="dir"><span class="selo ' + (c.ok ? 'ok' : 'ruim') + '">' +
+      (c.ok ? 'configurado' : 'faltando') + '</span></td></tr>';
+  }).join('') + '</tbody></table></div>';
+
+  var eventos = s.eventos.length
+    ? '<div class="tempo">' + s.eventos.map(function (e) {
+        return '<div class="ev' + (e.tipo === 'wa_send_failed' ? ' falha' : '') + '">' +
+          '<span class="hora">' + esc(dataHora(e.quando)) + '</span>' +
+          '<span class="quem">' + esc(e.nome) + '</span>' +
+          '<span class="oque">' + esc(e.rotulo) +
+          (e.detalhe ? ' <span class="fraco">· ' + esc(e.detalhe) + '</span>' : '') + '</span></div>';
+      }).join('') + '</div>'
+    : vazio('Nenhum evento registrado.');
+
+  return '<div class="grade g-2-1">' +
+      cartao('Configuração do servidor', 'presença, nunca o valor — um painel que mostra segredo vira vazamento', config) +
+      cartao('Último disparo automático', 'o cron do GitHub Actions chamando o backend', disparo) +
+    '</div>' +
+    '<p class="secao-titulo">Últimos acontecimentos</p><div class="cartao">' + eventos + '</div>';
+}
+
+// ===========================================================================
+// Navegação e carga
+// ===========================================================================
+function montarMenu() {
+  el('menu').innerHTML = SECOES.map(function (s) {
+    var pino = '';
+    if (s.id === 'whatsapp' && D && D.whatsapp.falhas > 0) {
+      pino = '<span class="pino">' + D.whatsapp.falhas + '</span>';
+    }
+    return '<a href="#' + s.id + '" data-sec="' + s.id + '">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + s.icone + '"/></svg>' +
+      esc(s.titulo) + pino + '</a>';
+  }).join('');
+}
+
+function irPara(id) {
+  var s = SECOES.filter(function (x) { return x.id === id; })[0] || SECOES[0];
+  secaoAtual = s.id;
+  el('tituloSecao').textContent = s.titulo;
+  el('descSecao').textContent = s.desc;
+  el('conteudo').innerHTML = s.render();
+  el('conteudo').scrollTop = 0;
+  window.scrollTo(0, 0);
+  Array.prototype.forEach.call(el('menu').children, function (a) {
+    a.classList.toggle('ativo', a.dataset.sec === s.id);
+  });
+}
+
+function desenhar() {
+  el('carimbo').textContent = 'atualizado ' +
+    new Date(D.geradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  el('rodapeInfo').innerHTML = n(D.resumo.usuarios) + ' pessoas · ' +
+    n(D.resumo.comWhatsapp) + ' no WhatsApp';
+  montarMenu();
+  irPara(secaoAtual);
+}
+
+function carregar() {
   var t = sessionStorage.getItem(CHAVE);
-  if(!t) return;
+  if (!t) return;
   el('erro').textContent = 'carregando…';
-  fetch('/admin/api/painel', { headers: { 'x-grao-token': t } })
-    .then(function(r){
-      if(r.status === 401) throw new Error('Token não confere.');
-      if(r.status === 503) throw new Error('Falta configurar GRAO_ADMIN_TOKEN no servidor.');
-      if(!r.ok) throw new Error('Erro ' + r.status + ' ao buscar os dados.');
+  fetch('/admin/api/painel?dias=' + dias, { headers: { 'x-grao-token': t } })
+    .then(function (r) {
+      if (r.status === 401) throw new Error('Token não confere.');
+      if (r.status === 503) throw new Error('Falta configurar GRAO_ADMIN_TOKEN no servidor.');
+      if (!r.ok) throw new Error('Erro ' + r.status + ' ao buscar os dados.');
       return r.json();
     })
-    .then(function(d){
+    .then(function (d) {
       D = d;
+      el('erro').textContent = '';
       el('porta').classList.add('oculto');
-      el('painel').classList.remove('oculto');
+      el('app').classList.remove('oculto');
       desenhar();
     })
-    .catch(function(e){
+    .catch(function (e) {
       el('erro').textContent = e.message;
-      sessionStorage.removeItem(CHAVE);
+      if (/Token/.test(e.message)) sessionStorage.removeItem(CHAVE);
     });
 }
 
-function desenhar(){
-  el('quando').textContent = 'atualizado ' +
-    new Date(D.geradoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' · ';
-
-  avisos();
-  kpis();
-  funil();
-  grafico();
-  planos();
-  whatsapp();
-  janelas();
-  listaSimples('familias', D.conteudo.familias, 'family', 'n', 'Nenhuma semente entregue nos últimos 30 dias.');
-  listaSimples('louvores', D.conteudo.louvores, 'titulo', 'n', 'Ninguém abriu um louvor ainda.');
-  pessoas();
+function trocarPeriodo() { dias = Number(el('periodo').value); carregar(); }
+function entrar() {
+  var t = el('token').value.trim();
+  if (!t) return;
+  sessionStorage.setItem(CHAVE, t);
+  carregar();
 }
+function sair() { sessionStorage.removeItem(CHAVE); location.reload(); }
 
-function avisos(){
-  var a = [];
-  if(!D.tokenDedicado){
-    a.push(['Este painel está usando o token do cron.',
-      'Crie um GRAO_ADMIN_TOKEN separado no Render: assim dá para trocar o acesso ao painel sem derrubar o disparo diário.']);
-  }
-  if(!D.planos.cobrancaAtiva){
-    a.push(['Ainda não existe cobrança de verdade.',
-      'Nenhum gateway está ligado — nada é debitado de ninguém. O que aparece em Planos é a escolha declarada no onboarding mais o período de teste.']);
-  }
-  if(D.whatsapp.falhas7d > 0){
-    a.push([D.whatsapp.falhas7d + ' envio(s) falharam nos últimos 7 dias.',
-      'Detalhes no bloco WhatsApp, abaixo.']);
-  }
-  if(D.conteudo.menorRestante < 30){
-    a.push(['Restam ' + D.conteudo.menorRestante + ' sementes inéditas para quem já viu mais.',
-      'Vale ampliar a base antes de alguém começar a repetir.']);
-  }
-  el('avisos').innerHTML = a.map(function(x){
-    return '<div class="aviso"><b>' + esc(x[0]) + '</b>' + esc(x[1]) + '</div>';
-  }).join('');
-}
+window.addEventListener('hashchange', function () {
+  if (D) irPara(location.hash.replace('#', ''));
+});
+el('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
 
-function kpis(){
-  var r = D.resumo;
-  var itens = [
-    [nfmt(r.usuarios), 'pessoas cadastradas', nfmt(r.ativos7d) + ' ativas em 7 dias'],
-    [nfmt(r.comWhatsapp), 'com WhatsApp ligado',
-      r.usuarios ? Math.round(r.comWhatsapp / r.usuarios * 100) + '% do total' : '—'],
-    [nfmt(r.sementesHoje), 'sementes entregues hoje', nfmt(r.entregas7d) + ' em 7 dias'],
-    [r.taxaPlantio7d + '%', 'plantadas em 7 dias',
-      nfmt(r.plantios7d) + ' de ' + nfmt(r.entregas7d) + ' entregas'],
-    [nfmt(r.assinaturas), 'planos escolhidos', reais(D.planos.mrrReais) + '/mês se virarem pagos'],
-  ];
-  el('kpis').innerHTML = itens.map(function(i){
-    return '<div class="cartao kpi"><div class="n">' + esc(i[0]) + '</div>' +
-      '<div class="r">' + esc(i[1]) + '</div>' +
-      '<div class="sub">' + esc(i[2]) + '</div></div>';
-  }).join('');
-}
-
-function funil(){
-  var anterior = null;
-  el('funil').innerHTML = D.funil.map(function(e){
-    // A queda entre etapas é o que interessa: o número absoluto esconde onde
-    // as pessoas desistem.
-    var queda = '';
-    if(anterior !== null && anterior > 0 && e.n < anterior){
-      queda = '<span class="queda">−' + Math.round((1 - e.n / anterior) * 100) + '%</span>';
-    }
-    anterior = e.n;
-    return '<div class="etapa"><div><div class="rot">' + esc(e.rotulo) + queda + '</div>' +
-      '<div class="trilho"><i style="width:' + e.pct + '%"></i></div></div>' +
-      '<div class="v">' + nfmt(e.n) + '</div></div>';
-  }).join('');
-}
-
-function grafico(){
-  var dias = D.dias, L = 720, A = 150, base = A - 18;
-  var max = Math.max(1, Math.max.apply(null, dias.map(function(d){
-    return Math.max(d.entregas, d.novos); })));
-  var largura = L / dias.length, barra = Math.max(3, largura - 4);
-  var p = [];
-  dias.forEach(function(d, i){
-    var x = i * largura + (largura - barra) / 2;
-    var h = d.entregas / max * (base - 6);
-    var hp = d.plantios / max * (base - 6);
-    if(h > 0) p.push('<rect x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) +
-      '" width="' + barra.toFixed(1) + '" height="' + h.toFixed(1) +
-      '" fill="var(--acento)" opacity=".85" rx="2"></rect>');
-    if(hp > 0) p.push('<rect x="' + x.toFixed(1) + '" y="' + (base - hp).toFixed(1) +
-      '" width="' + barra.toFixed(1) + '" height="' + hp.toFixed(1) +
-      '" fill="var(--verde)" rx="2"></rect>');
-    if(d.novos > 0){
-      var y = base - d.novos / max * (base - 6);
-      p.push('<circle cx="' + (x + barra / 2).toFixed(1) + '" cy="' + y.toFixed(1) +
-        '" r="2.5" fill="var(--tinta-fraca)"></circle>');
-    }
-    // Só o primeiro, o meio e o último dia levam rótulo: 30 datas viram borrão.
-    if(i === 0 || i === dias.length - 1 || i === Math.floor(dias.length / 2)){
-      p.push('<text x="' + (x + barra / 2).toFixed(1) + '" y="' + (A - 4) +
-        '" font-size="9" fill="var(--tinta-fraca)" text-anchor="middle">' +
-        dataCurta(dias[i].dia) + '</text>');
-    }
-  });
-  p.push('<line x1="0" y1="' + base + '" x2="' + L + '" y2="' + base +
-    '" stroke="var(--linha)"></line>');
-  el('gr').innerHTML = p.join('');
-}
-
-function planos(){
-  var P = D.planos;
-  var h = '';
-  if(!P.linhas.length){
-    h = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
-      'Ninguém escolheu plano ainda. A escolha passa a ser gravada quando o app ' +
-      'atualizado for publicado.</p>';
-  } else {
-    h = '<table><tr><th>Plano</th><th>Situação</th><th style="text-align:right">Pessoas</th></tr>' +
-      P.linhas.map(function(l){
-        return '<tr><td>' + esc(l.plan) + '</td><td><span class="etiqueta' +
-          (l.status === 'ativa' ? ' ok' : '') + '">' + esc(l.status) + '</span></td>' +
-          '<td class="n">' + nfmt(l.n) + '</td></tr>';
-      }).join('') + '</table>' +
-      '<p style="font-size:13px;color:var(--tinta-suave);margin:14px 0 0">' +
-      'Receita mensal se todos virarem pagantes: <b>' + reais(P.mrrReais) + '</b> ' +
-      '(o plano anual entra dividido por 12).</p>';
-  }
-  if(P.trialsTerminando.length){
-    h += '<p style="font-size:13px;margin:14px 0 4px"><b>Testes terminando:</b></p><table>' +
-      P.trialsTerminando.map(function(t){
-        return '<tr><td>' + esc(t.nome) + '</td><td>' + esc(t.plan) + '</td>' +
-          '<td class="n">' + dataCurta(t.termina) + '</td></tr>';
-      }).join('') + '</table>';
-  }
-  el('planos').innerHTML = h;
-}
-
-function whatsapp(){
-  var w = D.whatsapp;
-  el('wa').innerHTML = '<table>' +
-    linha('Avisos enviados (7 dias)', nfmt(w.avisos7d)) +
-    linha('Sementes inteiras, sem custo', nfmt(w.gratuitas7d)) +
-    linha('Mensagens recebidas', nfmt(w.recebidas7d)) +
-    linha('Falhas de envio', nfmt(w.falhas7d)) +
-    linha('Com janela de 24h aberta agora', nfmt(w.janelaAbertaAgora)) +
-    linha('Custo estimado (7 dias)', reais(w.custoEstimado7d)) +
-    '</table>' +
-    '<p style="font-size:11px;color:var(--tinta-fraca);margin:10px 0 0">' +
-    'Estimativa a ' + reais(w.custoUnitario) + ' por aviso — a Meta remarca por país e período. ' +
-    'A fatura real está no painel da Meta.</p>' +
-    (w.falhasRecentes.length
-      ? '<p style="font-size:13px;margin:14px 0 4px"><b>Últimas falhas:</b></p><table>' +
-        w.falhasRecentes.map(function(f){
-          return '<tr><td>' + esc(f.nome) + '</td><td style="color:var(--alerta)">' +
-            esc(f.motivo) + '</td><td class="n">' + dataCurta(f.quando) + '</td></tr>';
-        }).join('') + '</table>'
-      : '');
-}
-function linha(r, v){
-  return '<tr><td>' + esc(r) + '</td><td class="n">' + esc(v) + '</td></tr>';
-}
-
-function janelas(){
-  if(!D.janelas.length){
-    el('janelas').innerHTML = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
-      'Ninguém ligou o WhatsApp ainda.</p>';
-    return;
-  }
-  el('janelas').innerHTML = '<table>' + D.janelas.map(function(j){
-    return '<tr><td>' + esc(j.rotulo) + '</td>' +
-      '<td style="color:var(--tinta-fraca)">' + esc(j.faixa) + '</td>' +
-      '<td class="n">' + nfmt(j.n) + '</td></tr>';
-  }).join('') + '</table>';
-}
-
-function listaSimples(alvo, itens, campo, valor, vazio){
-  if(!itens.length){
-    el(alvo).innerHTML = '<p style="color:var(--tinta-suave);font-size:13px;margin:0">' +
-      esc(vazio) + '</p>';
-    return;
-  }
-  var max = Math.max.apply(null, itens.map(function(i){ return i[valor]; }));
-  el(alvo).innerHTML = itens.map(function(i){
-    return '<div class="etapa"><div><div class="rot">' + esc(i[campo]) + '</div>' +
-      '<div class="trilho"><i style="width:' + (i[valor] / max * 100) + '%"></i></div></div>' +
-      '<div class="v">' + nfmt(i[valor]) + '</div></div>';
-  }).join('');
-}
-
-function pessoas(){
-  el('pessoas').innerHTML = '<table><tr><th>Pessoa</th><th>WhatsApp</th><th>Horário</th>' +
-    // "Etapa em falta", não "onde parou": mostramos a PRIMEIRA etapa não
-    // cumprida, e há quem pule uma e siga adiante mesmo assim.
-    '<th>Etapa em falta</th><th>Plano</th><th style="text-align:right">Sementes</th>' +
-    '<th style="text-align:right">Atividade</th></tr>' +
-    D.pessoas.map(function(p){
-      return '<tr><td>' + esc(p.nome) + '</td>' +
-        '<td style="color:var(--tinta-fraca)">' + esc(p.telefone || '—') + '</td>' +
-        '<td>' + esc(p.janela || '—') + '</td>' +
-        '<td><span class="etiqueta' + (p.completo ? ' ok' : '') + '">' +
-          esc(p.etapa) + '</span></td>' +
-        '<td>' + esc(p.plano || '—') + '</td>' +
-        '<td class="n">' + nfmt(p.entregas) + '</td>' +
-        '<td class="n" style="color:var(--tinta-fraca)">' + esc(quandoRel(p.ultimaAtividade)) + '</td></tr>';
-    }).join('') + '</table>';
-}
-
-if(sessionStorage.getItem(CHAVE)) carregar();
-el('token').addEventListener('keydown', function(e){ if(e.key === 'Enter') entrar(); });
+secaoAtual = location.hash.replace('#', '') || 'visao';
+if (sessionStorage.getItem(CHAVE)) carregar();
 </script>
 </body>
 </html>

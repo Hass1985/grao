@@ -278,6 +278,12 @@ export function registerMetaWebhookRoutes(app: Express) {
     try {
       const r = await despachar(janela);
       console.log(`[wa/dispatch] ${janela}: ${r.enviadas} enviadas, ${r.falhas} falhas`);
+      // Registra TODO disparo, inclusive o que não achou ninguém. Sem isso,
+      // "o cron está rodando?" só se responde no painel do GitHub — e um
+      // disparo que roda mas não entrega nada é indistinguível de um que
+      // nunca rodou. É a pergunta que já custou uma investigação inteira.
+      void logEvent(null, 'wa_dispatch',
+        { window: janela, enviadas: r.enviadas, falhas: r.falhas });
       return res.json({ window: janela, ...r });
     } catch (e: any) {
       console.error('[wa/dispatch]', e?.message || e);

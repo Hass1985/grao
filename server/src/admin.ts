@@ -6,8 +6,9 @@
 // interessante já está em `events`, `seed_deliveries` e `users`.
 //
 // Divisão deliberada: TODA a leitura acontece aqui, em uma única resposta
-// (/admin/api/painel). A página é burra — busca uma vez e desenha. Assim dá
-// para conferir qualquer número abrindo o JSON, sem ler JavaScript.
+// (/admin/api/painel). A página é burra — busca uma vez e desenha as oito
+// seções a partir do mesmo objeto. Assim dá para conferir qualquer número
+// abrindo o JSON, sem ler JavaScript, e trocar de seção não custa viagem.
 //
 // ACESSO: exige token. Aqui tem nome, telefone e ritmo devocional de gente
 // real — pela LGPD, convicção religiosa é dado SENSÍVEL (art. 5º, II). O ideal
@@ -18,6 +19,7 @@ import type { Express, Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import { pool } from './db.js';
 import { JANELA_INFO, type Janela } from './whatsapp.js';
+import { metaConfigurada } from './meta.js';
 
 const TZ = 'America/Sao_Paulo';
 
@@ -56,13 +58,33 @@ const ETAPAS: { chave: string; rotulo: string }[] = [
   { chave: 'plantou', rotulo: 'Tocou em Plantar' },
 ];
 
-async function montarPainel() {
+/** Tradução dos tipos de evento para a linha do tempo. */
+const EVENTOS: Record<string, string> = {
+  onboarding_done: 'concluiu a Abertura',
+  wa_opt_in: 'ligou o WhatsApp',
+  wa_opt_out: 'desligou o WhatsApp',
+  seed_announced: 'recebeu o aviso da semente',
+  seed_delivered: 'recebeu a semente',
+  seed_planted: 'tocou em Plantar',
+  message_in: 'escreveu no WhatsApp',
+  moment_changed: 'momento emocional atualizado',
+  musica_aberta: 'abriu o louvor',
+  plan_selected: 'escolheu o plano',
+  user_merged: 'cadastros fundidos',
+  wa_send_failed: 'falha no envio',
+  wa_dispatch: 'disparo automático',
+};
+
+async function montarPainel(dias: number) {
   const q = async (sql: string, params: any[] = []) => (await pool.query(sql, params)).rows;
+  const janelaSql = `${dias} days`;
 
   // --- números do topo -----------------------------------------------------
   const [resumo] = await q(`
     SELECT
       (SELECT count(*) FROM users) usuarios,
+      (SELECT count(*) FROM users
+        WHERE created_at > now() - $1::interval) usuarios_periodo,
       (SELECT count(*) FROM users
         WHERE wa_opt_in_at IS NOT NULL AND phone_e164 IS NOT NULL) com_whatsapp,
       (SELECT count(DISTINCT user_id) FROM events
@@ -71,18 +93,19 @@ async function montarPainel() {
         WHERE (d.delivered_at AT TIME ZONE u.timezone)::date
             = (now() AT TIME ZONE u.timezone)::date) sementes_hoje,
       (SELECT count(*) FROM seed_deliveries
-        WHERE delivered_at > now() - interval '7 days') entregas_7d,
+        WHERE delivered_at > now() - $1::interval) entregas,
       (SELECT count(*) FROM seed_deliveries
-        WHERE delivered_at > now() - interval '7 days' AND planted) plantios_7d,
-      (SELECT count(*) FROM subscriptions WHERE status IN ('trial','ativa')) assinaturas`);
+        WHERE delivered_at > now() - $1::interval AND planted) plantios,
+      (SELECT count(*) FROM subscriptions WHERE status IN ('trial','ativa')) assinaturas`,
+    [janelaSql]);
 
-  // --- funil ---------------------------------------------------------------
+  // --- pessoas, e o funil que sai delas ------------------------------------
   // Uma linha por pessoa com as etapas cumpridas; a soma vira o funil. Poderia
   // ser um COUNT por etapa, mas assim o mesmo SELECT alimenta a lista de
-  // pessoas mais abaixo, e as duas visões nunca discordam.
+  // pessoas, e as duas visões nunca discordam.
   const pessoas = await q(`
     SELECT u.id, coalesce(u.name,'(sem nome)') nome, u.phone_e164, u.delivery_window,
-           u.created_at, u.timezone,
+           u.created_at,
            EXISTS (SELECT 1 FROM conversation_turns t
                     WHERE t.user_id = u.id AND t.role = 'user') abertura,
            EXISTS (SELECT 1 FROM profiles p WHERE p.user_id = u.id) perfil,
@@ -91,7 +114,10 @@ async function montarPainel() {
            EXISTS (SELECT 1 FROM seed_deliveries d
                     WHERE d.user_id = u.id AND d.planted) plantou,
            (SELECT count(*) FROM seed_deliveries d WHERE d.user_id = u.id) entregas,
+           (SELECT count(DISTINCT (d.delivered_at AT TIME ZONE u.timezone)::date)
+              FROM seed_deliveries d WHERE d.user_id = u.id) dias_ativos,
            (SELECT max(created_at) FROM events e WHERE e.user_id = u.id) ultima_atividade,
+           (SELECT p.emotional_hint FROM profiles p WHERE p.user_id = u.id) familia,
            (SELECT s.plan FROM subscriptions s WHERE s.user_id = u.id) plano,
            (SELECT s.status FROM subscriptions s WHERE s.user_id = u.id) plano_status
       FROM users u
@@ -103,13 +129,13 @@ async function montarPainel() {
     return { chave, rotulo, n, pct: Math.round((n / total) * 100) };
   });
 
-  // --- 30 dias -------------------------------------------------------------
+  // --- série diária --------------------------------------------------------
   // generate_series garante os dias VAZIOS. Sem eles o gráfico mente: um dia
   // sem entrega nenhuma simplesmente sumiria, e a linha pareceria contínua.
-  const dias = await q(`
+  const serie = await q(`
     WITH d AS (
       SELECT generate_series(
-        (now() AT TIME ZONE $1)::date - 29,
+        (now() AT TIME ZONE $1)::date - ($2::int - 1),
         (now() AT TIME ZONE $1)::date, '1 day')::date dia)
     -- ::text porque o driver devolve a coluna date como Date do JavaScript, e
     -- a conversão para string vira "Thu Sep 03" — inútil no gráfico.
@@ -120,9 +146,12 @@ async function montarPainel() {
         WHERE (s.delivered_at AT TIME ZONE $1)::date = d.dia) entregas,
       (SELECT count(*) FROM seed_deliveries s
         WHERE (s.delivered_at AT TIME ZONE $1)::date = d.dia AND s.planted) plantios,
+      (SELECT count(DISTINCT e.user_id) FROM events e
+        WHERE (e.created_at AT TIME ZONE $1)::date = d.dia AND e.user_id IS NOT NULL) ativos,
       (SELECT count(*) FROM events e
-        WHERE e.type = 'message_in' AND (e.created_at AT TIME ZONE $1)::date = d.dia) mensagens
-      FROM d ORDER BY d.dia`, [TZ]);
+        WHERE e.type = 'message_in'
+          AND (e.created_at AT TIME ZONE $1)::date = d.dia) mensagens
+      FROM d ORDER BY d.dia`, [TZ, dias]);
 
   // --- janelas de entrega --------------------------------------------------
   const janelasBrutas = await q(`
@@ -159,60 +188,118 @@ async function montarPainel() {
   const [wa] = await q(`
     SELECT
       (SELECT count(*) FROM events WHERE type = 'seed_announced'
-        AND created_at > now() - interval '7 days') avisos_7d,
+        AND created_at > now() - $1::interval) avisos,
       (SELECT count(*) FROM events WHERE type = 'seed_delivered'
-        AND created_at > now() - interval '7 days'
-        AND payload->>'gratuita' = 'true') gratuitas_7d,
+        AND created_at > now() - $1::interval
+        AND payload->>'gratuita' = 'true') gratuitas,
       (SELECT count(*) FROM events WHERE type = 'wa_send_failed'
-        AND created_at > now() - interval '7 days') falhas_7d,
+        AND created_at > now() - $1::interval) falhas,
       (SELECT count(*) FROM events WHERE type = 'message_in'
-        AND created_at > now() - interval '7 days') recebidas_7d,
+        AND created_at > now() - $1::interval) recebidas,
+      (SELECT count(*) FROM events WHERE type = 'seed_planted'
+        AND created_at > now() - $1::interval) plantados,
       (SELECT count(*) FROM users
-        WHERE wa_last_inbound_at > now() - interval '24 hours') janela_aberta_agora`);
+        WHERE wa_last_inbound_at > now() - interval '24 hours') janela_aberta_agora`,
+    [janelaSql]);
   const falhasRecentes = await q(`
     SELECT coalesce(u.name,'?') nome, e.payload->>'details' motivo, e.created_at
       FROM events e LEFT JOIN users u ON u.id = e.user_id
-     WHERE e.type = 'wa_send_failed' ORDER BY e.id DESC LIMIT 5`);
+     WHERE e.type = 'wa_send_failed' ORDER BY e.id DESC LIMIT 6`);
 
   // --- conteúdo ------------------------------------------------------------
   const familias = await q(`
-    SELECT s.family, count(*)::int n
+    SELECT s.family rotulo, count(*)::int n
       FROM seed_deliveries d JOIN seeds s ON s.id = d.seed_id
-     WHERE d.delivered_at > now() - interval '30 days'
-     GROUP BY 1 ORDER BY 2 DESC`);
+     WHERE d.delivered_at > now() - $1::interval
+     GROUP BY 1 ORDER BY 2 DESC`, [janelaSql]);
+  const tipos = await q(`
+    SELECT s.type rotulo, count(*)::int n
+      FROM seed_deliveries d JOIN seeds s ON s.id = d.seed_id
+     WHERE d.delivered_at > now() - $1::interval
+     GROUP BY 1 ORDER BY 2 DESC`, [janelaSql]);
+  const topSementes = await q(`
+    SELECT s.id, s.reference, s.family, count(*)::int n,
+           count(*) FILTER (WHERE d.planted)::int plantadas
+      FROM seed_deliveries d JOIN seeds s ON s.id = d.seed_id
+     GROUP BY 1, 2, 3 ORDER BY 4 DESC, 1 LIMIT 10`);
   const louvores = await q(`
-    SELECT payload->>'titulo' titulo, count(*)::int n
+    SELECT payload->>'titulo' rotulo, count(*)::int n
       FROM events WHERE type = 'musica_aberta' AND payload->>'titulo' IS NOT NULL
-     GROUP BY 1 ORDER BY 2 DESC LIMIT 8`);
+     GROUP BY 1 ORDER BY 2 DESC LIMIT 10`);
   // "Estoque" = quantas sementes INÉDITAS restam para a pessoa que já viu mais.
   // É o número que diz quando a base de 380 acaba para alguém.
   const [estoque] = await q(`
     SELECT (SELECT count(*) FROM seeds)::int total,
+           (SELECT count(*) FROM seeds WHERE gesture IS NOT NULL)::int com_gesto,
            coalesce((SELECT (SELECT count(*) FROM seeds) - count(*)
                        FROM seed_deliveries d GROUP BY d.user_id
-                      ORDER BY count(*) DESC LIMIT 1), (SELECT count(*) FROM seeds))::int menor_restante`);
+                      ORDER BY count(*) DESC LIMIT 1),
+                    (SELECT count(*) FROM seeds))::int menor_restante`);
+
+  // --- engajamento ---------------------------------------------------------
+  // Quantos DIAS distintos cada pessoa recebeu semente. Num devocional é a
+  // medida honesta de hábito: uma pessoa com 12 dias vale mais que doze
+  // pessoas com 1 dia, e a média sozinha esconde essa diferença.
+  const faixas = [
+    { rotulo: 'nenhum dia', teste: (d: number) => d === 0 },
+    { rotulo: '1 dia', teste: (d: number) => d === 1 },
+    { rotulo: '2 a 3 dias', teste: (d: number) => d >= 2 && d <= 3 },
+    { rotulo: '4 a 7 dias', teste: (d: number) => d >= 4 && d <= 7 },
+    { rotulo: '8 dias ou mais', teste: (d: number) => d >= 8 },
+  ];
+  const engajamento = faixas.map((f) => ({
+    rotulo: f.rotulo,
+    n: pessoas.filter((p: any) => f.teste(num(p.dias_ativos))).length,
+  }));
+
+  // --- sistema -------------------------------------------------------------
+  const [ultimoDisparo] = await q(`
+    SELECT payload->>'window' janela, payload->>'enviadas' enviadas,
+           payload->>'falhas' falhas, created_at
+      FROM events WHERE type = 'wa_dispatch' ORDER BY id DESC LIMIT 1`);
+  const eventosRecentes = await q(`
+    SELECT e.type, coalesce(u.name,'—') nome, e.created_at, e.payload
+      FROM events e LEFT JOIN users u ON u.id = e.user_id
+     ORDER BY e.id DESC LIMIT 40`);
+
+  // Presença de configuração, nunca o valor. Um painel que mostra segredo
+  // deixa de ser painel e vira vazamento.
+  const config = [
+    ['Chave da Anthropic', !!process.env.ANTHROPIC_API_KEY, 'o cérebro emocional depende dela'],
+    ['Banco de dados', !!process.env.DATABASE_URL, 'Supabase'],
+    ['Credenciais da Meta', metaConfigurada(), 'envio pelo WhatsApp'],
+    ['Segredo do webhook', !!process.env.WA_APP_SECRET, 'valida a assinatura das mensagens recebidas'],
+    ['Token do webhook', !!process.env.WA_VERIFY_TOKEN, 'handshake da Meta'],
+    ['Token do cron', !!process.env.GRAO_API_TOKEN, 'disparo diário pelo GitHub Actions'],
+    ['Token do painel', !!process.env.GRAO_ADMIN_TOKEN, 'separado do token do cron'],
+    ['URL pública', !!process.env.PUBLIC_BASE_URL, 'imagem do preview do louvor'],
+    ['Origens liberadas (CORS)', !!process.env.CORS_ORIGINS, 'sem isso o webapp publicado não conversa com o backend'],
+  ].map(([rotulo, ok, nota]) => ({ rotulo, ok, nota }));
 
   return {
     geradoEm: new Date().toISOString(),
+    periodoDias: dias,
     tokenDedicado: !!process.env.GRAO_ADMIN_TOKEN,
     resumo: {
       usuarios: num(resumo.usuarios),
+      usuariosPeriodo: num(resumo.usuarios_periodo),
       comWhatsapp: num(resumo.com_whatsapp),
       ativos7d: num(resumo.ativos_7d),
       sementesHoje: num(resumo.sementes_hoje),
-      entregas7d: num(resumo.entregas_7d),
-      plantios7d: num(resumo.plantios_7d),
-      taxaPlantio7d: num(resumo.entregas_7d)
-        ? Math.round((num(resumo.plantios_7d) / num(resumo.entregas_7d)) * 100) : 0,
+      entregas: num(resumo.entregas),
+      plantios: num(resumo.plantios),
+      taxaPlantio: num(resumo.entregas)
+        ? Math.round((num(resumo.plantios) / num(resumo.entregas)) * 100) : 0,
       assinaturas: num(resumo.assinaturas),
     },
     funil,
-    dias: dias.map((d: any) => ({
-      dia: String(d.dia).slice(0, 10),
-      novos: num(d.novos), entregas: num(d.entregas),
-      plantios: num(d.plantios), mensagens: num(d.mensagens),
+    serie: serie.map((d: any) => ({
+      dia: d.dia,
+      novos: num(d.novos), entregas: num(d.entregas), plantios: num(d.plantios),
+      ativos: num(d.ativos), mensagens: num(d.mensagens),
     })),
     janelas,
+    engajamento,
     planos: {
       linhas: planos.map((p: any) => ({ plan: p.plan, status: p.status, n: p.n })),
       mrrReais: mrrCents / 100,
@@ -224,24 +311,28 @@ async function montarPainel() {
       cobrancaAtiva: false,
     },
     whatsapp: {
-      avisos7d: num(wa.avisos_7d),
-      gratuitas7d: num(wa.gratuitas_7d),
-      falhas7d: num(wa.falhas_7d),
-      recebidas7d: num(wa.recebidas_7d),
+      avisos: num(wa.avisos),
+      gratuitas: num(wa.gratuitas),
+      falhas: num(wa.falhas),
+      recebidas: num(wa.recebidas),
+      plantados: num(wa.plantados),
       janelaAbertaAgora: num(wa.janela_aberta_agora),
       custoUnitario: CUSTO_TEMPLATE,
-      custoEstimado7d: Number((num(wa.avisos_7d) * CUSTO_TEMPLATE).toFixed(2)),
+      custoEstimado: Number((num(wa.avisos) * CUSTO_TEMPLATE).toFixed(2)),
       falhasRecentes: falhasRecentes.map((f: any) => ({
         nome: f.nome, motivo: f.motivo, quando: f.created_at,
       })),
     },
     conteudo: {
-      familias: familias.map((f: any) => ({ family: f.family, n: f.n })),
-      louvores: louvores.map((l: any) => ({ titulo: l.titulo, n: l.n })),
+      familias, tipos, louvores,
+      topSementes: topSementes.map((s: any) => ({
+        id: s.id, reference: s.reference, family: s.family, n: s.n, plantadas: s.plantadas,
+      })),
       estoqueTotal: num(estoque.total),
+      comGesto: num(estoque.com_gesto),
       menorRestante: num(estoque.menor_restante),
     },
-    pessoas: pessoas.slice(0, 60).map((p: any) => {
+    pessoas: pessoas.map((p: any) => {
       const parou = ETAPAS.find(({ chave }) => chave !== 'abriu' && !p[chave]);
       const info = JANELA_INFO[p.delivery_window as Janela];
       return {
@@ -251,11 +342,30 @@ async function montarPainel() {
         etapa: parou ? parou.rotulo : 'Ciclo completo',
         completo: !parou,
         entregas: num(p.entregas),
+        diasAtivos: num(p.dias_ativos),
+        familia: p.familia,
         plano: p.plano ? `${p.plano} · ${p.plano_status}` : null,
         criadoEm: p.created_at,
         ultimaAtividade: p.ultima_atividade,
       };
     }),
+    sistema: {
+      config,
+      ultimoDisparo: ultimoDisparo ? {
+        janela: JANELA_INFO[ultimoDisparo.janela as Janela]?.rotulo ?? ultimoDisparo.janela,
+        enviadas: num(ultimoDisparo.enviadas),
+        falhas: num(ultimoDisparo.falhas),
+        quando: ultimoDisparo.created_at,
+      } : null,
+      eventos: eventosRecentes.map((e: any) => ({
+        tipo: e.type,
+        rotulo: EVENTOS[e.type] ?? e.type,
+        nome: e.nome,
+        quando: e.created_at,
+        detalhe: e.payload?.family || e.payload?.window || e.payload?.titulo
+          || e.payload?.plan || e.payload?.seedId || null,
+      })),
+    },
   };
 }
 
@@ -271,9 +381,13 @@ export function registerAdminRoutes(app: Express) {
       .sendFile(path.resolve('public/admin.html'));
   });
 
-  app.get('/admin/api/painel', exigeAdmin, async (_req: Request, res: Response) => {
+  app.get('/admin/api/painel', exigeAdmin, async (req: Request, res: Response) => {
+    // Faixa fechada: um período gigante viraria varredura em cima de
+    // generate_series, e nenhuma pergunta do Trial precisa de mais de um ano.
+    const bruto = Number(req.query.dias ?? 30);
+    const dias = Number.isFinite(bruto) ? Math.min(Math.max(Math.trunc(bruto), 7), 365) : 30;
     try {
-      res.set('Cache-Control', 'no-store').json(await montarPainel());
+      res.set('Cache-Control', 'no-store').json(await montarPainel(dias));
     } catch (err: any) {
       console.error('[admin]', err?.message || err);
       res.status(500).json({ error: 'Falha ao montar o painel.', detalhe: err?.message });
