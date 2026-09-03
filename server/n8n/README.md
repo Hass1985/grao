@@ -46,16 +46,15 @@ com variáveis e mande a semente já no primeiro disparo. O endpoint devolve
 Texto para submeter à aprovação (categoria `UTILITY`):
 
 ```
-Olá {{nome}}, sua semente de hoje 🌱
+Olá {{nome}}, esta é a sua semente de hoje 🌱
 
-"{{passagem}}"
-— {{referencia}}
+A palavra: {{passagem}}
 
 {{reflexao}}
 
 Prática de hoje: {{pratica}}
 
-🎵 {{musica}}
+Para ouvir: 🎵 {{musica}}
 
 Que Deus te guarde. 🌱
 ```
@@ -70,6 +69,11 @@ Duas regras da Meta que derrubam o modelo se ignoradas:
 
 1. **Variáveis são nomeadas**, não numeradas — minúsculas e sublinhados, sem
    acento. `{{1}}` é recusado.
+0. **Densidade:** mínimo de **3 × (nº de variáveis) + 1** palavras de texto
+   fixo. A primeira versão tinha 12 palavras para 6 variáveis e foi rejeitada:
+   um template quase todo feito de variáveis é recusado porque a Meta não
+   consegue prever o que será enviado. Por isso a referência viaja dentro de
+   `{{passagem}}` — uma variável a menos baixa a exigência em 3 palavras.
 2. **O corpo não pode terminar (nem começar) numa variável.** É por isso que
    existe a linha de fecho no final.
 3. **O limite de 1024 caracteres vale para a mensagem MONTADA**, não para o

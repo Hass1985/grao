@@ -54,14 +54,22 @@ export function sendText(phone: string, texto: string) {
 const LIMITE_CORPO = 1024;
 
 /**
- * Texto fixo do template.
+ * Texto fixo do template. Três regras da Meta moldam este texto:
  *
- * O fecho fica no CORPO, não no rodapé, por uma regra da Meta: o corpo não
- * pode terminar numa variável, e sem essa linha ele terminaria em
- * {{musica}}. O rodapé leva só a assinatura da marca — e sem emoji, que a
- * Meta recusa nesse campo.
+ *  1. o corpo não pode começar nem TERMINAR numa variável — daí a saudação e
+ *     a linha de fecho;
+ *  2. DENSIDADE: é exigido no mínimo 3 × (nº de variáveis) + 1 palavras de
+ *     texto fixo. A primeira versão tinha 12 palavras para 6 variáveis e foi
+ *     rejeitada; um template quase todo feito de variáveis é recusado porque
+ *     a Meta não consegue prever o que será enviado. Os rótulos ("A palavra:",
+ *     "Para pensar:") existem por isso — e de quebra deixam a mensagem mais
+ *     legível;
+ *  3. o rodapé não aceita emoji.
+ *
+ * A referência foi fundida na variável `passagem` para baixar de 6 para 5
+ * variáveis, o que reduz a exigência de palavras.
  */
-const MOLDE_FIXO = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 \n\nQue Deus te guarde. 🌱';
+const MOLDE_FIXO = 'Olá , esta é a sua semente de hoje 🌱\n\nA palavra: \n\n\n\nPrática de hoje: \n\nPara ouvir: 🎵 \n\nQue Deus te guarde. 🌱';
 
 /**
  * REDE DE SEGURANÇA, não solução.
@@ -116,13 +124,15 @@ export function sendSeedTemplate(phone: string, partes: {
         .filter(Boolean).join(' — ')
     : 'sem música hoje';
 
-  const reflexao = couberNoLimite(partes, musica);
+  // Passagem e referência viajam juntas: uma variável a menos baixa a
+  // exigência de densidade da Meta em 3 palavras.
+  const passagem = `"${partes.passage}" — ${partes.reference}`;
+  const reflexao = couberNoLimite({ ...partes, passage: passagem, reference: '' }, musica);
 
   const campos: Array<[string, string]> = [
     // template não aceita variável vazia; o fallback mantém a frase natural
     ['nome', partes.name?.trim() || 'tudo bem'],
-    ['passagem', partes.passage],
-    ['referencia', partes.reference],
+    ['passagem', passagem],
     ['reflexao', reflexao],
     ['pratica', partes.practice],
     ['musica', musica],

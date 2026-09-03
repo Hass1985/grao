@@ -23,7 +23,7 @@ const GRAVAR = process.argv.includes('gravar');
 const LIMITE = 1024;
 // Texto fixo do template, sem as variáveis. O fecho fica no corpo porque a
 // Meta não aceita corpo terminado em variável.
-const MOLDE = 'Olá , sua semente de hoje 🌱\n\n""\n— \n\n\n\nPrática de hoje: \n\n🎵 \n\nQue Deus te guarde. 🌱';
+const MOLDE = 'Olá , esta é a sua semente de hoje 🌱\n\nA palavra: \n\n\n\nPrática de hoje: \n\nPara ouvir: 🎵 \n\nQue Deus te guarde. 🌱';
 const NOME_LONGO = 12;   // margem para nomes compridos
 
 const SYSTEM = `Você é o editor do Grão, um devocional diário para evangélicos brasileiros. Sua tarefa: encurtar UMA reflexão que não cabe no limite do WhatsApp, sem que o leitor perceba que ela foi encurtada.
@@ -56,8 +56,9 @@ const TOOL = {
 };
 
 function orcamentoDaReflexao(s: any, musica: string): number {
-  const fixo = MOLDE.length + NOME_LONGO + s.passage.length + s.reference.length +
-    s.practice.length + musica.length;
+  // passagem e referência viajam na mesma variável, com aspas e travessão
+  const passagem = `"${s.passage}" — ${s.reference}`;
+  const fixo = MOLDE.length + NOME_LONGO + passagem.length + s.practice.length + musica.length;
   return LIMITE - fixo;
 }
 
