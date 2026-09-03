@@ -10,6 +10,11 @@
 //
 // Bônus: como todo toque passa por aqui, dá para saber quais louvores as
 // pessoas realmente ouvem.
+//
+// A imagem é QUADRADA de propósito. A primeira versão usava o banner de
+// 1200×630 do site, e o WhatsApp — que recorta o preview pequeno em quadrado —
+// pegava uma faixa do meio, deixando o logo cortado e ilegível. Com 1000×1000
+// e o símbolo centralizado com folga, qualquer recorte continua correto.
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
@@ -49,9 +54,10 @@ export function registerOuvirRoutes(app: Express, baseUrl: () => string) {
 <meta property="og:title" content="${esc(titulo)}">
 <meta property="og:description" content="O louvor da sua semente de hoje. 🌱">
 <meta property="og:image" content="${esc(og)}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image:width" content="1000">
+<meta property="og:image:height" content="1000">
+<meta property="og:image:alt" content="Grão">
+<meta name="twitter:card" content="summary">
 <meta http-equiv="refresh" content="0;url=${esc(s.url)}">
 <style>
   body{margin:0;display:grid;place-items:center;min-height:100vh;
