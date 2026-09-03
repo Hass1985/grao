@@ -37,13 +37,30 @@ async function chamar(corpo: unknown): Promise<{ ok: boolean; id?: string; erro?
   return { ok: true, id: j.messages?.[0]?.id };
 }
 
+/**
+ * Card de preview do link no fim da mensagem.
+ *
+ * Com preview, o WhatsApp busca a og:image da nossa página-ponte e desenha um
+ * cartão. O cartão dá presença ao louvor, mas a miniatura vai COMPRIMIDA dentro
+ * da própria mensagem — existe um piso de nitidez que não depende do arquivo
+ * que servimos, e foi onde a marca ficou sempre um pouco borrada.
+ *
+ * Sem preview, some o cartão: fica o texto da semente e o link tocável. A
+ * semente ganha o fim da mensagem de volta, que é o lugar que o olho procura.
+ *
+ * DESLIGADO por padrão: depois de ver os dois no aparelho, o card saiu perdendo.
+ * Para religar, WA_LINK_PREVIEW=true no ambiente — sem deploy, porque a
+ * resposta aqui é de gosto e gosto muda vendo.
+ */
+const PREVIEW_LINK = () => process.env.WA_LINK_PREVIEW === 'true';
+
 /** Texto livre. Só funciona dentro da janela de 24h após a última mensagem da pessoa. */
-export function sendText(phone: string, texto: string) {
+export function sendText(phone: string, texto: string, preview?: boolean) {
   return chamar({
     messaging_product: 'whatsapp',
     to: phone,
     type: 'text',
-    text: { body: texto, preview_url: true },
+    text: { body: texto, preview_url: preview === undefined ? PREVIEW_LINK() : preview },
   });
 }
 

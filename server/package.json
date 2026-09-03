@@ -32,7 +32,8 @@
     "api:token": "bash scripts/set-api-token.sh",
     "content:backup": "tsx scripts/backup-seeds.ts",
     "funil": "tsx scripts/funil.ts",
-    "watch": "tsx scripts/watch.ts"
+    "watch": "tsx scripts/watch.ts",
+    "wa:preview": "tsx scripts/testar-preview.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

@@ -34,7 +34,14 @@
 //    ficava suja. Foi a última fonte de borrão que restava.
 //
 // Limite honesto: o WhatsApp embute uma miniatura JPEG pequena na própria
-// mensagem. Existe um piso de nitidez que não depende do nosso arquivo.
+// mensagem. Existe um piso de nitidez que não depende do nosso arquivo. Foi
+// esse piso que decidiu a questão — o card está DESLIGADO por padrão desde
+// então (WA_LINK_PREVIEW, em meta.ts), e as meta tags abaixo ficam dormentes.
+//
+// A página continua valendo a pena mesmo sem card, por dois motivos: todo
+// toque passa por aqui, então sabemos quais louvores as pessoas realmente
+// ouvem (é o que alimenta "louvores mais abertos" no painel); e no dia em que
+// o card voltar, quem manda a imagem é o Grão, não o Spotify.
 
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
