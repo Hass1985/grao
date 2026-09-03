@@ -61,6 +61,12 @@ pedido existente" — confirmação de compra, status de entrega. Um devocional
 diário é conteúdo. Insistir não adianta, e ainda que uma versão passasse, a
 Meta recategoriza templates periodicamente.
 
+**Validade:** Marketing não permite validade personalizada no Cloud API — o
+template usa o padrão, que é longo. Um aviso pode então ficar dias parado num
+celular desligado. Por isso o toque em Plantar confere se o aviso é **do dia**
+(no fuso do usuário): se não for, entrega uma semente escolhida na hora. Ninguém
+recebe a semente de terça numa sexta.
+
 **O que reduz o custo de verdade:** o disparo diário checa se a janela de 24h
 está aberta. Quem falou com o Grão nas últimas 24 horas recebe a semente
 inteira como texto livre, **de graça**, sem gastar template. Só quem está fora

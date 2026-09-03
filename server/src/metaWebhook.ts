@@ -59,23 +59,41 @@ interface MsgMeta {
  * que alimenta o Campo e a Raiz.
  */
 async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
-  // A entrega registrada mais recente é a semente que foi anunciada hoje.
   // d.id precisa de apelido: s.* traz s.id (texto) e sobrescreveria o id
   // numérico da entrega, quebrando o UPDATE lá embaixo.
+  //
+  // `do_dia` diz se o aviso que ela tocou é de hoje, no fuso dela. Templates
+  // de Marketing não permitem configurar validade no Cloud API, então um aviso
+  // pode ficar dias parado num celular desligado. Sem esta checagem, a pessoa
+  // voltaria de viagem e receberia a semente de terça numa sexta.
   const { rows: [entrega] } = await pool.query(
-    `SELECT d.id AS entrega_id, s.* FROM seed_deliveries d
+    `SELECT d.id AS entrega_id, d.planted,
+            (d.delivered_at AT TIME ZONE u.timezone)::date
+              = (now() AT TIME ZONE u.timezone)::date AS do_dia,
+            s.*
+       FROM seed_deliveries d
        JOIN seeds s ON s.id = d.seed_id
+       JOIN users u ON u.id = d.user_id
       WHERE d.user_id = $1
       ORDER BY d.id DESC LIMIT 1`, [userId]);
 
-  if (!entrega) {
-    await sendText(msg.from, 'Estou aqui. Me conta como você está hoje?');
+  const perfil = await getProfile(userId);
+
+  // Aviso velho (ou nenhum): entrega a semente de hoje, escolhida agora.
+  if (!entrega || !entrega.do_dia) {
+    const fresca = await selectSeedForUser(userId);
+    if (!fresca) { await sendText(msg.from, 'Estou aqui. Me conta como você está hoje?'); return; }
+    const r = await sendText(msg.from, formatSeed(fresca, perfil ? null : undefined));
+    if (!r.ok) { console.error(`[wa] falha ao entregar semente do dia: ${r.erro}`); return; }
+    await pool.query(
+      `UPDATE seed_deliveries SET planted = true
+        WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [userId]);
+    void logEvent(userId, 'seed_planted', { seedId: fresca.id, source: 'whatsapp_botao', aviso_vencido: true });
     return;
   }
 
   // Texto livre: sem teto de 1024, com negrito e itálico, e gratuito porque o
   // toque acabou de abrir a janela de 24h.
-  const perfil = await getProfile(userId);
   const texto = formatSeed({
     id: entrega.id, family: entrega.family, type: entrega.type,
     passage: entrega.passage, reference: entrega.reference,
