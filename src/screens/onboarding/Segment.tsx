@@ -12,6 +12,9 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import { space } from '../../theme/spacing';
+import Button from '../../components/ui/Button';
+import BackButton from '../../components/ui/BackButton';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -38,9 +41,7 @@ export default function Segment({ navigation }: Props) {
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
       <View style={styles.navHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
 
       <ScrollView style={webScroll} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -75,13 +76,11 @@ export default function Segment({ navigation }: Props) {
           ))}
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, !selectedSegment && styles.buttonDisabled]}
+        <Button
+          title="Continuar"
+          disabled={!selectedSegment}
           onPress={() => selectedSegment && navigation.navigate('Notification')}
-          activeOpacity={selectedSegment ? 0.85 : 1}
-        >
-          <Text style={styles.buttonText}>Continuar</Text>
-        </TouchableOpacity>
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -89,10 +88,16 @@ export default function Segment({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  navHeader: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
-  backBtn: {},
-  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 36, fontFamily: fonts.sans },
-  scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 48 },
+  navHeader: {
+    paddingHorizontal: space.gutter,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  scroll: {
+    paddingHorizontal: space.gutter,
+    paddingTop: 8,
+    paddingBottom: 48,
+  },
   eyebrow: {
     fontFamily: fonts.sansMedium, fontSize: 11, color: colors.accent,
     textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14,
@@ -122,7 +127,4 @@ const styles = StyleSheet.create({
   cardSubSelected: { color: colors.foregroundMuted },
   cardAge: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundSubtle, marginTop: 2 },
   cardAgeSelected: { color: colors.foregroundSubtle },
-  button: { backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 15, alignItems: 'center', ...(shadows.sm as object) },
-  buttonDisabled: { backgroundColor: colors.foregroundSubtle },
-  buttonText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.accentForeground, letterSpacing: 0.3 },
 });

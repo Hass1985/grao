@@ -14,6 +14,29 @@
 //    o canal adaptar o tom — o Grão acolhe, não diagnostica.
 
 import Anthropic from '@anthropic-ai/sdk';
+import { logEvent } from './db.js';
+
+/**
+ * Registra que o cérebro falhou, para a falha não ser silenciosa.
+ *
+ * Foi assim que perdemos um dia: a chave da Anthropic ficou sem saldo e nada
+ * no produto disse isso. A leitura emocional parou, o momento de todo mundo
+ * congelou na última família lida, e as sementes passaram a repetir o mesmo
+ * assunto. Do lado de fora parecia problema de conteúdo.
+ *
+ * Uma linha a cada 10 minutos: uma rajada de mensagens não pode encher a
+ * tabela de eventos com a mesma notícia.
+ */
+let ultimaFalha = 0;
+export function registrarFalhaDoCerebro(onde: string, erro: any): void {
+  const motivo = String(erro?.message ?? erro);
+  console.warn(`[cérebro] ${onde} falhou: ${motivo.slice(0, 160)}`);
+  const semSaldo = /credit balance|authentication|invalid x-api-key/i.test(motivo);
+  const agora = Date.now();
+  if (agora - ultimaFalha < 600_000) return;
+  ultimaFalha = agora;
+  void logEvent(null, 'brain_failed', { onde, motivo: motivo.slice(0, 200), semSaldo });
+}
 
 const client = new Anthropic();
 const MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -107,7 +130,7 @@ export async function readMessage(text: string, ctx: ReadContext = {}): Promise<
     r.confidence = Math.max(0, Math.min(100, r.confidence | 0));
     return r;
   } catch (err: any) {
-    console.warn('[brain] leitura falhou:', err?.message || err);
+    registrarFalhaDoCerebro('leitura da mensagem', err);
     return null;
   }
 }
@@ -267,7 +290,7 @@ export async function readOpening(transcript: string, name?: string): Promise<Op
     r.channel_confidence = Math.max(0, Math.min(100, r.channel_confidence | 0));
     return r;
   } catch (err: any) {
-    console.warn('[brain] abertura falhou:', err?.message || err);
+    registrarFalhaDoCerebro('leitura da Abertura', err);
     return null;
   }
 }

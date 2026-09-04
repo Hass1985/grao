@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList } from 'react-native';
-import ProfileButton from '../components/ProfileButton';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, StatusBar } from 'react-native';
 import SeedCard from '../components/SeedCard';
-import MusicCard from '../components/MusicCard';
+import ScreenBackground from '../components/ui/ScreenBackground';
+import AppHeader from '../components/ui/AppHeader';
+import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, Seed } from '../data/seeds';
 import { fetchHistory } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
+import { space } from '../theme/spacing';
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr + 'T12:00:00');
@@ -29,17 +31,19 @@ function SeedEntry({ seed }: { seed: Seed }) {
           </Text>
         </View>
       </View>
-      <SeedCard seed={seed} compact={true} featured={true} />
-      <MusicCard music={seed.music} />
+      <SeedCard seed={seed} compact featured embedMusic />
     </View>
   );
 }
 
 export default function Raiz({ navigation }: { navigation: any }) {
-  // Mesmo histórico do Campo: o que a pessoa recebeu de verdade.
   const [sementes, setSementes] = useState<Seed[]>(pastSeeds);
   const carregar = useCallback(async () => {
-    try { setSementes(await fetchHistory()); } catch { /* mantém a reserva */ }
+    try {
+      setSementes(await fetchHistory());
+    } catch {
+      /* mantém a reserva */
+    }
   }, []);
   useEffect(() => {
     carregar();
@@ -48,47 +52,37 @@ export default function Raiz({ navigation }: { navigation: any }) {
   }, [carregar, navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={sementes}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.pageHeader}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.title}>Raiz</Text>
-              <Text style={styles.subtitle}>Suas sementes, guardadas.</Text>
-            </View>
-            <ProfileButton onPress={() => navigation.navigate('Settings')} />
-          </View>
-        }
-        renderItem={({ item, index }) => (
-          <>
-            <SeedEntry seed={item} />
-            {index < sementes.length - 1 && <View style={styles.separator} />}
-          </>
-        )}
-      />
-    </SafeAreaView>
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <FlatList
+          data={sementes}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.list, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <AppHeader
+              title="Raiz"
+              subtitle="Suas sementes, guardadas."
+              onLogoPress={() => navigation.navigate('Settings')}
+              onProfilePress={() => navigation.navigate('Settings')}
+            />
+          }
+          renderItem={({ item, index }) => (
+            <>
+              <SeedEntry seed={item} />
+              {index < sementes.length - 1 && <View style={styles.separator} />}
+            </>
+          )}
+        />
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  list: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 48 },
-  pageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerLeft: { gap: 2 },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.foreground },
-  subtitle: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundMuted },
+  safe: { flex: 1 },
+  list: { paddingHorizontal: space.gutter, paddingTop: 0 },
 
   entry: { marginBottom: 4 },
   entryHeader: {
@@ -109,5 +103,5 @@ const styles = StyleSheet.create({
   plantedEmoji: { fontSize: 14 },
   plantedLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.xs, color: colors.accent },
   plantedLabelEmpty: { color: colors.foregroundSubtle },
-  separator: { height: 1, backgroundColor: colors.border, marginVertical: 24 },
+  separator: { height: 1, backgroundColor: colors.hairline, marginVertical: 24 },
 });

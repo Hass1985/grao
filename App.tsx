@@ -3,12 +3,16 @@ import { View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import {
-  Fraunces_400Regular,
-} from '@expo-google-fonts/fraunces';
+  Newsreader_400Regular,
+  Newsreader_500Medium,
+  Newsreader_600SemiBold,
+  Newsreader_400Regular_Italic,
+} from '@expo-google-fonts/newsreader';
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-} from '@expo-google-fonts/inter';
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+} from '@expo-google-fonts/dm-sans';
 import 'react-native-gesture-handler';
 
 import RootNavigator from './src/navigation';
@@ -19,9 +23,13 @@ export default function App() {
   const [isOnboarded, setIsOnboarded] = useState(false);
 
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces_400Regular,
-    Inter_400Regular,
-    Inter_500Medium,
+    Newsreader_400Regular,
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+    Newsreader_400Regular_Italic,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
   });
 
   // Rede de segurança: mesmo que as fontes falhem ou travem no host,

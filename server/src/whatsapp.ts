@@ -10,8 +10,8 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
-import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
-import { selectSeedForUser, type SelectedSeed } from './seedSelector.js';
+import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './brain.js';
+import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
 import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
 
 const client = new Anthropic();
@@ -202,8 +202,12 @@ export async function entregarSemente(
   u: DestinoEntrega,
   origem: string,
 ): Promise<{ ok: boolean; erro?: string; seedId?: string }> {
-  const seed = await selectSeedForUser(u.id);
-  if (!seed) return { ok: false, erro: 'sem semente disponível' };
+  // A semente do dia pode JÁ ter sido escolhida pelo app. Nesse caso mandamos
+  // a mesma: app e WhatsApp precisam mostrar a mesma coisa, e sortear outra
+  // aqui gastaria duas das 380 no mesmo dia.
+  const escolha = await getOrSelectTodaySeed(u.id);
+  if (!escolha) return { ok: false, erro: 'sem semente disponível' };
+  const { seed, jaExistia } = escolha;
 
   const aberta = !!u.janela_aberta;
   const r = aberta
@@ -211,26 +215,36 @@ export async function entregarSemente(
     : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
 
   if (r.ok) {
-    if (aberta) {
-      await pool.query(
-        `UPDATE seed_deliveries SET planted = true
-          WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [u.id]);
-    }
+    // sent_wa_at é o que impede o reenvio. Marcado na entrega DE HOJE desta
+    // pessoa, não na última linha da tabela: com o app escolhendo a semente
+    // antes, "a última linha" nem sempre é a do dia.
+    await pool.query(
+      `UPDATE seed_deliveries d SET sent_wa_at = now()${aberta ? ', planted = true' : ''}
+         FROM users u
+        WHERE d.user_id = $1 AND u.id = d.user_id
+          AND (d.delivered_at AT TIME ZONE u.timezone)::date
+            = (now() AT TIME ZONE u.timezone)::date`, [u.id]);
     void logEvent(u.id, aberta ? 'seed_delivered' : 'seed_announced',
       { seedId: seed.id, family: seed.family, source: origem, gratuita: aberta });
     return { ok: true, seedId: seed.id };
   }
 
   void logEvent(u.id, 'wa_send_failed', { details: r.erro, source: origem });
-  try {
-    const { rowCount } = await pool.query(
-      `DELETE FROM seed_deliveries
-        WHERE id = (SELECT max(id) FROM seed_deliveries
-                     WHERE user_id = $1 AND planted = false
-                       AND delivered_at > now() - interval '2 days')`, [u.id]);
-    if (rowCount) console.warn(`[wa] entrega desfeita para ${u.phone_e164} — a semente volta para a fila`);
-  } catch (e: any) {
-    console.error('[wa] erro ao desfazer entrega:', e?.message || e);
+  // Desfaz APENAS o que este envio criou. Se a semente já tinha sido escolhida
+  // pelo app, ela é da pessoa: apagar tiraria da tela Hoje uma semente que ela
+  // talvez já tenha lido. Fica gravada, com sent_wa_at nulo, e a próxima
+  // varredura tenta mandar de novo.
+  if (!jaExistia) {
+    try {
+      const { rowCount } = await pool.query(
+        `DELETE FROM seed_deliveries
+          WHERE id = (SELECT max(id) FROM seed_deliveries
+                       WHERE user_id = $1 AND seed_id = $2 AND sent_wa_at IS NULL
+                         AND planted = false)`, [u.id, seed.id]);
+      if (rowCount) console.warn(`[wa] entrega desfeita para ${u.phone_e164} — a semente volta para a fila`);
+    } catch (e: any) {
+      console.error('[wa] erro ao desfazer entrega:', e?.message || e);
+    }
   }
   return { ok: false, erro: r.erro };
 }
@@ -264,6 +278,7 @@ export async function entregarSeJaPassouOHorario(userId: string): Promise<boolea
           AND NOT EXISTS (
                 SELECT 1 FROM seed_deliveries d
                  WHERE d.user_id = u.id
+                   AND d.sent_wa_at IS NOT NULL
                    AND (d.delivered_at AT TIME ZONE u.timezone)::date
                      = (now() AT TIME ZONE u.timezone)::date)`, [userId]);
 
@@ -319,20 +334,27 @@ export async function replyFor(
     ? `\n\nLeitura interna: família ${leitura.family}${leitura.needs_care ? ' · SOFRIMENTO INTENSO' : ''} · ${leitura.summary}`
     : '';
 
-  const res = await client.messages.create({
-    model: REPLY_MODEL,
-    max_tokens: 600,
-    system: [{ type: 'text', text: REPLY_SYSTEM, cache_control: { type: 'ephemeral' } }],
-    tools: [REPLY_TOOL as any],
-    tool_choice: { type: 'tool', name: 'responder' },
-    messages: [{ role: 'user', content: `Mensagem dela: "${texto}"${leituraTxt}${ctx}` }],
-  });
-  const tu = res.content.find((b) => b.type === 'tool_use');
-  if (!tu || tu.type !== 'tool_use') {
-    // Falha do modelo não pode virar silêncio no WhatsApp.
-    return { resposta: 'Recebi sua mensagem. Estou aqui com você. 🌱', quer_semente: false };
+  // A resposta genérica é o piso, nunca o alvo: quem escreveu merece resposta
+  // ancorada no que disse. Mas SILÊNCIO é pior que genérico, e era o que
+  // acontecia quando a API caía: a exceção subia, o webhook registrava o erro
+  // no log e a pessoa ficava sem nenhuma resposta.
+  const RESERVA = { resposta: 'Recebi sua mensagem e estou aqui com você. 🌱', quer_semente: false };
+  try {
+    const res = await client.messages.create({
+      model: REPLY_MODEL,
+      max_tokens: 600,
+      system: [{ type: 'text', text: REPLY_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      tools: [REPLY_TOOL as any],
+      tool_choice: { type: 'tool', name: 'responder' },
+      messages: [{ role: 'user', content: `Mensagem dela: "${texto}"${leituraTxt}${ctx}` }],
+    });
+    const tu = res.content.find((b) => b.type === 'tool_use');
+    if (!tu || tu.type !== 'tool_use') return RESERVA;
+    return tu.input as { resposta: string; quer_semente: boolean };
+  } catch (err: any) {
+    registrarFalhaDoCerebro('resposta no WhatsApp', err);
+    return RESERVA;
   }
-  return tu.input as { resposta: string; quer_semente: boolean };
 }
 
 /**
@@ -435,6 +457,7 @@ export function registerWhatsAppRoutes(app: Express) {
             AND NOT EXISTS (
                   SELECT 1 FROM seed_deliveries d
                    WHERE d.user_id = u.id
+                     AND d.sent_wa_at IS NOT NULL
                      AND (d.delivered_at AT TIME ZONE u.timezone)::date
                        = (now() AT TIME ZONE u.timezone)::date)
           LIMIT $1`, [limite]);

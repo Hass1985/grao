@@ -73,6 +73,7 @@ const EVENTOS: Record<string, string> = {
   user_merged: 'cadastros fundidos',
   wa_send_failed: 'falha no envio',
   wa_dispatch: 'disparo automático',
+  brain_failed: '⚠ o cérebro falhou',
 };
 
 async function montarPainel(dias: number) {
@@ -250,6 +251,16 @@ async function montarPainel(dias: number) {
   }));
 
   // --- sistema -------------------------------------------------------------
+  // Falha do cérebro: a pergunta que o painel não sabia responder no dia em que
+  // a chave da Anthropic ficou sem saldo. Sem isto, "a leitura emocional parou"
+  // só aparece semanas depois, como "as sementes estão repetindo".
+  const [falhaCerebro] = await q(`
+    SELECT payload->>'onde' onde, payload->>'motivo' motivo,
+           (payload->>'semSaldo')::boolean sem_saldo, created_at
+      FROM events WHERE type = 'brain_failed' ORDER BY id DESC LIMIT 1`);
+  const [leitura] = await q(`
+    SELECT max(created_at) ultima, count(*)::int n FROM emotional_readings`);
+
   const [ultimoDisparo] = await q(`
     SELECT payload->>'enviadas' enviadas, payload->>'falhas' falhas,
            coalesce(payload->>'origem', 'cron') origem, created_at
@@ -359,6 +370,16 @@ async function montarPainel(dias: number) {
     }),
     sistema: {
       config,
+      cerebro: {
+        ultimaLeitura: leitura?.ultima ?? null,
+        leituras: num(leitura?.n),
+        ultimaFalha: falhaCerebro ? {
+          onde: falhaCerebro.onde,
+          motivo: falhaCerebro.motivo,
+          semSaldo: !!falhaCerebro.sem_saldo,
+          quando: falhaCerebro.created_at,
+        } : null,
+      },
       ultimoDisparo: ultimoDisparo ? {
         origem: ultimoDisparo.origem,
         enviadas: num(ultimoDisparo.enviadas),

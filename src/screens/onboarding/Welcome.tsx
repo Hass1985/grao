@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import GraoSymbol from '../../components/GraoSymbol';
+import Button from '../../components/ui/Button';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 
@@ -16,115 +20,118 @@ type Props = {
   navigation: StackNavigationProp<any>;
 };
 
+const NATIVE = Platform.OS !== 'web';
+
 export default function Welcome({ navigation }: Props) {
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: NATIVE,
+    }).start();
+  }, [enter]);
+
+  const opacity = enter;
+  const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <GraoSymbol size={56} color={colors.accent} filled={false} />
-          <Text style={styles.name}>Grão</Text>
-          <Text style={styles.eyebrow}>Devocional diário · em português</Text>
-        </View>
+    <View style={styles.root}>
+      {/* Papel de parede: degradê discreto palha → creme → toque âmbar */}
+      <LinearGradient
+        colors={['#FBF7F0', '#F7F1E8', '#F0E4D0', '#EBD9BE']}
+        locations={[0, 0.35, 0.72, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={['rgba(192,120,38,0.00)', 'rgba(192,120,38,0.06)', 'rgba(192,120,38,0.00)']}
+        locations={[0.2, 0.55, 0.9]}
+        start={{ x: 0.5, y: 0.15 }}
+        end={{ x: 0.5, y: 0.85 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-        <View style={styles.body}>
-          <Text style={styles.headline}>Uma semente{'\n'}por dia.</Text>
-          <Text style={styles.description}>
-            A Palavra de Deus{'\n'}na palma da sua mão.
-          </Text>
-        </View>
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" />
+        <Animated.View style={[styles.stage, { opacity, transform: [{ translateY }] }]}>
+          <View style={styles.brand}>
+            <GraoSymbol size={52} color={colors.accent} filled={false} />
+            <Text style={styles.name}>Grão</Text>
+            <Text style={styles.tagline}>Uma semente por dia</Text>
+          </View>
 
-        <TouchableOpacity
-          testID="welcome-cta"
-          style={styles.button}
-          onPress={() => navigation.navigate('Intro')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.buttonText}>Plantar minha primeira semente</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <View style={styles.body}>
+            <Text style={styles.headline}>A Palavra,{'\n'}no seu ritmo.</Text>
+            <Text style={styles.sub}>
+              Um momento, todo dia, escolhido para o que você está vivendo.
+            </Text>
+          </View>
+
+          <Button
+            testID="welcome-cta"
+            title="Começar com calma"
+            onPress={() => navigation.navigate('Intro')}
+          />
+        </Animated.View>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
+  safe: {
     flex: 1,
-    paddingHorizontal: 32,
-    justifyContent: 'space-between',
-    paddingTop: 80,
-    paddingBottom: 48,
   },
-  header: {
+  stage: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 56,
+    paddingBottom: 36,
+    justifyContent: 'space-between',
+  },
+  brand: {
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   name: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.xxl,
-    color: colors.foreground,
-    letterSpacing: -0.5,
-    marginTop: 4,
-  },
-  eyebrow: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 11,
-    color: colors.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  body: {
-    gap: 24,
-    alignItems: 'center',
-  },
-  headline: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: 44,
     color: colors.foreground,
-    lineHeight: 46,
     letterSpacing: -1,
-    textAlign: 'center',
   },
-  description: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.lg,
+  tagline: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
     color: colors.foregroundMuted,
-    lineHeight: 30,
+  },
+  body: {
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 4,
+  },
+  headline: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 36,
+    lineHeight: 42,
+    color: colors.foreground,
+    letterSpacing: -0.8,
     textAlign: 'center',
-    maxWidth: 320,
   },
-  ruleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
-  },
-  ruleLine: {
-    width: 40,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  ruleLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 11,
-    color: colors.foregroundSubtle,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
+  sub: {
+    fontFamily: fonts.serif,
     fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
+    lineHeight: 25,
+    color: colors.foregroundMuted,
+    textAlign: 'center',
+    maxWidth: 300,
   },
 });

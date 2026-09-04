@@ -7,23 +7,26 @@ import {
   SafeAreaView,
   ScrollView,
   Modal,
-  FlatList,
+  StatusBar,
 } from 'react-native';
-import GraoSymbol from '../components/GraoSymbol';
-import FamilyIcon from '../components/FamilyIcon';
-import ProfileButton from '../components/ProfileButton';
+import { Check } from 'lucide-react-native';
 import SeedCard from '../components/SeedCard';
-import MusicCard from '../components/MusicCard';
-import { todaySeed, emotionalFamilies, Seed, EmotionalFamily } from '../data/seeds';
+import MusicPlayer, { MUSIC_PLAYER_CLEARANCE } from '../components/MusicPlayer';
+import EmotionPicker from '../components/EmotionPicker';
+import ScreenBackground from '../components/ui/ScreenBackground';
+import AppHeader from '../components/ui/AppHeader';
+import Button from '../components/ui/Button';
+import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
 import { selectTodaySeed, setMoment } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
-import { shadows } from '../theme/shadows';
+import { space } from '../theme/spacing';
 
 export default function Hoje({ navigation }: { navigation: any }) {
   const [planted, setPlanted] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [seed, setSeed] = useState<Seed>(todaySeed);
+  const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
 
   const loadSeed = React.useCallback(async () => {
     try {
@@ -38,10 +41,12 @@ export default function Hoje({ navigation }: { navigation: any }) {
     loadSeed();
   }, [loadSeed]);
 
-  const chooseFamily = async (family: EmotionalFamily) => {
+  const confirmFamily = async (family: EmotionalFamily) => {
+    setPendingFamily(family);
     await setMoment(family);
     setModalVisible(false);
     setPlanted(false);
+    setPendingFamily(null);
     await loadSeed();
   };
 
@@ -52,175 +57,120 @@ export default function Hoje({ navigation }: { navigation: any }) {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* Header — backgroundElevated como no site */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <GraoSymbol size={28} color={colors.accent} filled={false} />
-            <Text style={styles.date}>{today}</Text>
-          </View>
-          <ProfileButton onPress={() => navigation.navigate('Settings')} />
-        </View>
-
-        {/* Semente do dia — escolhida pelo perfil + momento */}
-        <SeedCard seed={seed} featured={true} />
-
-        <MusicCard music={seed.music} />
-
-        {!planted ? (
-          <TouchableOpacity
-            style={styles.plantButton}
-            onPress={() => setPlanted(true)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.plantButtonText}>Levar esta semente</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.plantedState}>
-            <GraoSymbol size={22} color={colors.accent} filled={true} />
-            <Text style={styles.plantedText}>Semente plantada hoje</Text>
-          </View>
-        )}
-
-        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
-          <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
-        </TouchableOpacity>
-
-      </ScrollView>
-
-      {/* Modal de estados emocionais */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>O que você está sentindo?</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Text style={styles.modalClose}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={emotionalFamilies}
-            numColumns={2}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.familyList}
-            columnWrapperStyle={{ gap: 10 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.familyCard}
-                onPress={() => chooseFamily(item.id)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.familyIconWrap}>
-                  <FamilyIcon family={item.id} size={22} color={colors.accent} />
-                </View>
-                <Text style={styles.familyLabel}>{item.label}</Text>
-              </TouchableOpacity>
-            )}
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: MUSIC_PLAYER_CLEARANCE + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <AppHeader
+            title="Hoje"
+            subtitle={today.charAt(0).toUpperCase() + today.slice(1)}
+            onLogoPress={() => navigation.navigate('Settings')}
+            onProfilePress={() => navigation.navigate('Settings')}
           />
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+
+          <Text style={styles.greeting}>Sua semente{'\n'}para agora.</Text>
+
+          <SeedCard seed={seed} featured={true} />
+
+          {!planted ? (
+            <Button
+              title="Levar esta semente"
+              onPress={() => setPlanted(true)}
+              style={{ marginTop: 28 }}
+            />
+          ) : (
+            <View style={styles.plantedState}>
+              <Check size={20} color={colors.accent} strokeWidth={2.5} />
+              <Text style={styles.plantedText}>Semente plantada hoje</Text>
+            </View>
+          )}
+
+          <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
+            <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <MusicPlayer music={seed.music} />
+
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <ScreenBackground>
+            <SafeAreaView style={styles.modal}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.modalTitle}>Como você está{'\n'}se sentindo?</Text>
+                </View>
+                <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={12}>
+                  <Text style={styles.modalClose}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+              <EmotionPicker selected={pendingFamily} onSelect={confirmFamily} />
+            </SafeAreaView>
+          </ScreenBackground>
+        </Modal>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 20, paddingBottom: 48 },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: 20,
+  safe: { flex: 1 },
+  scroll: { paddingHorizontal: space.gutter },
+  greeting: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 30,
+    lineHeight: 36,
+    color: colors.foreground,
+    letterSpacing: -0.6,
+    marginBottom: 22,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  date: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
-    textTransform: 'capitalize',
-    letterSpacing: 0.1,
-  },
-
-  plantButton: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 12,
-    ...(shadows.sm as object),
-  },
-  plantButtonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
-  },
-
   plantedState: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 15,
-    marginBottom: 12,
+    paddingVertical: 18,
+    marginTop: 20,
   },
   plantedText: {
-    fontFamily: fonts.sansMedium,
+    fontFamily: fonts.serif,
     fontSize: fontSizes.base,
     color: colors.accent,
   },
-
-  otherLink: { alignItems: 'center', paddingVertical: 8 },
+  otherLink: { alignItems: 'center', paddingVertical: 16 },
   otherLinkText: {
-    fontFamily: fonts.sans,
+    fontFamily: fonts.serif,
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
-    textDecorationLine: 'underline',
   },
-
-  modal: { flex: 1, backgroundColor: colors.background },
+  modal: { flex: 1 },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 12,
   },
-  modalTitle: { fontFamily: fonts.serif, fontSize: fontSizes.xl, color: colors.foreground },
-  modalClose: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.accent },
-
-  familyList: { paddingHorizontal: 20, paddingTop: 20, gap: 10 },
-  familyCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
-    ...(shadows.sm as object),
+  modalTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 30,
+    lineHeight: 36,
+    color: colors.foreground,
+    letterSpacing: -0.5,
   },
-  familyIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surfaceAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalClose: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.sm,
+    color: colors.foregroundMuted,
+    marginTop: 8,
   },
-  familyLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foreground },
 });

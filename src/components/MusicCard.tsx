@@ -4,6 +4,8 @@ import Svg, { Path, Polygon } from 'react-native-svg';
 import { Music } from '../data/seeds';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
+import { radius } from '../theme/radius';
+import { shadows } from '../theme/shadows';
 
 interface MusicCardProps {
   music: Music;
@@ -32,16 +34,17 @@ export default function MusicCard({ music }: MusicCardProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.ruleRow}>
-        <View style={styles.ruleLine} />
-        <Text style={styles.ruleLabel}>Música</Text>
-        <View style={styles.ruleLine} />
-      </View>
+      <View style={styles.card}>
+        <View style={styles.ruleRow}>
+          <View style={styles.ruleLine} />
+          <Text style={styles.ruleLabel}>Música</Text>
+          <View style={styles.ruleLine} />
+        </View>
 
-      <Text style={styles.title}>{music.title}</Text>
-      <Text style={styles.artist}>{music.artist}</Text>
+        <Text style={styles.title}>{music.title}</Text>
+        <Text style={styles.artist}>{music.artist}</Text>
 
-      <View style={styles.links}>
+        <View style={styles.links}>
         {music.spotifyUrl && (
           <TouchableOpacity
             style={[styles.iconBtn, { backgroundColor: '#1DB954' }]}
@@ -63,6 +66,7 @@ export default function MusicCard({ music }: MusicCardProps) {
           </TouchableOpacity>
         )}
       </View>
+      </View>
     </View>
   );
 }
@@ -70,7 +74,19 @@ export default function MusicCard({ music }: MusicCardProps) {
 const BTN = 44;
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', paddingVertical: 24 },
+  container: { alignItems: 'stretch', paddingVertical: 20 },
+  card: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+    alignItems: 'center',
+    ...(shadows.sm as object),
+  },
   ruleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -87,7 +103,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   title: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: fontSizes.lg,
     color: colors.foreground,
     marginBottom: 4,

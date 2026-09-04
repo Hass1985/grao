@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
+import { radius } from '../theme/radius';
 
 /**
  * Escolha do horário em que a semente chega.
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     marginBottom: 10,
     backgroundColor: colors.surfaceAccent,
-    borderRadius: 12,
+    borderRadius: radius.lg,
   },
   horario: {
     fontFamily: fonts.serif,

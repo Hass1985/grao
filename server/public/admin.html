@@ -528,6 +528,17 @@ function montarAlertas() {
     a.push(['', 'Ainda não existe cobrança de verdade.',
       'Nenhum gateway está ligado. O que aparece em Planos é a escolha declarada no onboarding mais o período de teste.']);
   }
+  var c = D.sistema && D.sistema.cerebro;
+  if (c && c.ultimaFalha) {
+    var h = (Date.now() - new Date(c.ultimaFalha.quando).getTime()) / 3600000;
+    if (h < 48) {
+      a.unshift(['grave',
+        c.ultimaFalha.semSaldo
+          ? 'O cérebro está parado: a API da Anthropic recusou por saldo.'
+          : 'O cérebro falhou ' + relativo(c.ultimaFalha.quando) + '.',
+        'Sem leitura emocional o momento de cada pessoa congela na última família lida, e as sementes passam a repetir o mesmo assunto. A entrega diária continua funcionando. Falhou em: ' + c.ultimaFalha.onde + '.']);
+    }
+  }
   if (D.whatsapp.falhas > 0) {
     a.push(['grave', D.whatsapp.falhas + ' envio(s) falharam no período.',
       'O motivo de cada um está na seção WhatsApp.']);
@@ -790,10 +801,23 @@ function secSistema() {
       }).join('') + '</div>'
     : vazio('Nenhum evento registrado.');
 
+  var cer = s.cerebro || {};
+  var cerebro = '<div class="rolagem"><table><tbody>' +
+    linhaTabela('Leituras emocionais feitas', n(cer.leituras)) +
+    linhaTabela('Última leitura', cer.ultimaLeitura ? relativo(cer.ultimaLeitura) : 'nunca') +
+    linhaTabela('Última falha', cer.ultimaFalha ? relativo(cer.ultimaFalha.quando) : 'nenhuma') +
+    '</tbody></table></div>' +
+    (cer.ultimaFalha
+      ? '<p class="nota" style="margin:12px 0 0;color:var(--alerta)">' +
+        esc(cer.ultimaFalha.onde) + ': ' + esc(String(cer.ultimaFalha.motivo).slice(0, 160)) + '</p>'
+      : '<p class="nota" style="margin:12px 0 0">A leitura emocional é o que mantém a semente ' +
+        'ligada ao momento da pessoa. Se ela parar, a entrega continua, mas o conteúdo congela.</p>');
+
   return '<div class="grade g-2-1">' +
       cartao('Configuração do servidor', 'presença, nunca o valor — um painel que mostra segredo vira vazamento', config) +
       cartao('Última entrega automática', 'a agenda varre de minuto em minuto e respeita o horário de cada pessoa', disparo) +
     '</div>' +
+    '<p class="secao-titulo">Cérebro</p><div class="cartao">' + cerebro + '</div>' +
     '<p class="secao-titulo">Últimos acontecimentos</p><div class="cartao">' + eventos + '</div>';
 }
 

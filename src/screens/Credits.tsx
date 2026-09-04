@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import GraoSymbol from '../components/GraoSymbol';
+import BackButton from '../components/ui/BackButton';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { shadows } from '../theme/shadows';
+import { space } from '../theme/spacing';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 
 type Props = { navigation: any };
@@ -27,9 +29,7 @@ export default function Credits({ navigation }: Props) {
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Créditos</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -101,15 +101,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: space.gutter,
+    paddingVertical: 8,
   },
-  backBtn: { width: 40, alignItems: 'flex-start' },
-  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 34, fontFamily: fonts.sans },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xl, color: colors.foreground },
-  scroll: { paddingHorizontal: 24, paddingBottom: 48, paddingTop: 20 },
+  title: { fontFamily: fonts.serifMedium, fontSize: fontSizes.xl, color: colors.foreground },
+  scroll: { paddingHorizontal: space.gutter, paddingBottom: 48, paddingTop: 20 },
 
   disclaimer: {
     backgroundColor: colors.surfaceAccent,

@@ -12,10 +12,15 @@ import {
   TextInput,
   Alert,
   Platform,
+  Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import GraoSymbol from '../components/GraoSymbol';
+import BackButton from '../components/ui/BackButton';
+import ScreenBackground from '../components/ui/ScreenBackground';
+import Button from '../components/ui/Button';
+import SeletorHorario, { periodoDoDia } from '../components/SeletorHorario';
 import FamilyIcon from '../components/FamilyIcon';
 import { emotionalFamilies, EmotionalFamily } from '../data/seeds';
 import { setMoment, getMoment } from '../onboarding/seedDelivery';
@@ -29,13 +34,31 @@ import {
 } from '../onboarding/userProfile';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
+import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
+import { space } from '../theme/spacing';
 import { webScreenFill, webScroll } from '../theme/webScreen';
-import SeletorHorario, { periodoDoDia } from '../components/SeletorHorario';
+import {
+  ChevronRight,
+  Camera,
+  Sprout,
+  CreditCard,
+  MessageCircle,
+  Clock,
+  Music2,
+  Lock,
+  Shield,
+  Trash2,
+  Mail,
+  Star,
+  BookOpen,
+  Info,
+  Heart,
+  type LucideIcon,
+} from 'lucide-react-native';
 
 type Props = { navigation: any };
 
-// -------- blocos reutilizáveis --------
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -52,6 +75,7 @@ function Row({
   right,
   danger,
   last,
+  icon: Icon,
 }: {
   label: string;
   value?: string;
@@ -59,20 +83,37 @@ function Row({
   right?: React.ReactNode;
   danger?: boolean;
   last?: boolean;
+  icon?: LucideIcon;
 }) {
   const content = (
     <View style={[styles.row, !last && styles.rowBorder]}>
-      <View style={{ flex: 1 }}>
+      {Icon ? (
+        <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>
+          <Icon
+            size={16}
+            color={danger ? '#B33A2B' : colors.accent}
+            strokeWidth={2}
+          />
+        </View>
+      ) : null}
+      <View style={styles.rowCopy}>
         <Text style={[styles.rowLabel, danger && styles.rowDanger]}>{label}</Text>
         {value ? <Text style={styles.rowValue}>{value}</Text> : null}
       </View>
-      {right ?? (onPress ? <Text style={styles.chevron}>›</Text> : null)}
+      {right ??
+        (onPress ? (
+          <ChevronRight size={18} color={colors.foregroundSubtle} strokeWidth={2} />
+        ) : null)}
     </View>
   );
+
   return onPress ? (
-    <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.rowPressed]}
+    >
       {content}
-    </TouchableOpacity>
+    </Pressable>
   ) : (
     content
   );
@@ -113,7 +154,10 @@ export default function Settings({ navigation }: Props) {
     if (Platform.OS !== 'web') {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permissão necessária', 'Precisamos de acesso às fotos para atualizar sua imagem.');
+        Alert.alert(
+          'Permissão necessária',
+          'Precisamos de acesso às fotos para atualizar sua imagem.'
+        );
         return;
       }
     }
@@ -122,9 +166,13 @@ export default function Settings({ navigation }: Props) {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
+      base64: true,
     });
-    if (!res.canceled && res.assets?.[0]?.uri) {
-      const uri = res.assets[0].uri;
+    if (!res.canceled && res.assets?.[0]) {
+      const asset = res.assets[0];
+      const uri = asset.base64
+        ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+        : asset.uri;
       setAvatar(uri);
       await setAvatarUri(uri);
     }
@@ -134,6 +182,7 @@ export default function Settings({ navigation }: Props) {
     setNameDraft(name);
     setEditingName(true);
   };
+
   const saveName = async () => {
     const v = nameDraft.trim();
     if (v) {
@@ -164,369 +213,534 @@ export default function Settings({ navigation }: Props) {
     ? emotionalFamilies.find((f) => f.id === moment)?.label ?? 'Deixe o Grão sentir por você'
     : 'Deixe o Grão sentir por você';
 
-  return (
-    <SafeAreaView style={[styles.container, webScreenFill]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Perfil</Text>
-        <View style={{ width: 40 }} />
-      </View>
+  const switchTrack = {
+    false: colors.casca12,
+    true: colors.accent,
+  };
 
-      <ScrollView style={webScroll} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Cartão de perfil */}
-        <View style={styles.profileCard}>
-          <TouchableOpacity onPress={pickPhoto} activeOpacity={0.85} style={styles.avatarWrap}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatarInitials}>
-                <Text style={styles.avatarInitialsText}>{initialsFrom(name)}</Text>
-              </View>
-            )}
-            <View style={styles.avatarEdit}>
-              <Text style={styles.avatarEditText}>✎</Text>
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.profileName}>{name}</Text>
-          <Text style={styles.profileMeta}>Evangélico · membro desde {memberSince}</Text>
-          <TouchableOpacity onPress={openEditName}>
-            <Text style={styles.editNameLink}>Editar nome</Text>
-          </TouchableOpacity>
+  return (
+    <ScreenBackground style={webScreenFill}>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <BackButton onPress={() => navigation.goBack()} />
+          <Text style={styles.title}>Perfil</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Meu momento */}
-        <Section title="Meu momento">
-          {showFeelings ? (
-            <View style={styles.feelingsGrid}>
-              {emotionalFamilies.map((f) => (
-                <TouchableOpacity
-                  key={f.id}
-                  style={[styles.feelingChip, moment === f.id && styles.feelingChipSelected]}
-                  onPress={() => chooseMoment(f.id)}
-                >
-                  <FamilyIcon
-                    family={f.id}
-                    size={17}
-                    color={moment === f.id ? colors.accent : colors.foregroundMuted}
-                  />
-                  <Text style={[styles.feelingLabel, moment === f.id && styles.feelingLabelSelected]}>
-                    {f.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <Row label={momentLabel} onPress={() => setShowFeelings(true)} last />
-          )}
-        </Section>
+        <ScrollView
+          style={webScroll}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.profileHero}>
+            <TouchableOpacity onPress={pickPhoto} activeOpacity={0.88} style={styles.avatarRing}>
+              <View style={styles.avatarInner}>
+                {avatar ? (
+                  <Image source={{ uri: avatar }} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatarInitials}>
+                    <Text style={styles.avatarInitialsText}>{initialsFrom(name)}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.avatarEdit}>
+                <Camera size={13} color={colors.white} strokeWidth={2.4} />
+              </View>
+            </TouchableOpacity>
 
-        {/* Meu plano */}
-        <Section title="Meu plano">
-          <Row label="Plantio" value="R$ 19,90/mês · renovação automática" onPress={() => {}} />
-          <Row label="Gerenciar assinatura" onPress={() => {}} last />
-        </Section>
+            <Text style={styles.profileName}>{name}</Text>
+            <Text style={styles.profileMeta}>
+              Evangélico · membro desde {memberSince}
+            </Text>
 
-        {/* Notificações */}
-        <Section title="Notificações">
-          <Row
-            label="Receber a semente no WhatsApp"
-            right={
-              <Switch
-                value={notifEnabled}
-                onValueChange={setNotifEnabled}
-                trackColor={{ false: colors.border, true: colors.accent }}
-                thumbColor={colors.white}
-              />
-            }
-            last={!notifEnabled}
-          />
-          {notifEnabled &&
-            (showNotifOptions ? (
-              <View style={styles.optionsList}>
-                <SeletorHorario valor={selectedTime} onChange={setSelectedTime} />
-                <TouchableOpacity
-                  style={styles.optionConfirmar}
-                  onPress={() => setShowNotifOptions(false)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.optionConfirmarTexto}>Pronto</Text>
-                </TouchableOpacity>
+            <Pressable
+              onPress={openEditName}
+              style={({ pressed }) => [styles.editPill, pressed && { opacity: 0.85 }]}
+            >
+              <Text style={styles.editPillText}>Editar nome</Text>
+            </Pressable>
+          </View>
+
+          <Section title="Meu momento">
+            {showFeelings ? (
+              <View style={styles.feelingsGrid}>
+                {emotionalFamilies.map((f) => {
+                  const selected = moment === f.id;
+                  return (
+                    <Pressable
+                      key={f.id}
+                      style={({ pressed }) => [
+                        styles.feelingChip,
+                        selected && styles.feelingChipSelected,
+                        pressed && { opacity: 0.9 },
+                      ]}
+                      onPress={() => chooseMoment(f.id)}
+                    >
+                      <FamilyIcon
+                        family={f.id}
+                        size={17}
+                        color={selected ? colors.accent : colors.foregroundMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.feelingLabel,
+                          selected && styles.feelingLabelSelected,
+                        ]}
+                      >
+                        {f.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             ) : (
               <Row
-                label="Horário"
-                value={`${selectedTime} · ${periodoDoDia(selectedTime)}`}
-                onPress={() => setShowNotifOptions(true)}
+                icon={Heart}
+                label={momentLabel}
+                onPress={() => setShowFeelings(true)}
                 last
               />
-            ))}
-        </Section>
+            )}
+          </Section>
 
-        {/* Conteúdo */}
-        <Section title="Conteúdo">
-          <Row
-            label="Incluir música na semente"
-            right={
-              <Switch
-                value={music}
-                onValueChange={setMusic}
-                trackColor={{ false: colors.border, true: colors.accent }}
-                thumbColor={colors.white}
-              />
-            }
-            last
-          />
-        </Section>
-
-        {/* Privacidade */}
-        <Section title="Privacidade">
-          <Row
-            label="Perfil privado"
-            right={
-              <Switch
-                value={privateProfile}
-                onValueChange={setPrivateProfile}
-                trackColor={{ false: colors.border, true: colors.accent }}
-                thumbColor={colors.white}
-              />
-            }
-          />
-          <Row label="Privacidade e dados" onPress={() => navigation.navigate('PrivacyPolicy')} />
-          <Row label="Excluir minha conta" danger onPress={confirmDelete} last />
-        </Section>
-
-        {/* Sobre */}
-        <Section title="Sobre">
-          <Row label="Fale com a gente" value="ola@graoapp.com.br" onPress={() => {}} />
-          <Row label="Avaliar o Grão" onPress={() => {}} />
-          <Row
-            label="Créditos"
-            value="Texto bíblico: Bíblia Livre"
-            onPress={() => navigation.navigate('Credits')}
-          />
-          <Row label="Versão" value="1.0.0 (protótipo)" last />
-        </Section>
-
-        <TouchableOpacity style={styles.signOutRow} activeOpacity={0.7}>
-          <Text style={styles.signOutText}>Sair da conta</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footerMark}>
-          <GraoSymbol size={22} color={colors.foregroundSubtle} filled={false} />
-          <Text style={styles.footerText}>Uma semente por dia</Text>
-        </View>
-      </ScrollView>
-
-      {/* Modal de edição de nome */}
-      <Modal visible={editingName} transparent animationType="fade" onRequestClose={() => setEditingName(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Como quer ser chamado?</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={nameDraft}
-              onChangeText={setNameDraft}
-              placeholder="Seu nome"
-              placeholderTextColor={colors.foregroundSubtle}
-              autoFocus
-              onSubmitEditing={saveName}
+          <Section title="Meu plano">
+            <Row
+              icon={Sprout}
+              label="Plantio"
+              value="R$ 19,90/mês · renovação automática"
+              onPress={() => {}}
             />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setEditingName(false)}>
-                <Text style={styles.modalCancel}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveName} style={styles.modalSave}>
-                <Text style={styles.modalSaveText}>Salvar</Text>
-              </TouchableOpacity>
+            <Row
+              icon={CreditCard}
+              label="Gerenciar assinatura"
+              onPress={() => {}}
+              last
+            />
+          </Section>
+
+          <Section title="Notificações">
+            <Row
+              icon={MessageCircle}
+              label="Receber a semente no WhatsApp"
+              right={
+                <Switch
+                  value={notifEnabled}
+                  onValueChange={setNotifEnabled}
+                  trackColor={switchTrack}
+                  thumbColor={colors.white}
+                  ios_backgroundColor={colors.casca12}
+                />
+              }
+              last={!notifEnabled}
+            />
+            {notifEnabled &&
+              (showNotifOptions ? (
+                <View style={styles.optionsList}>
+                  <SeletorHorario valor={selectedTime} onChange={setSelectedTime} />
+                  <Button
+                    title="Pronto"
+                    size="sm"
+                    onPress={() => setShowNotifOptions(false)}
+                    style={{ marginTop: 12 }}
+                  />
+                </View>
+              ) : (
+                <Row
+                  icon={Clock}
+                  label="Horário"
+                  value={`${selectedTime} · ${periodoDoDia(selectedTime)}`}
+                  onPress={() => setShowNotifOptions(true)}
+                  last
+                />
+              ))}
+          </Section>
+
+          <Section title="Conteúdo">
+            <Row
+              icon={Music2}
+              label="Incluir música na semente"
+              right={
+                <Switch
+                  value={music}
+                  onValueChange={setMusic}
+                  trackColor={switchTrack}
+                  thumbColor={colors.white}
+                  ios_backgroundColor={colors.casca12}
+                />
+              }
+              last
+            />
+          </Section>
+
+          <Section title="Privacidade">
+            <Row
+              icon={Lock}
+              label="Perfil privado"
+              right={
+                <Switch
+                  value={privateProfile}
+                  onValueChange={setPrivateProfile}
+                  trackColor={switchTrack}
+                  thumbColor={colors.white}
+                  ios_backgroundColor={colors.casca12}
+                />
+              }
+            />
+            <Row
+              icon={Shield}
+              label="Privacidade e dados"
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+            />
+            <Row
+              icon={Trash2}
+              label="Excluir minha conta"
+              danger
+              onPress={confirmDelete}
+              last
+            />
+          </Section>
+
+          <Section title="Sobre">
+            <Row
+              icon={Mail}
+              label="Fale com a gente"
+              value="ola@graoapp.com.br"
+              onPress={() => {}}
+            />
+            <Row icon={Star} label="Avaliar o Grão" onPress={() => {}} />
+            <Row
+              icon={BookOpen}
+              label="Créditos"
+              value="Texto bíblico: Bíblia Livre"
+              onPress={() => navigation.navigate('Credits')}
+            />
+            <Row icon={Info} label="Versão" value="1.0.0 (protótipo)" last />
+          </Section>
+
+          <Pressable
+            style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.signOutText}>Sair da conta</Text>
+          </Pressable>
+
+          <View style={styles.footerMark}>
+            <GraoSymbol size={20} color={colors.casca40} filled={false} />
+            <Text style={styles.footerText}>Uma semente por dia</Text>
+          </View>
+        </ScrollView>
+
+        <Modal
+          visible={editingName}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEditingName(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Como quer ser chamado?</Text>
+              <Text style={styles.modalHint}>Esse nome aparece no seu perfil e nas sementes.</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                placeholder="Seu nome"
+                placeholderTextColor={colors.foregroundSubtle}
+                autoFocus
+                onSubmitEditing={saveName}
+              />
+              <View style={styles.modalActions}>
+                <Pressable onPress={() => setEditingName(false)} hitSlop={8}>
+                  <Text style={styles.modalCancel}>Cancelar</Text>
+                </Pressable>
+                <Button title="Salvar" size="sm" onPress={saveName} />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: space.gutter,
+    paddingTop: 6,
+    paddingBottom: 10,
+    minHeight: 52,
   },
-  backBtn: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 34, fontFamily: fonts.sans },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xl, color: colors.foreground },
-  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+  headerSpacer: { width: 40, height: 40 },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: fonts.serifMedium,
+    fontSize: 22,
+    lineHeight: 26,
+    color: colors.foreground,
+    letterSpacing: -0.4,
+  },
+  scroll: {
+    paddingHorizontal: space.gutter,
+    paddingBottom: 48,
+  },
 
-  // perfil
-  profileCard: { alignItems: 'center', paddingVertical: 28, gap: 6 },
-  avatarWrap: { width: 96, height: 96, marginBottom: 8 },
-  avatarImg: { width: 96, height: 96, borderRadius: 48, borderWidth: 1, borderColor: colors.border },
+  profileHero: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 6,
+  },
+  avatarRing: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    backgroundColor: colors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    ...(shadows.sm as object),
+  },
+  avatarInner: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
   avatarInitials: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.surfaceAccent,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitialsText: { fontFamily: fonts.serif, fontSize: 38, color: colors.accent },
+  avatarInitialsText: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 36,
+    color: colors.accent,
+    letterSpacing: -0.5,
+  },
   avatarEdit: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
+    right: 4,
+    bottom: 4,
     width: 30,
     height: 30,
     borderRadius: 15,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: colors.background,
+    ...(shadows.sm as object),
   },
-  avatarEditText: { color: colors.white, fontSize: 14 },
-  profileName: { fontFamily: fonts.serif, fontSize: fontSizes.xl, color: colors.foreground },
-  profileMeta: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundMuted },
-  editNameLink: {
-    fontFamily: fonts.sansMedium,
+  profileName: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.foreground,
+    letterSpacing: -0.5,
+  },
+  profileMeta: {
+    fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
+    color: colors.foregroundMuted,
+    marginTop: 2,
+  },
+  editPill: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSoft,
+  },
+  editPillText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
     color: colors.accent,
-    marginTop: 4,
+    letterSpacing: 0.1,
   },
 
-  // seções
-  section: { marginBottom: 22 },
+  section: { marginBottom: 20 },
   sectionLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 11,
-    color: colors.foregroundSubtle,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    fontFamily: fonts.serifMedium,
+    fontSize: 15,
+    color: colors.foreground,
+    letterSpacing: -0.2,
     marginBottom: 10,
     marginLeft: 4,
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
+    borderRadius: radius.lg,
+    paddingHorizontal: 6,
+    overflow: 'hidden',
     ...(shadows.sm as object),
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
   },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  rowLabel: { fontFamily: fonts.sans, fontSize: fontSizes.base, color: colors.foreground },
-  rowValue: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundMuted, marginTop: 3 },
-  rowDanger: { color: '#C0392B' },
-  chevron: { fontFamily: fonts.sans, fontSize: 22, color: colors.foregroundSubtle, marginLeft: 8 },
+  rowPressed: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.hairline,
+  },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowIconDanger: {
+    backgroundColor: 'rgba(179, 58, 43, 0.1)',
+  },
+  rowCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  rowLabel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: colors.foreground,
+    letterSpacing: -0.1,
+  },
+  rowValue: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.foregroundMuted,
+  },
+  rowDanger: {
+    color: '#B33A2B',
+  },
 
-  // momento
-  feelingsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingVertical: 14 },
+  feelingsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
   feelingChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.background,
-    borderRadius: 20,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.pill,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 9,
   },
-  feelingChipSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceAccent },
-  feelingEmoji: { fontSize: 16 },
-  feelingLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foreground },
-  feelingLabelSelected: { color: colors.accent },
-
-  // notif options
-  optionsList: { gap: 8, paddingBottom: 14 },
-  optionConfirmar: {
-    marginTop: 16,
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
+  feelingChipSelected: {
+    backgroundColor: colors.surfaceAccent,
   },
-  optionConfirmarTexto: {
+  feelingLabel: {
     fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
+    fontSize: fontSizes.sm,
+    color: colors.foreground,
   },
-  optionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  optionRowSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceAccent },
-  optionLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.foreground },
-  optionLabelSelected: { color: colors.accent },
-  optionTime: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundSubtle },
-  optionTimeSelected: { color: colors.accent },
-
-  // sair + rodapé
-  signOutRow: { alignItems: 'center', paddingVertical: 16, marginTop: 4 },
-  signOutText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: '#C0392B' },
-  footerMark: { alignItems: 'center', gap: 8, paddingTop: 12, paddingBottom: 8 },
-  footerText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 10,
-    color: colors.foregroundSubtle,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
+  feelingLabelSelected: {
+    color: colors.accent,
   },
 
-  // modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(59, 34, 8, 0.4)',
+  optionsList: {
+    paddingHorizontal: 12,
+    paddingBottom: 16,
+    paddingTop: 4,
+  },
+
+  signOutBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    marginTop: 4,
+    marginBottom: 8,
+    paddingVertical: 16,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(179, 58, 43, 0.08)',
+  },
+  signOutText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: '#B33A2B',
+  },
+  footerMark: {
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  footerText: {
+    fontFamily: fonts.serif,
+    fontSize: 12,
+    color: colors.foregroundSubtle,
+    letterSpacing: 0.2,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(59, 34, 8, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
   },
   modalCard: {
     width: '100%',
+    maxWidth: 360,
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 22,
+    borderRadius: radius.lg,
+    padding: 24,
     ...(shadows.md as object),
   },
-  modalTitle: { fontFamily: fonts.serif, fontSize: fontSizes.lg, color: colors.foreground, marginBottom: 14 },
+  modalTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 22,
+    lineHeight: 28,
+    color: colors.foreground,
+    letterSpacing: -0.4,
+    marginBottom: 6,
+  },
+  modalHint: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.foregroundMuted,
+    marginBottom: 16,
+  },
   modalInput: {
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,
     color: colors.foreground,
   },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 18, marginTop: 18 },
-  modalCancel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.foregroundMuted },
-  modalSave: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 18,
   },
-  modalSaveText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.white },
+  modalCancel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: colors.foregroundMuted,
+  },
 });

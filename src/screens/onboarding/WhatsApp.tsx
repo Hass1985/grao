@@ -13,9 +13,13 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
-import { shadows } from '../../theme/shadows';
+import { radius } from '../../theme/radius';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import { space } from '../../theme/spacing';
 import { getUserId, setUserId, linkWhatsApp } from '../../onboarding/aiClient';
+import Button from '../../components/ui/Button';
+import BackButton from '../../components/ui/BackButton';
+import StepProgress from '../../components/ui/StepProgress';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -60,15 +64,14 @@ export default function WhatsApp({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
+      <StepProgress step={5} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView style={webScroll} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.eyebrow}>ENTREGA · PASSO 3</Text>
+          <BackButton onPress={() => navigation.goBack()} />
+          <Text style={styles.eyebrow}>Entrega · passo 5</Text>
           <Text style={styles.title}>Seu WhatsApp</Text>
           <Text style={styles.subtitle}>
             É por aqui que você vai receber sua semente todos os dias.
@@ -118,13 +121,11 @@ export default function WhatsApp({ navigation, route }: Props) {
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, !canContinue && styles.buttonDisabled]}
+          <Button
+            title={saving ? 'Um instante…' : 'Continuar'}
+            disabled={!canContinue}
             onPress={continuar}
-            activeOpacity={canContinue ? 0.85 : 1}
-          >
-            <Text style={styles.buttonText}>Continuar</Text>
-          </TouchableOpacity>
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -133,11 +134,9 @@ export default function WhatsApp({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  backBtn: { marginBottom: 8 },
-  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 36, fontFamily: fonts.sans },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: space.gutter,
+    paddingTop: 8,
     paddingBottom: 48,
     flexGrow: 1,
     justifyContent: 'space-between',
@@ -151,7 +150,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: fontSizes.xxl,
     color: colors.foreground,
     marginBottom: 8,
@@ -166,7 +165,7 @@ const styles = StyleSheet.create({
   previewLink: {
     alignSelf: 'flex-start',
     backgroundColor: colors.surfaceAccent,
-    borderRadius: 20,
+    borderRadius: radius.pill,
     paddingHorizontal: 14,
     paddingVertical: 9,
     marginBottom: 34,
@@ -187,7 +186,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
+    borderRadius: radius.md,
     padding: 16,
     fontFamily: fonts.sans,
     fontSize: fontSizes.lg,
@@ -204,7 +203,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: colors.foregroundSubtle,
     alignItems: 'center',
@@ -231,19 +230,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansMedium,
     color: colors.accent,
     textDecorationLine: 'underline',
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-    ...(shadows.sm as object),
-  },
-  buttonDisabled: { backgroundColor: colors.foregroundSubtle },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
   },
 });

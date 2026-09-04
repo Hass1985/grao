@@ -9,12 +9,29 @@ const AVATAR_KEY = 'grao.avatarUri.v1';
 const NAME_KEY = 'grao.displayName.v1';
 const MEMBER_KEY = 'grao.memberSince.v1';
 
+type Listener = () => void;
+const avatarListeners = new Set<Listener>();
+
+/** Avisa ProfileButton (e outros) quando a foto muda. */
+export function subscribeAvatar(listener: Listener): () => void {
+  avatarListeners.add(listener);
+  return () => {
+    avatarListeners.delete(listener);
+  };
+}
+
+function notifyAvatar() {
+  avatarListeners.forEach((l) => l());
+}
+
 export async function getAvatarUri(): Promise<string | null> {
   return AsyncStorage.getItem(AVATAR_KEY);
 }
+
 export async function setAvatarUri(uri: string | null): Promise<void> {
   if (uri) await AsyncStorage.setItem(AVATAR_KEY, uri);
   else await AsyncStorage.removeItem(AVATAR_KEY);
+  notifyAvatar();
 }
 
 export async function getDisplayName(): Promise<string> {
@@ -23,6 +40,7 @@ export async function getDisplayName(): Promise<string> {
   const profile = await getProfile();
   return profile?.name || 'Você';
 }
+
 export async function setDisplayName(name: string): Promise<void> {
   await AsyncStorage.setItem(NAME_KEY, name.trim());
 }

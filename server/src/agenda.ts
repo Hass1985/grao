@@ -11,8 +11,12 @@
 // batimento de reserva, de hora em hora, para o caso de o processo cair.
 //
 // A varredura é IDEMPOTENTE por construção: ela só enxerga quem ainda não
-// recebeu hoje (no fuso da própria pessoa). Rodar duas vezes no mesmo minuto,
-// ou rodar depois de uma queda, não duplica nada.
+// recebeu a mensagem de hoje (no fuso da própria pessoa). Rodar duas vezes no
+// mesmo minuto, ou rodar depois de uma queda, não duplica nada.
+//
+// O critério é sent_wa_at, não "existe entrega hoje". A diferença derrubou a
+// entrega uma vez: abrir o app grava a semente do dia, e a agenda concluía que
+// já tinha mandado. Quem usava mais o app recebia menos mensagem.
 
 import { pool, logEvent } from './db.js';
 import { entregarSemente } from './whatsapp.js';
@@ -78,6 +82,7 @@ export async function despacharDevidos(): Promise<ResultadoVarredura> {
             AND NOT EXISTS (
                   SELECT 1 FROM seed_deliveries d
                    WHERE d.user_id = u.id
+                     AND d.sent_wa_at IS NOT NULL
                      AND (d.delivered_at AT TIME ZONE u.timezone)::date
                        = (now() AT TIME ZONE u.timezone)::date)`,
         [ATRASO_MAXIMO_HORAS]);

@@ -78,14 +78,112 @@ export async function getTodaySeed(userId: string): Promise<SelectedSeed | null>
   };
 }
 
+/**
+ * A família que RESPONDE a cada estado, quando é hora de arejar.
+ *
+ * Quem está ansioso precisa de palavra sobre ansiedade, sim. Mas dez dias
+ * seguidos de sementes de ansiedade param de acolher e viram espelho: o app
+ * repete todo dia que a pessoa está ansiosa. O que ela também precisa ouvir é
+ * a resposta ao que sente, e é isso que estas famílias trazem.
+ *
+ * Não é troca de assunto: é a mesma conversa, vista do outro lado.
+ */
+const COMPLEMENTOS: Record<string, string[]> = {
+  ansiedade: ['paz', 'fé', 'esperança'],
+  solidão: ['fé', 'esperança', 'paz'],
+  luto: ['esperança', 'paz', 'fé'],
+  culpa: ['paz', 'gratidão', 'fé'],
+  medo: ['fé', 'paz', 'esperança'],
+  paz: ['gratidão', 'alegria', 'propósito'],
+  esperança: ['fé', 'alegria', 'propósito'],
+  fé: ['esperança', 'propósito', 'paz'],
+  gratidão: ['alegria', 'propósito', 'paz'],
+  alegria: ['gratidão', 'propósito', 'paz'],
+  propósito: ['fé', 'esperança', 'gratidão'],
+};
+
+/**
+ * Quantas das últimas 4 entregas podem ser da mesma família antes de arejar.
+ *
+ * 2 de 4 mantém o momento emocional como assunto dominante sem deixar a
+ * pessoa presa nele. O ritmo que sai é mais ou menos A A P F E A A: o estado
+ * dela continua sendo o centro, mas a resposta aparece no meio.
+ */
+const MAX_MESMA_FAMILIA = 2;
+const JANELA_VARIEDADE = 4;
+
+/**
+ * Escolhe a família da vez: a do momento, ou um complemento quando ela já
+ * dominou as últimas entregas.
+ *
+ * A monotonia não era hipótese. No teste, uma pessoa recebeu DEZ sementes
+ * seguidas de ansiedade, porque o momento dela estava fixo nisso e a primeira
+ * tentativa do seletor filtra pela família. A base tem 39 de cada família, ou
+ * seja, o quadro se manteria por mais de um mês.
+ */
+async function familiaDaVez(userId: string, alvo: string): Promise<{ family: string; arejou: boolean }> {
+  const { rows: ultimas } = await pool.query(
+    `SELECT s.family FROM seed_deliveries d
+       JOIN seeds s ON s.id = d.seed_id
+      WHERE d.user_id = $1
+      ORDER BY d.id DESC LIMIT $2`, [userId, JANELA_VARIEDADE]);
+
+  const recentes = ultimas.map((r: any) => r.family);
+  if (recentes.filter((f: string) => f === alvo).length < MAX_MESMA_FAMILIA) {
+    return { family: alvo, arejou: false };
+  }
+
+  // Entre os complementos, o que está parado há mais tempo. Sem este critério
+  // a rotação encostaria sempre no mesmo complemento e trocaria uma monotonia
+  // por outra.
+  const opcoes = COMPLEMENTOS[alvo] ?? [];
+  if (!opcoes.length) return { family: alvo, arejou: false };
+
+  const { rows: [escolhida] } = await pool.query(
+    `SELECT f.family
+       FROM unnest($2::text[]) AS f(family)
+       LEFT JOIN LATERAL (
+         SELECT max(d.id) ultimo FROM seed_deliveries d
+           JOIN seeds s ON s.id = d.seed_id
+          WHERE d.user_id = $1 AND s.family = f.family
+       ) u ON true
+      ORDER BY u.ultimo ASC NULLS FIRST
+      LIMIT 1`, [userId, opcoes]);
+
+  return { family: escolhida?.family ?? alvo, arejou: !!escolhida };
+}
+
+/**
+ * A semente do dia: a que já foi escolhida hoje, ou uma nova.
+ *
+ * Existe porque escolher e ENVIAR deixaram de ser a mesma coisa. Quem abre o
+ * app antes do horário faz a escolha do dia; a agenda, mais tarde, precisa
+ * mandar ESSA semente pelo WhatsApp, e não sortear outra nem desistir por já
+ * existir uma linha gravada. Era esse desencontro que fazia a mensagem sumir
+ * justamente para quem usava mais o app.
+ *
+ * `jaExistia` diz a quem chamou se a linha é dele: só quem criou pode desfazer
+ * em caso de falha no envio.
+ */
+export async function getOrSelectTodaySeed(
+  userId: string,
+): Promise<{ seed: SelectedSeed; jaExistia: boolean } | null> {
+  const deHoje = await getTodaySeed(userId);
+  if (deHoje) return { seed: deHoje, jaExistia: true };
+  const nova = await selectSeedForUser(userId);
+  return nova ? { seed: nova, jaExistia: false } : null;
+}
+
 export async function selectSeedForUser(userId: string): Promise<SelectedSeed | null> {
   const profile = await getProfile(userId);
   const moment = await getMoment(userId);
 
-  const family = moment || profile?.emotional_hint || 'esperança';
+  const alvo = moment || profile?.emotional_hint || 'esperança';
+  const { family, arejou } = await familiaDaVez(userId, alvo);
   const source: SelectedSeed['reason']['source'] = moment ? 'momento' : profile?.emotional_hint ? 'perfil' : 'padrão';
   const channel = profile?.dominant_channel || 'visual';
   const preferredType = CHANNEL_TO_TYPE[channel] || 'reflexão';
+  if (arejou) console.log(`[seleção] ${userId}: ${alvo} dominou as últimas entregas, arejando com ${family}`);
 
   // Duas leituras do histórico do usuário:
   //  gesto_ultimo — quando cada gesto foi entregue pela última vez (FILTRO);

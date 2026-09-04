@@ -12,8 +12,12 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useIsFocused } from '@react-navigation/native';
 import IntroScene from './IntroArt';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
+import { radius } from '../../theme/radius';
+import { space } from '../../theme/spacing';
 import { webScreenFill } from '../../theme/webScreen';
 
 type Props = { navigation: StackNavigationProp<any> };
@@ -80,6 +84,7 @@ export default function Intro({ navigation }: Props) {
       onLayout={(e) => setW(e.nativeEvent.layout.width)}
     >
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StepProgress step={2} />
 
       <View style={styles.topbar}>
         <TouchableOpacity onPress={goAbertura} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -136,11 +141,10 @@ export default function Intro({ navigation }: Props) {
             <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
           ))}
         </View>
-        <TouchableOpacity style={styles.button} onPress={next} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>
-            {index === SLIDES.length - 1 ? 'Vamos começar' : 'Continuar'}
-          </Text>
-        </TouchableOpacity>
+        <Button
+          title={index === SLIDES.length - 1 ? 'Vamos começar' : 'Continuar'}
+          onPress={next}
+        />
       </View>
     </SafeAreaView>
   );
@@ -151,9 +155,10 @@ const styles = StyleSheet.create({
   topbar: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingHorizontal: 24,
-    paddingTop: 10,
-    height: 44,
+    alignItems: 'center',
+    paddingHorizontal: space.gutter,
+    paddingTop: 4,
+    minHeight: 40,
     zIndex: 2,
   },
   skip: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foregroundMuted },
@@ -161,10 +166,10 @@ const styles = StyleSheet.create({
   page: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
+    paddingHorizontal: space.gutter,
   },
   illo: {
-    borderRadius: 22,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -172,7 +177,7 @@ const styles = StyleSheet.create({
     marginBottom: 34,
   },
   title: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: 31,
     lineHeight: 37,
     color: colors.foreground,
@@ -197,16 +202,4 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 22 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.casca20 },
   dotActive: { width: 22, backgroundColor: colors.accent },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
-  },
 });

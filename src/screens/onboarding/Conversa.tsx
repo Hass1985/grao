@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import GraoSymbol from '../../components/GraoSymbol';
 import {
   QUESTIONS,
@@ -28,6 +29,10 @@ import { EmotionalFamily } from '../../data/seeds';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
+import { radius } from '../../theme/radius';
+import { logoSize, logoSlot, space } from '../../theme/spacing';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
 
 type Props = { navigation: any };
 
@@ -315,12 +320,15 @@ export default function Conversa({ navigation }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, webHeight]}>
+      <StepProgress step={3} />
       {/* Header */}
       <View style={styles.header}>
-        <GraoSymbol size={26} color={colors.accent} filled={false} />
+        <View style={styles.logoSlot}>
+          <GraoSymbol size={logoSize} color={colors.accent} filled={false} />
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Grão</Text>
-          <Text style={styles.headerSub}>NOSSA CONVERSA · PASSO 1</Text>
+          <Text style={styles.headerSub}>Nossa conversa</Text>
         </View>
         {!done && (
           <TouchableOpacity
@@ -386,14 +394,12 @@ export default function Conversa({ navigation }: Props) {
 
         {/* Botão final */}
         {done ? (
-          <TouchableOpacity
+          <Button
             testID="chat-continue"
-            style={styles.continueBtn}
-            activeOpacity={0.85}
+            title="Continuar"
             onPress={() => navigation.navigate('Notification')}
-          >
-            <Text style={styles.continueText}>Continuar</Text>
-          </TouchableOpacity>
+            style={{ marginHorizontal: 20, marginBottom: 16 }}
+          />
         ) : (
           <View style={styles.inputRow}>
             <TextInput
@@ -409,11 +415,24 @@ export default function Conversa({ navigation }: Props) {
             />
             <TouchableOpacity
               testID="chat-send"
-              style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
               activeOpacity={0.85}
               onPress={handleSend}
+              disabled={!input.trim()}
             >
-              <Text style={styles.sendText}>➤</Text>
+              {input.trim() ? (
+                <LinearGradient
+                  colors={['#D4924A', '#C07826', '#A8651C']}
+                  start={{ x: 0.15, y: 0 }}
+                  end={{ x: 0.85, y: 1 }}
+                  style={styles.sendBtn}
+                >
+                  <Text style={styles.sendText}>➤</Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.sendBtn, styles.sendBtnDisabled]}>
+                  <Text style={styles.sendText}>➤</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -428,54 +447,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: space.gutter,
+    paddingVertical: 4,
+    minHeight: logoSlot,
   },
-  headerTitle: { fontFamily: fonts.serif, fontSize: fontSizes.lg, color: colors.foreground },
+  logoSlot: {
+    width: logoSlot,
+    height: logoSlot,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: fontSizes.lg,
+    color: colors.foreground,
+    letterSpacing: -0.3,
+  },
   headerSub: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 9.5,
-    color: colors.accent,
-    letterSpacing: 1.5,
+    fontFamily: fonts.sans,
+    fontSize: 11,
+    color: colors.foregroundMuted,
     marginTop: 1,
   },
   skip: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foregroundMuted },
-  progressTrack: { height: 2, backgroundColor: colors.casca12, marginHorizontal: 20 },
-  progressFill: { height: 2, backgroundColor: colors.accent },
+  progressTrack: { height: 1, backgroundColor: colors.hairline, marginHorizontal: space.gutter },
+  progressFill: { height: 1, backgroundColor: colors.accent },
   list: { flex: 1, minHeight: 0 },
-  listContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 8 },
+  listContent: { paddingHorizontal: space.gutter, paddingTop: 20, paddingBottom: 16, gap: 18 },
   bubble: {
-    maxWidth: '82%',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    maxWidth: '88%',
+    borderRadius: radius.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   bubbleGrao: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderTopLeftRadius: 4,
-    ...(shadows.sm as object),
+    backgroundColor: 'transparent',
+    maxWidth: '100%',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   bubbleUser: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.accent,
-    borderTopRightRadius: 4,
+    backgroundColor: colors.bubble,
   },
   bubbleGraoText: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
+    fontFamily: fonts.serif,
+    fontSize: 18,
     color: colors.foreground,
-    lineHeight: 22,
+    lineHeight: 28,
+    letterSpacing: -0.2,
   },
   bubbleUserText: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    lineHeight: 22,
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    color: colors.foreground,
+    lineHeight: 26,
   },
-  typingBubble: { paddingVertical: 12 },
+  typingBubble: { paddingVertical: 8 },
   typingDots: { fontSize: 8, color: colors.foregroundSubtle, letterSpacing: 2 },
   chipsWrap: {
     flexDirection: 'row',
@@ -485,57 +514,43 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   chip: {
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  chipText: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.accent },
+  chipText: { fontFamily: fonts.serif, fontSize: fontSizes.sm, color: colors.foreground },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    paddingTop: 4,
+    gap: 0,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 4,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    paddingLeft: 18,
+    paddingRight: 6,
+    paddingVertical: 6,
+    ...(shadows.sm as object),
   },
   input: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    fontFamily: fonts.sans,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    fontFamily: fonts.serif,
     fontSize: fontSizes.base,
     color: colors.foreground,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.accent,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnDisabled: { backgroundColor: colors.foregroundSubtle },
+  sendBtnDisabled: { backgroundColor: colors.peneira },
   sendText: { color: colors.accentForeground, fontSize: 16 },
-  continueBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    ...(shadows.sm as object),
-  },
-  continueText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
-  },
 });

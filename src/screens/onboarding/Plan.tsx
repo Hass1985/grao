@@ -10,8 +10,13 @@ import {
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
+import { radius } from '../../theme/radius';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import { space } from '../../theme/spacing';
 import { getUserId, escolherPlano } from '../../onboarding/aiClient';
+import Button from '../../components/ui/Button';
+import BackButton from '../../components/ui/BackButton';
+import StepProgress from '../../components/ui/StepProgress';
 
 type Props = {
   onFinish: () => void;
@@ -68,14 +73,13 @@ export default function Plan({ onFinish, navigation }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, webScreenFill]}>
+      <StepProgress step={6} />
       <ScrollView style={webScroll} contentContainerStyle={styles.scroll}>
 
-        <TouchableOpacity onPress={() => (navigation as any)?.goBack?.()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>‹</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => (navigation as any)?.goBack?.()} />
 
-        <Text style={styles.eyebrow}>PLANOS · PASSO 4</Text>
-        <Text style={styles.title}>Escolha seu plano</Text>
+        <Text style={styles.eyebrow}>Planos · passo 6</Text>
+        <Text style={styles.title}>Escolha no seu tempo</Text>
         <Text style={styles.subtitle}>
           7 dias grátis para conhecer o Grão. Cancele quando quiser.
         </Text>
@@ -135,9 +139,7 @@ export default function Plan({ onFinish, navigation }: Props) {
           })}
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={concluir} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>Começar 7 dias grátis</Text>
-        </TouchableOpacity>
+        <Button title="Começar 7 dias grátis" onPress={concluir} style={{ marginBottom: 16 }} />
 
         <Text style={styles.legal}>
           No 8º dia, a cobrança é feita automaticamente. Cancele antes sem custo.
@@ -149,9 +151,7 @@ export default function Plan({ onFinish, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  backBtn: { marginBottom: 8 },
-  backBtnText: { fontSize: 30, color: colors.accent, lineHeight: 36, fontFamily: fonts.sans },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48 },
+  scroll: { paddingHorizontal: space.gutter, paddingTop: 8, paddingBottom: 48 },
   eyebrow: {
     fontFamily: fonts.sansMedium,
     fontSize: 11,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: fontSizes.xxl,
     color: colors.foreground,
     marginBottom: 8,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   badge: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 20,
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   price: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: fontSizes.xxxl,
     color: colors.foreground,
     letterSpacing: -0.5,
@@ -277,20 +277,6 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.foreground,
     lineHeight: 20,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 16,
-    ...(shadows.sm as object),
-  },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
   },
   legal: {
     fontFamily: fonts.sans,

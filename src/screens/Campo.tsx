@@ -5,20 +5,54 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  StatusBar,
 } from 'react-native';
-import GraoSymbol from '../components/GraoSymbol';
-import ProfileButton from '../components/ProfileButton';
+import { Sprout, Circle } from 'lucide-react-native';
+import ScreenBackground from '../components/ui/ScreenBackground';
+import AppHeader from '../components/ui/AppHeader';
+import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
 import { fetchHistory } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
-import { fonts, fontSizes } from '../theme/typography';
+import { fonts } from '../theme/typography';
+import { radius } from '../theme/radius';
+import { shadows } from '../theme/shadows';
+import { space } from '../theme/spacing';
 
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 function buildSeedMap(sementes: Seed[]): Record<string, Seed> {
   const map: Record<string, Seed> = {};
-  sementes.forEach((s) => { map[s.date] = s; });
+  sementes.forEach((s) => {
+    map[s.date] = s;
+  });
   return map;
+}
+
+type DayKind = 'planted' | 'open' | 'future' | 'empty';
+
+function StatusIcon({ kind, size = 16 }: { kind: DayKind; size?: number }) {
+  if (kind === 'planted') {
+    return (
+      <Sprout
+        size={size}
+        color={colors.accent}
+        strokeWidth={2.35}
+        fill={colors.ambar08}
+      />
+    );
+  }
+  if (kind === 'open') {
+    return <Sprout size={size} color={colors.casca40} strokeWidth={1.9} />;
+  }
+  return (
+    <Circle
+      size={Math.max(6, Math.round(size * 0.42))}
+      color={colors.casca20}
+      fill={colors.casca12}
+      strokeWidth={0}
+    />
+  );
 }
 
 export default function Campo({ navigation }: { navigation: any }) {
@@ -29,13 +63,17 @@ export default function Campo({ navigation }: { navigation: any }) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfWeek = new Date(year, month, 1).getDay();
 
-  const monthName = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const monthTitle = today.toLocaleDateString('pt-BR', { month: 'long' });
+  const monthPretty =
+    monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
 
-  // O histórico vem do servidor: são as sementes que a pessoa recebeu de
-  // verdade, pelo app ou pelo WhatsApp. A lista local é só reserva do demo.
   const [sementes, setSementes] = useState<Seed[]>([...pastSeeds, todaySeed]);
   const carregar = useCallback(async () => {
-    try { setSementes(await fetchHistory()); } catch { /* mantém a reserva */ }
+    try {
+      setSementes(await fetchHistory());
+    } catch {
+      /* mantém a reserva */
+    }
   }, []);
   useEffect(() => {
     carregar();
@@ -44,10 +82,8 @@ export default function Campo({ navigation }: { navigation: any }) {
   }, [carregar, navigation]);
 
   const seedMap = buildSeedMap(sementes);
-
   const plantedCount = Object.values(seedMap).filter((s) => s.planted).length;
 
-  // Build calendar cells: null = empty padding, number = day
   const cells: Array<number | null> = [
     ...Array(firstDayOfWeek).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -56,150 +92,288 @@ export default function Campo({ navigation }: { navigation: any }) {
   const getDayStr = (day: number) =>
     `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
+  const kindForDay = (day: number): DayKind => {
+    const dateStr = getDayStr(day);
+    if (dateStr > todayStr) return 'future';
+    const seed = seedMap[dateStr];
+    if (seed?.planted) return 'planted';
+    if (seed && !seed.planted) return 'open';
+    return 'empty';
+  };
+
   const renderCell = (day: number | null, index: number) => {
     if (day === null) {
-      return <View key={`pad-${index}`} style={styles.cell} />;
+      return <View key={`pad-${index}`} style={styles.cellSlot} />;
     }
 
     const dateStr = getDayStr(day);
-    const isFuture = dateStr > todayStr;
     const isToday = dateStr === todayStr;
-    const seed = seedMap[dateStr];
-
-    let indicator = null;
-
-    if (isFuture) {
-      indicator = <View style={styles.futureDot} />;
-    } else if (seed?.planted) {
-      indicator = <Text style={styles.seedEmoji}>🌱</Text>;
-    } else if (seed && !seed.planted) {
-      indicator = <GraoSymbol size={22} color={colors.casca40} filled={false} />;
-    } else {
-      // Past day with no seed data
-      indicator = <View style={styles.noSeedDot} />;
-    }
+    const kind = kindForDay(day);
+    const isPlanted = kind === 'planted';
+    const isOpen = kind === 'open';
+    const isFuture = kind === 'future';
 
     return (
-      <View key={dateStr} style={[styles.cell, isToday && styles.cellToday]}>
-        <Text style={[styles.dayNumber, isToday && styles.dayNumberToday]}>{day}</Text>
-        {indicator}
+      <View key={dateStr} style={styles.cellSlot}>
+        <View
+          style={[
+            styles.cell,
+            isPlanted && styles.cellPlanted,
+            isOpen && styles.cellOpen,
+            isFuture && styles.cellFuture,
+            isToday && styles.cellToday,
+            isToday && isPlanted && styles.cellTodayPlanted,
+          ]}
+        >
+          <Text
+            style={[
+              styles.dayNumber,
+              isPlanted && styles.dayNumberPlanted,
+              isFuture && styles.dayNumberFuture,
+              isToday && styles.dayNumberToday,
+            ]}
+          >
+            {day}
+          </Text>
+          <StatusIcon kind={kind} size={isPlanted ? 17 : 15} />
+        </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <ScreenBackground>
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <AppHeader
+            title="Campo"
+            subtitle={
+              plantedCount === 1
+                ? '1 semente plantada este mês'
+                : `${plantedCount} sementes plantadas este mês`
+            }
+            onLogoPress={() => navigation.navigate('Settings')}
+            onProfilePress={() => navigation.navigate('Settings')}
+          />
 
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Seu campo</Text>
-            <Text style={styles.subtitle}>
-              {plantedCount} {plantedCount === 1 ? 'semente plantada' : 'sementes plantadas'} este mês
-            </Text>
-          </View>
-          <ProfileButton onPress={() => navigation.navigate('Settings')} />
-        </View>
-
-        {/* Month label */}
-        <Text style={styles.monthLabel}>{monthName.charAt(0).toUpperCase() + monthName.slice(1)}</Text>
-
-        {/* Day-of-week headers */}
-        <View style={styles.dayHeaders}>
-          {DAY_LABELS.map((d, i) => (
-            <View key={i} style={styles.dayHeaderCell}>
-              <Text style={styles.dayHeaderText}>{d}</Text>
+          <View style={styles.calendarCard}>
+            <View style={styles.monthRow}>
+              <View style={styles.monthTitleBlock}>
+                <Text style={styles.monthLabel}>{monthPretty}</Text>
+                <Text style={styles.yearLabel}>{year}</Text>
+              </View>
+              <View style={styles.plantedPill}>
+                <Sprout size={12} color={colors.accent} strokeWidth={2.4} fill={colors.ambar08} />
+                <Text style={styles.plantedPillText}>{plantedCount}</Text>
+              </View>
             </View>
-          ))}
-        </View>
 
-        {/* Calendar grid */}
-        <View style={styles.grid}>
-          {cells.map((day, i) => renderCell(day, i))}
-        </View>
+            <View style={styles.dayHeaders}>
+              {DAY_LABELS.map((d, i) => (
+                <View key={i} style={styles.dayHeaderCell}>
+                  <Text style={styles.dayHeaderText}>{d}</Text>
+                </View>
+              ))}
+            </View>
 
-        {/* Legend */}
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <Text style={styles.legendEmoji}>🌱</Text>
-            <Text style={styles.legendText}>Plantada</Text>
+            <View style={styles.grid}>{cells.map((day, i) => renderCell(day, i))}</View>
           </View>
-          <View style={styles.legendItem}>
-            <GraoSymbol size={16} color={colors.casca40} filled={false} />
-            <Text style={styles.legendText}>Não plantada</Text>
+
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendSwatch, styles.legendSwatchPlanted]}>
+                <StatusIcon kind="planted" size={13} />
+              </View>
+              <Text style={styles.legendText}>Plantada</Text>
+            </View>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItem}>
+              <View style={[styles.legendSwatch, styles.legendSwatchOpen]}>
+                <StatusIcon kind="open" size={13} />
+              </View>
+              <Text style={styles.legendText}>Não plantada</Text>
+            </View>
+            <View style={styles.legendDivider} />
+            <View style={styles.legendItem}>
+              <View style={styles.legendSwatch}>
+                <StatusIcon kind="future" size={13} />
+              </View>
+              <Text style={styles.legendText}>Futuros</Text>
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={styles.futureDotLegend} />
-            <Text style={styles.legendText}>Dias futuros</Text>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
-const CELL_SIZE = 44;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48 },
-  header: {
+  safe: { flex: 1 },
+  scroll: {
+    paddingHorizontal: space.gutter,
+  },
+
+  calendarCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: 14,
+    paddingTop: 18,
+    paddingBottom: 12,
+    ...(shadows.sm as object),
+  },
+  monthRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  title: { fontFamily: fonts.serif, fontSize: fontSizes.xxl, color: colors.casca, marginBottom: 2 },
-  subtitle: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.casca60 },
+  monthTitleBlock: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
   monthLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.casca60,
-    textTransform: 'capitalize',
-    marginBottom: 12,
-    textAlign: 'center',
+    fontFamily: fonts.serifMedium,
+    fontSize: 22,
+    lineHeight: 26,
+    color: colors.foreground,
+    letterSpacing: -0.35,
   },
-  dayHeaders: { flexDirection: 'row', marginBottom: 4 },
-  dayHeaderCell: { width: CELL_SIZE, alignItems: 'center' },
+  yearLabel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
+    lineHeight: 18,
+    color: colors.foregroundMuted,
+    letterSpacing: 0.2,
+  },
+  plantedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAccent,
+  },
+  plantedPillText: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 12,
+    color: colors.accent,
+    letterSpacing: 0.1,
+  },
+
+  dayHeaders: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  dayHeaderCell: {
+    width: '14.28%',
+    alignItems: 'center',
+    paddingBottom: 4,
+  },
   dayHeaderText: {
     fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.xs,
-    color: colors.casca40,
+    fontSize: 11,
+    color: colors.foregroundSubtle,
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 28 },
+
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  cellSlot: {
+    width: '14.28%',
+    aspectRatio: 1,
+    padding: 3,
+  },
   cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE + 8,
+    flex: 1,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    borderRadius: 8,
+    gap: 3,
+    backgroundColor: 'transparent',
+  },
+  cellPlanted: {
+    backgroundColor: 'rgba(192, 120, 38, 0.16)',
+  },
+  cellOpen: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  cellFuture: {
+    backgroundColor: 'transparent',
   },
   cellToday: {
-    backgroundColor: 'rgba(192, 120, 38, 0.10)',
     borderWidth: 1.5,
-    borderColor: colors.ambar,
+    borderColor: colors.accent,
   },
+  cellTodayPlanted: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(192, 120, 38, 0.22)',
+  },
+
   dayNumber: {
     fontFamily: fonts.sansMedium,
     fontSize: 11,
-    color: colors.casca60,
+    color: colors.foregroundMuted,
   },
-  dayNumberToday: { color: colors.ambar },
-  seedEmoji: { fontSize: 18 },
-  futureDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.casca12 },
-  noSeedDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.casca12 },
+  dayNumberPlanted: {
+    color: colors.accent,
+    fontFamily: fonts.sansSemi,
+  },
+  dayNumberFuture: {
+    color: colors.foregroundSubtle,
+  },
+  dayNumberToday: {
+    color: colors.accent,
+  },
+
   legend: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.casca12,
+    gap: 10,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSoft,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendEmoji: { fontSize: 16 },
-  legendText: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.casca60 },
-  futureDotLegend: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.casca12 },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  legendDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 14,
+    backgroundColor: colors.casca20,
+  },
+  legendSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  legendSwatchPlanted: {
+    backgroundColor: 'rgba(192, 120, 38, 0.16)',
+  },
+  legendSwatchOpen: {
+    backgroundColor: colors.surface,
+  },
+  legendText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 12,
+    color: colors.foregroundMuted,
+    letterSpacing: -0.1,
+  },
 });

@@ -37,7 +37,13 @@ import { EmotionalFamily } from '../../data/seeds';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
+import { radius } from '../../theme/radius';
+import { logoSize, logoSlot, space } from '../../theme/spacing';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
+import Button from '../../components/ui/Button';
+import StepProgress from '../../components/ui/StepProgress';
+import Reveal from '../../components/ui/Reveal';
+import ScreenBackground from '../../components/ui/ScreenBackground';
 
 type Props = { navigation: any };
 type Phase = 'name' | 'share' | 'recording' | 'thinking' | 'response';
@@ -288,10 +294,14 @@ export default function Abertura({ navigation }: Props) {
   const mm = `0:${String(MAX_SECONDS - seconds).padStart(2, '0')}`;
 
   return (
+    <ScreenBackground>
     <SafeAreaView style={[styles.container, webScreenFill]}>
+      <StepProgress step={3} />
       {/* topo */}
       <View style={styles.topbar}>
-        <GraoSymbol size={24} color={colors.accent} filled={false} />
+        <View style={styles.logoSlot}>
+          <GraoSymbol size={logoSize} color={colors.accent} filled={false} />
+        </View>
         {(phase === 'name' || phase === 'share') && (
           <TouchableOpacity onPress={skip} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} testID="abertura-skip">
             <Text style={styles.skip}>Pular</Text>
@@ -303,7 +313,7 @@ export default function Abertura({ navigation }: Props) {
         {/* ---------- FASE 1: NOME ---------- */}
         {phase === 'name' && (
           <View style={styles.center}>
-            <Text style={styles.eyebrow}>NOSSA CONVERSA · PASSO 1</Text>
+            <Text style={styles.eyebrow}>Nossa conversa · passo 3</Text>
             <Text style={styles.title}>Como você gosta{'\n'}de ser chamado?</Text>
             <TextInput
               testID="abertura-name"
@@ -315,14 +325,12 @@ export default function Abertura({ navigation }: Props) {
               returnKeyType="next"
               onSubmitEditing={() => name.trim() && setPhase('share')}
             />
-            <TouchableOpacity
+            <Button
               testID="abertura-name-continue"
-              style={[styles.button, !name.trim() && styles.buttonDisabled]}
+              title="Continuar"
+              disabled={!name.trim()}
               onPress={() => name.trim() && setPhase('share')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.buttonText}>Continuar</Text>
-            </TouchableOpacity>
+            />
           </View>
         )}
 
@@ -363,14 +371,12 @@ export default function Abertura({ navigation }: Props) {
                   placeholderTextColor={colors.foregroundSubtle}
                   multiline
                 />
-                <TouchableOpacity
+                <Button
                   testID="abertura-send"
-                  style={[styles.button, text.trim().length < 4 && styles.buttonDisabled]}
+                  title="Enviar"
+                  disabled={text.trim().length < 4}
                   onPress={submitText}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.buttonText}>Enviar</Text>
-                </TouchableOpacity>
+                />
                 {voiceAvailable && (
                   <TouchableOpacity onPress={() => { setTextMode(false); setMicNote(null); }}>
                     <Text style={styles.link}>Prefiro gravar um áudio</Text>
@@ -402,9 +408,7 @@ export default function Abertura({ navigation }: Props) {
             <Text style={styles.liveTranscript} numberOfLines={6}>
               {liveTranscript || ' '}
             </Text>
-            <TouchableOpacity testID="abertura-finish" style={styles.button} onPress={finishRecording} activeOpacity={0.85}>
-              <Text style={styles.buttonText}>Concluir</Text>
-            </TouchableOpacity>
+            <Button testID="abertura-finish" title="Concluir" onPress={finishRecording} />
             <TouchableOpacity onPress={() => { doneRef.current = true; stopEverything(); setPhase('share'); setLiveTranscript(''); }}>
               <Text style={styles.linkSubtle}>Cancelar</Text>
             </TouchableOpacity>
@@ -423,38 +427,44 @@ export default function Abertura({ navigation }: Props) {
 
         {/* ---------- RESPOSTA ---------- */}
         {phase === 'response' && (
-          <View style={styles.center}>
-            <View style={styles.responseCard}>
-              <GraoSymbol size={30} color={colors.accent} filled={false} />
-              <Text style={styles.responseText} testID="abertura-response">{responseMsg}</Text>
+          <Reveal triggerKey={responseMsg.slice(0, 40)} style={{ width: '100%' }}>
+            <View style={styles.center}>
+              <View style={styles.responseCard}>
+                <GraoSymbol size={30} color={colors.accent} filled={false} />
+                <Text style={styles.responseText} testID="abertura-response">{responseMsg}</Text>
+              </View>
+              <Button
+                testID="abertura-continue"
+                title="Continuar"
+                onPress={() => navigation.navigate('Notification')}
+              />
             </View>
-            <TouchableOpacity
-              testID="abertura-continue"
-              style={styles.button}
-              onPress={() => navigation.navigate('Notification')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.buttonText}>Continuar</Text>
-            </TouchableOpacity>
-          </View>
+          </Reveal>
         )}
       </ScrollView>
     </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: 'transparent' },
   topbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    height: 48,
+    paddingHorizontal: space.gutter,
+    paddingTop: 4,
+    minHeight: logoSlot,
+  },
+  logoSlot: {
+    width: logoSlot,
+    height: logoSlot,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   skip: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foregroundMuted },
-  scroll: { flexGrow: 1, paddingHorizontal: 28, paddingBottom: 32 },
+  scroll: { flexGrow: 1, paddingHorizontal: space.gutter, paddingBottom: 32 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18, paddingVertical: 16 },
 
   eyebrow: {
@@ -464,7 +474,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   title: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.serifMedium,
     fontSize: 30,
     lineHeight: 37,
     color: colors.foreground,
@@ -498,13 +508,12 @@ const styles = StyleSheet.create({
   nameInput: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontFamily: fonts.sans,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 0,
+    borderRadius: radius.lg,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    fontFamily: fonts.serif,
     fontSize: fontSizes.lg,
     color: colors.foreground,
     textAlign: 'center',
@@ -553,30 +562,26 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 340,
     minHeight: 130,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontFamily: fonts.sans,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 0,
+    borderRadius: radius.lg,
+    padding: 18,
+    fontFamily: fonts.serif,
     fontSize: fontSizes.base,
-    lineHeight: 23,
+    lineHeight: 24,
     color: colors.foreground,
     textAlignVertical: 'top',
   },
 
-  thinkingText: { fontFamily: fonts.serif, fontSize: fontSizes.lg, color: colors.foregroundMuted, fontStyle: 'italic' },
+  thinkingText: { fontFamily: fonts.serifMedium, fontSize: fontSizes.lg, color: colors.foregroundMuted, fontStyle: 'italic' },
 
   responseCard: {
     width: '100%',
     maxWidth: 350,
-    backgroundColor: colors.surfaceAccent,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderTopWidth: 2,
-    borderTopColor: colors.accent,
-    borderRadius: 14,
-    padding: 24,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 0,
+    borderRadius: radius.xl,
+    padding: 28,
     alignItems: 'center',
     gap: 14,
     ...(shadows.md as object),
@@ -589,22 +594,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  button: {
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    alignItems: 'center',
-    minWidth: 220,
-    ...(shadows.sm as object),
-  },
-  buttonDisabled: { backgroundColor: colors.foregroundSubtle },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
-    color: colors.accentForeground,
-    letterSpacing: 0.3,
-  },
   link: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.accent, padding: 6 },
   linkSubtle: { fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundSubtle, padding: 6 },
 });

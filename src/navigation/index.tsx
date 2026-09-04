@@ -1,8 +1,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, StackCardInterpolatedStyle, StackCardInterpolationProps } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Easing } from 'react-native';
 
 import Welcome from '../screens/onboarding/Welcome';
 import Intro from '../screens/onboarding/Intro';
@@ -20,72 +20,71 @@ import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
 import WhatsAppDemo from '../screens/WhatsAppDemo';
 
-import GraoSymbol from '../components/GraoSymbol';
+import FloatingTabBar from '../components/ui/FloatingTabBar';
 import { colors } from '../theme/colors';
-import { fonts } from '../theme/typography';
 
 const Stack = createStackNavigator();
 const AppStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
+function softSlide({ current, next, layouts }: StackCardInterpolationProps): StackCardInterpolatedStyle {
+  const width = layouts.screen.width;
+  const translateX = current.progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [width * 0.12, 0],
+  });
+  const opacity = current.progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const nextOpacity = next
+    ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.92] })
+    : 1;
+  return {
+    cardStyle: {
+      opacity: next ? nextOpacity : opacity,
+      transform: [{ translateX }],
+    },
+  };
+}
+
+const stackMotion = {
+  headerShown: false as const,
+  gestureEnabled: true,
+  transitionSpec: {
+    open: {
+      animation: 'timing' as const,
+      config: { duration: 380, easing: Easing.out(Easing.cubic) },
+    },
+    close: {
+      animation: 'timing' as const,
+      config: { duration: 280, easing: Easing.in(Easing.cubic) },
+    },
+  },
+  cardStyleInterpolator: softSlide,
+  cardStyle: { backgroundColor: colors.background },
+};
+
 function MainNavigator() {
-  const insets = useSafeAreaInsets();
-  const bottomInset = insets.bottom;
   return (
     <Tab.Navigator
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.backgroundElevated,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 78 + bottomInset,
-          paddingTop: 8,
-          paddingBottom: bottomInset + 10,
-        },
-        tabBarItemStyle: { paddingVertical: 4 },
-        tabBarLabelStyle: {
-          fontFamily: fonts.sansMedium,
-          fontSize: 11,
-        },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.foregroundSubtle,
       }}
     >
-      <Tab.Screen
-        name="Hoje"
-        component={Hoje}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <GraoSymbol size={26} color={color} filled={focused} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Campo"
-        component={Campo}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <GraoSymbol size={26} color={color} filled={focused} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Raiz"
-        component={Raiz}
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <GraoSymbol size={26} color={color} filled={focused} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Hoje" component={Hoje} />
+      <Tab.Screen name="Campo" component={Campo} />
+      <Tab.Screen name="Raiz" component={Raiz} />
     </Tab.Navigator>
   );
 }
 
 function AppNavigator() {
   return (
-    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+    <AppStack.Navigator screenOptions={stackMotion}>
       <AppStack.Screen name="Main" component={MainNavigator} />
       <AppStack.Screen name="Settings" component={Settings} />
       <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
@@ -97,7 +96,7 @@ function AppNavigator() {
 
 function OnboardingNavigator({ onFinish }: { onFinish: () => void }) {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={stackMotion}>
       <Stack.Screen name="Welcome" component={Welcome} />
       <Stack.Screen name="Intro" component={Intro} />
       <Stack.Screen name="Abertura" component={Abertura} />
