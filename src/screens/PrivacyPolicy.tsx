@@ -58,7 +58,7 @@ export default function PrivacyPolicy({ navigation }: Props) {
         <Section title="Quando você grava um áudio">
           <P>
             Na Abertura, você pode falar em vez de escrever. Quem transforma a sua fala em texto não
-            é o Grão: é o serviço de voz do próprio navegador do seu celular — do Google, se você usa
+            é o Grão: é o serviço de voz do próprio navegador do seu celular, do Google, se você usa
             Chrome, ou da Apple, se usa Safari.
           </P>
           <P>

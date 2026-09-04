@@ -54,9 +54,9 @@ const LOCAL_RESPONSES: Record<string, string> = {
   gratidão: 'Que bonito ouvir gratidão no meio da correria. Coração grato enxerga o que a pressa esconde.',
   fé: 'A sua busca por confiar mais já é fé em movimento. Vamos fortalecer esse músculo todo dia.',
   solidão: 'Obrigado por dividir isso comigo. Você não vai caminhar só: todo dia, uma palavra vai te encontrar.',
-  luto: 'Sinto muito pela sua dor. Não tem pressa aqui — só presença. Deus está perto de quem tem o coração partido, e eu vou estar por perto também.',
+  luto: 'Sinto muito pela sua dor. Não tem pressa aqui, só presença. Deus está perto de quem tem o coração partido, e eu vou estar por perto também.',
   culpa: 'O que pesa em você não é maior que a graça. Um recomeço por dia: é assim que a gente vai.',
-  alegria: 'Que alegria boa de ouvir! Vamos cuidar dela — alegria também se rega todo dia.',
+  alegria: 'Que alegria boa de ouvir! Vamos cuidar dela, porque alegria também se rega todo dia.',
 };
 
 function MicIcon({ size = 34, color = '#FFFFFF' }: { size?: number; color?: string }) {
@@ -260,7 +260,7 @@ export default function Abertura({ navigation }: Props) {
       if (family && LOCAL_RESPONSES[family]) {
         message = `${n ? n + ', o' : 'O'}brigado por se abrir comigo. ${LOCAL_RESPONSES[family]} Sua primeira semente já está sendo preparada. 🌱`;
       } else {
-        message = `${n ? n + ', o' : 'O'}brigado por se abrir comigo. Li com carinho cada palavra do que você dividiu — e é daí que a sua caminhada aqui começa. Sua primeira semente já está sendo preparada, escolhida com cuidado. 🌱`;
+        message = `${n ? n + ', o' : 'O'}brigado por se abrir comigo. Li com carinho cada palavra do que você dividiu, e é daí que a sua caminhada aqui começa. Sua primeira semente já está sendo preparada, escolhida com cuidado. 🌱`;
       }
     }
 

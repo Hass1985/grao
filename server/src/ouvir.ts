@@ -67,7 +67,7 @@ export function registerOuvirRoutes(app: Express, baseUrl: () => string) {
 
       void logEvent(null, 'musica_aberta', { seedId: req.params.seedId, titulo: s.music_title });
 
-      const titulo = `${s.music_title}${s.music_artist ? ` — ${s.music_artist}` : ''}`;
+      const titulo = `${s.music_title}${s.music_artist ? `, ${s.music_artist}` : ''}`;
       const og = `${baseUrl()}/${OG_IMAGEM}`;
 
       // O redirecionamento é por JS e por meta refresh, nunca por HTTP 302:

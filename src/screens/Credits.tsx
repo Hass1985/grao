@@ -46,7 +46,7 @@ export default function Credits({ navigation }: Props) {
         </View>
 
         <Section title="Texto bíblico">
-          <P>Bíblia Livre (BLIVRE) — tradução em português brasileiro, 66 livros.</P>
+          <P>Bíblia Livre (BLIVRE): tradução em português brasileiro, 66 livros.</P>
           <P>
             Usada sob a licença Creative Commons Atribuição 3.0 Brasil (CC BY 3.0 BR), que permite
             o uso e a distribuição mediante crédito à fonte.

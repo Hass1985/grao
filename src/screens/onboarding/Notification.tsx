@@ -41,7 +41,7 @@ export default function Notification({ navigation }: Props) {
           <Text style={styles.eyebrow}>RITMO · PASSO 2</Text>
           <Text style={styles.title}>Que horas você quer receber?</Text>
           <Text style={styles.subtitle}>
-            Escolha um horário em que você costuma ter um minuto livre — é nele que
+            Escolha um horário em que você costuma ter um minuto livre. É nele que
             a semente chega, pelo WhatsApp. Pode mudar depois.
           </Text>
 

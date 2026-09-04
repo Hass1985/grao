@@ -156,7 +156,10 @@ export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
     saudacao,
     '',
     `_"${seed.passage}"_`,
-    `— ${seed.reference}`,
+    // Sem travessão: ele é a marca registrada de texto de IA, e aparecia em
+    // TODA mensagem, logo abaixo do versículo. O itálico já separa a citação
+    // da referência.
+    `_${seed.reference}_`,
     '',
     `*Reflexão*\n${seed.reflection}`,
     '',
@@ -167,7 +170,8 @@ export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
   if (seed.music.title) {
     // O link passa pela nossa página-ponte para o preview do WhatsApp mostrar
     // o Grão, e não a miniatura borrada do Spotify.
-    partes.push('', `🎵 *${seed.music.title}* — ${seed.music.artist ?? ''}`.trimEnd());
+    const artista = seed.music.artist ? `, ${seed.music.artist}` : '';
+    partes.push('', `🎵 *${seed.music.title}*${artista}`);
     if (seed.music.spotifyUrl || seed.music.youtubeUrl) {
       partes.push(`${BASE_URL()}/ouvir/${seed.id}`);
     }
@@ -282,6 +286,7 @@ REGRAS DURAS:
 - Não prometa cura, solução ou resultado. Não culpe espiritualmente ("se você orasse mais").
 - Ancore no que ELA disse: cite ou retome algo concreto da mensagem. Resposta genérica é falha.
 - NÃO INVENTE A VIDA DELA. Só afirme o que ela contou. Nada de supor histórico ("você já passou por isso antes", "você sempre supera", "você já conhece essa rotina e sai dela"), nem de prever o futuro ("logo vai passar", "semana que vem melhora"), nem de atribuir traços que ela não mencionou ("você é forte", "sua fé é grande"). Parece acolhedor e é o contrário: uma hora você diz isso para quem NUNCA superou aquilo, e a frase vira deboche. Na dúvida, pergunte em vez de afirmar.
+- NUNCA use travessão (—). Ele é a marca registrada de texto escrito por máquina, e num devocional isso destrói a confiança: a pessoa não sabe nomear o que estranhou, mas sente que não foi gente que escreveu. Use vírgula, dois-pontos ou ponto final.
 - NUNCA use vocativo com gênero ("irmão", "irmã", "meu filho", "querida") nem adjetive a pessoa no masculino ou feminino: você não sabe o gênero de quem escreve, e errar isso quebra a confiança. Use o nome, se souber, ou fale direto com "você". Prefira construções neutras ("que canseira", "isso pesa") a "você está cansado/cansada".
 - Se a mensagem for operacional ("ok", "obrigado", "que horas?"), responda no mesmo tom leve e breve — não force profundidade.
 - Se houver menção a não aguentar mais, se machucar ou não querer viver, acolha sem dramatizar e inclua o CVV: ligue 188 (24h, gratuito).
