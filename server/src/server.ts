@@ -25,6 +25,7 @@ import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import { devocionalDeHoje, devocionaisAte, textoCompartilhavel } from './devocional.js';
+import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
 
 const app = express();
@@ -152,6 +153,29 @@ app.post('/onboarding/opening', async (req, res) => {
     }
     await ensureUser(userId);
     await saveTurn(userId, 'user', transcript);
+
+    // A Abertura é onde a pessoa mais se abre, e por áudio. É o ponto de maior
+    // chance de alguém relatar sofrimento grave, e o único momento em que o
+    // produto pede isso explicitamente. O detector roda antes do modelo, pelo
+    // mesmo motivo do WhatsApp: ele precisa funcionar com a API fora.
+    const risco = avaliarRisco(transcript);
+    if (risco.risco !== 'nenhum') {
+      void logEvent(userId, 'risco_detectado', {
+        nivel: risco.risco, trecho: risco.trecho, origem: 'abertura',
+      });
+    }
+    if (risco.risco === 'grave') {
+      const cuidado = respostaDeCuidado(name);
+      await saveTurn(userId, 'assistant', '[resposta de cuidado]');
+      void logEvent(userId, 'onboarding_done', { mode: 'opening', source, needsCare: true });
+      return res.json({
+        message: cuidado,
+        channel: 'visual',
+        emotionalHint: null,
+        needsCare: true,
+        themes: [],
+      });
+    }
 
     const r = await readOpening(transcript, name);
 

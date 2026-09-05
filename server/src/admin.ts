@@ -76,6 +76,7 @@ const EVENTOS: Record<string, string> = {
   wa_dispatch: 'disparo automático',
   brain_failed: '⚠ o cérebro falhou',
   devocional_lido: 'leu o devocional do dia',
+  risco_detectado: '⚠ SINAL DE RISCO EMOCIONAL',
 };
 
 async function montarPainel(dias: number) {
@@ -257,6 +258,15 @@ async function montarPainel(dias: number) {
   // Falha do cérebro: a pergunta que o painel não sabia responder no dia em que
   // a chave da Anthropic ficou sem saldo. Sem isto, "a leitura emocional parou"
   // só aparece semanas depois, como "as sementes estão repetindo".
+  // Risco emocional: o dado que precisa aparecer antes de qualquer métrica.
+  // Se alguém escreveu que não aguenta mais, isso importa mais que o funil.
+  const riscos = await q(`
+    SELECT e.payload->>'nivel' nivel, e.payload->>'origem' origem,
+           coalesce(u.name, '(sem nome)') nome, e.created_at
+      FROM events e LEFT JOIN u_ren u ON u.id = e.user_id
+     WHERE e.type = 'risco_detectado'
+     ORDER BY e.id DESC LIMIT 20`.replace('u_ren', 'users'));
+
   const [falhaCerebro] = await q(`
     SELECT payload->>'onde' onde, payload->>'motivo' motivo,
            (payload->>'semSaldo')::boolean sem_saldo, created_at
@@ -374,6 +384,9 @@ async function montarPainel(dias: number) {
     }),
     sistema: {
       config,
+      riscos: riscos.map((r: any) => ({
+        nivel: r.nivel, origem: r.origem, nome: r.nome, quando: r.created_at,
+      })),
       cerebro: {
         ultimaLeitura: leitura?.ultima ?? null,
         leituras: num(leitura?.n),

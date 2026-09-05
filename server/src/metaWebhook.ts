@@ -18,6 +18,7 @@ import { selectSeedForUser } from './seedSelector.js';
 import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
 import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
+import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -138,6 +139,26 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
   const texto = msg.text.body;
   await saveTurn(userId, 'user', texto);
   void logEvent(userId, 'message_in', { source: 'whatsapp', chars: texto.length });
+
+  // SEGURANÇA EMOCIONAL, antes de qualquer chamada de IA.
+  //
+  // Roda primeiro de propósito: se a API estiver fora do ar, é esta camada que
+  // continua de pé, e é exatamente nesse cenário que a proteção some. Caso
+  // grave interrompe o fluxo — nada de leitura emocional, nada de resposta
+  // gerada, nada de semente. Responder ao pedido de socorro com o conteúdo do
+  // dia seria o pior desfecho possível.
+  const risco = avaliarRisco(texto);
+  if (risco.risco !== 'nenhum') {
+    void logEvent(userId, 'risco_detectado', {
+      nivel: risco.risco, trecho: risco.trecho, origem: 'whatsapp',
+    });
+  }
+  if (risco.risco === 'grave') {
+    const r = await sendText(msg.from, respostaDeCuidado(nome));
+    if (!r.ok) console.error(`[wa] FALHA ao enviar resposta de cuidado para ${e164}: ${r.erro}`);
+    await saveTurn(userId, 'assistant', '[resposta de cuidado]');
+    return;
+  }
 
   const [recentes, perfil] = await Promise.all([
     getRecentUserMessages(userId, 4),

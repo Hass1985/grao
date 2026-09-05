@@ -528,6 +528,20 @@ function montarAlertas() {
     a.push(['', 'Ainda não existe cobrança de verdade.',
       'Nenhum gateway está ligado. O que aparece em Planos é a escolha declarada no onboarding mais o período de teste.']);
   }
+  // Risco emocional vem PRIMEIRO, acima de tudo. Um alerta de conteúdo ou de
+  // cobrança pode esperar o próximo login; este não.
+  var riscos = (D.sistema && D.sistema.riscos) || [];
+  var graves = riscos.filter(function (r) {
+    return r.nivel === 'grave' &&
+      (Date.now() - new Date(r.quando).getTime()) < 7 * 24 * 3600000;
+  });
+  if (graves.length) {
+    a.unshift(['grave',
+      graves.length + ' pessoa(s) deram sinal grave de sofrimento nos últimos 7 dias.',
+      'O Grão respondeu na hora com acolhimento e o CVV (188), sem mandar semente. ' +
+      'Vale alguém da equipe olhar caso a caso na seção Sistema.']);
+  }
+
   var c = D.sistema && D.sistema.cerebro;
   if (c && c.ultimaFalha) {
     var h = (Date.now() - new Date(c.ultimaFalha.quando).getTime()) / 3600000;
@@ -814,7 +828,24 @@ function secSistema() {
       : '<p class="nota" style="margin:12px 0 0">A leitura emocional é o que mantém a semente ' +
         'ligada ao momento da pessoa. Se ela parar, a entrega continua, mas o conteúdo congela.</p>');
 
-  return '<div class="grade g-2-1">' +
+  var listaRiscos = (s.riscos && s.riscos.length)
+    ? '<div class="rolagem"><table><thead><tr><th>Pessoa</th><th>Nível</th>' +
+      '<th>Onde</th><th class="dir">Quando</th></tr></thead><tbody>' +
+      s.riscos.map(function (r) {
+        return '<tr><td class="forte">' + esc(r.nome) + '</td>' +
+          '<td><span class="selo ' + (r.nivel === 'grave' ? 'ruim' : '') + '">' +
+          esc(r.nivel) + '</span></td>' +
+          '<td class="fraco">' + esc(r.origem) + '</td>' +
+          '<td class="dir fraco mono">' + esc(dataHora(r.quando)) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<p class="nota" style="margin:12px 0 0">O trecho que acionou fica no evento, ' +
+      'não aqui: é a frase mais íntima que alguém escreveu, e não precisa estar numa tabela ' +
+      'que a equipe inteira abre.</p>'
+    : vazio('Nenhum sinal de risco registrado. O detector roda em toda mensagem, ' +
+            'sem depender da IA.');
+
+  return '<p class="secao-titulo">Segurança emocional</p><div class="cartao">' + listaRiscos + '</div>' +
+    '<div class="grade g-2-1">' +
       cartao('Configuração do servidor', 'presença, nunca o valor — um painel que mostra segredo vira vazamento', config) +
       cartao('Última entrega automática', 'a agenda varre de minuto em minuto e respeita o horário de cada pessoa', disparo) +
     '</div>' +
