@@ -26,6 +26,34 @@ if [ -z "$VALOR" ]; then
   echo "✗ Área de transferência vazia. Copie o valor e rode de novo."; exit 1
 fi
 
+# Nenhuma chave de API tem espaço. Esta linha sozinha teria evitado o dia em
+# que a área de transferência tinha o texto das telas do onboarding e ele foi
+# gravado como ASAAS_API_KEY, com 499 caracteres e um 401 do Asaas como única
+# pista.
+case "$VALOR" in
+  *\ *)
+    echo "✗ O valor colado tem ESPAÇOS, então não é uma chave."
+    echo "  Começa com: $(printf '%s' "$VALOR" | cut -c1-40)…"
+    echo "  Copie o valor certo e rode de novo, sem copiar mais nada no meio."
+    exit 1 ;;
+esac
+
+# Formato conhecido por variável. Ajuda a pegar a chave certa do serviço errado,
+# que é o erro que não dá mensagem nenhuma: só para de funcionar.
+case "$NOME" in
+  ASAAS_API_KEY)
+    case "$VALOR" in
+      \$aact_hmlg_*) echo "Chave do Asaas reconhecida: SANDBOX (não cobra de verdade)" ;;
+      \$aact_prod_*) echo "⚠ Chave do Asaas de PRODUÇÃO: cobranças serão reais." ;;
+      \$aact_*)      echo "Chave do Asaas reconhecida (ambiente indefinido)." ;;
+      *)
+        echo "✗ Isso não parece uma chave do Asaas."
+        echo "  Elas começam com \$aact_hmlg_ (sandbox) ou \$aact_prod_ (produção)."
+        echo "  No painel do Asaas: menu do usuário → Integrações → Gerar nova Chave de API."
+        exit 1 ;;
+    esac ;;
+esac
+
 python3 - "$NOME" "$VALOR" <<'PY'
 import sys
 nome, valor = sys.argv[1], sys.argv[2]
