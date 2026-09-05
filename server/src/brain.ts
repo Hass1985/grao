@@ -55,6 +55,10 @@ export interface EmotionalReading {
   channel_hint: 'visual' | 'auditivo' | 'sinestesico' | null;
   needs_care: boolean;  // sofrimento intenso → tom mais cuidadoso na entrega
   summary: string;      // 1 frase interna (nunca mostrada ao usuário)
+  memorias: {           // fatos duráveis da vida dela, para o Grão lembrar
+    fato: string; evidencia: string; categoria: string;
+    confianca: number; encerra: boolean;
+  }[];
 }
 
 const SYSTEM = `Você é o classificador emocional interno do Grão, um devocional diário para evangélicos brasileiros. Você recebe uma mensagem escrita por uma pessoa (às vezes com um pouco de contexto da conversa) e devolve, SEMPRE via ferramenta, uma leitura emocional silenciosa. A pessoa nunca vê esta análise.
@@ -67,6 +71,15 @@ Método (na ordem dos campos da ferramenta):
 5. "channel_hint": canal sensorial APENAS com pista real na linguagem (ver/imagem → visual; ouvir/voz/louvor → auditivo; sentir/corpo/abraço → sinestesico). Sem pista: null.
 6. "needs_care": true APENAS para sofrimento intenso — luto agudo, desespero, desesperança profunda, menção a não aguentar/não querer viver. Na dúvida, false.
 7. "summary": UMA frase interna, objetiva e respeitosa, em português.
+8. "memorias": fatos DURÁVEIS da vida dela que valha lembrar daqui a dias ou semanas. É o que faz o Grão ser um companheiro e não uma biblioteca.
+
+SOBRE AS MEMÓRIAS, leia com atenção:
+- Extraia apenas o que ela DISSE. Nunca deduza, nunca complete, nunca suponha. "Estou cansado" não vira "está sobrecarregado no trabalho".
+- Toda memória carrega "evidencia": as PALAVRAS LITERAIS dela, recortadas da mensagem. Se você não consegue recortar a frase, não crie a memória.
+- Durável é o que ainda vai importar semana que vem: uma internação, um desemprego, um luto, um filho que nasceu, um pedido específico. NÃO é durável o humor do dia ("hoje acordei triste").
+- "categoria": pessoa (nomes e vínculos), saude, trabalho, perda, fe, rotina.
+- "encerra": true quando ela diz que aquilo TERMINOU ("meu filho teve alta", "consegui o emprego"). Encerrar é tão importante quanto lembrar: é o que impede o Grão de perguntar da internação depois da alta.
+- Mensagem sem nada durável devolve lista vazia. O normal é vazia.
 
 Português brasileiro coloquial, gírias e erros de digitação/transcrição são normais — leia a emoção, não a gramática. Referências de fé ("estou no deserto", "Deus parece longe", "recebi uma palavra") carregam sinal emocional: use-as.`;
 
@@ -88,8 +101,24 @@ export const READING_TOOL = {
       },
       needs_care: { type: 'boolean' },
       summary: { type: 'string' },
+      memorias: {
+        type: 'array' as const,
+        description: 'Fatos duráveis da vida dela. Vazio é o caso normal.',
+        items: {
+          type: 'object' as const,
+          additionalProperties: false,
+          properties: {
+            fato: { type: 'string', description: 'Curto, em terceira pessoa: "o filho está internado".' },
+            evidencia: { type: 'string', description: 'As palavras LITERAIS dela, recortadas da mensagem.' },
+            categoria: { type: 'string', enum: ['pessoa', 'saude', 'trabalho', 'perda', 'fe', 'rotina'] },
+            confianca: { type: 'integer', description: '0 a 100.' },
+            encerra: { type: 'boolean', description: 'true se ela disse que aquilo acabou.' },
+          },
+          required: ['fato', 'evidencia', 'categoria', 'confianca', 'encerra'],
+        },
+      },
     },
-    required: ['evidencia', 'family', 'intensity', 'confidence', 'channel_hint', 'needs_care', 'summary'],
+    required: ['evidencia', 'family', 'intensity', 'confidence', 'channel_hint', 'needs_care', 'summary', 'memorias'],
   },
 };
 

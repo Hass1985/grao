@@ -19,6 +19,7 @@ import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './what
 import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
+import { guardarMemorias, memoriasVivas, linhaDeLigacao, registrarUso } from './memoria.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -99,6 +100,7 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
   // Texto livre: sem teto de 1024, com negrito e itálico, e gratuito porque o
   // toque acabou de abrir a janela de 24h.
   const completo = (await acessoDoUsuario(userId)).completo;
+  const ligacao = completo ? await linhaDeLigacao(userId, entrega.family) : null;
   const texto = formatSeed({
     id: entrega.id, family: entrega.family, type: entrega.type,
     passage: entrega.passage, reference: entrega.reference,
@@ -108,13 +110,14 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
       spotifyUrl: entrega.music_spotify || undefined, youtubeUrl: entrega.music_youtube || undefined,
     },
     reason: { family: entrega.family, source: 'momento', preferredType: entrega.type },
-  }, perfil ? null : undefined, completo);
+  }, perfil ? null : undefined, completo, ligacao?.texto);
 
   const r = await sendText(msg.from, texto);
   if (!r.ok) { console.error(`[wa] falha ao entregar a semente: ${r.erro}`); return; }
 
+  if (ligacao) await registrarUso(ligacao.memoriaId);
   await pool.query(`UPDATE seed_deliveries SET planted = true WHERE id = $1`, [entrega.entrega_id]);
-  void logEvent(userId, 'seed_planted', { seedId: entrega.id, source: 'whatsapp_botao' });
+  void logEvent(userId, 'seed_planted', { seedId: entrega.id, source: 'whatsapp_botao', retomou: !!ligacao });
 }
 
 /** Processa UMA mensagem: cérebro, resposta e (se pedida) semente. */
@@ -174,9 +177,16 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
       const mudou = await setMomentBySystem(userId, leitura.family);
       if (mudou) void logEvent(userId, 'moment_changed', { by: 'brain', family: leitura.family });
     }
+    // O que ela contou deixa de morrer na conversa. `mensagem` vai junto para
+    // guardarMemorias conferir que a citação existe MESMO no que ela escreveu.
+    const n = await guardarMemorias(userId, texto, leitura.memorias ?? []);
+    if (n) void logEvent(userId, 'memoria_guardada', { quantas: n });
   }
 
-  const { resposta, quer_semente } = await replyFor(texto, leitura, recentes.slice(0, -1));
+  // O que o Grão já sabe da vida dela entra na resposta. É a diferença entre
+  // responder a uma mensagem e responder a uma pessoa.
+  const memorias = await memoriasVivas(userId, 5);
+  const { resposta, quer_semente } = await replyFor(texto, leitura, recentes.slice(0, -1), memorias);
   await saveTurn(userId, 'assistant', resposta);
   const env = await sendText(msg.from, resposta);
   if (!env.ok) console.error(`[wa] falha ao responder ${e164}: ${env.erro}`);

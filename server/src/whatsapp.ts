@@ -14,6 +14,7 @@ import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './br
 import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
 import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
+import { paraPrompt, linhaDeLigacao, registrarUso, type Memoria } from './memoria.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -155,11 +156,16 @@ export function formatSeed(
   seed: SelectedSeed,
   nome?: string | null,
   completa = true,
+  ligacao?: string | null,
 ): string {
   const saudacao = nome ? `${nome}, sua semente de hoje 🌱` : 'Sua semente de hoje 🌱';
   const partes = [
     saudacao,
     '',
+    // A linha que retoma o que ela contou dias atrás. Vem ANTES do versículo,
+    // porque é ela que explica por que esta semente é dela e não de qualquer
+    // um. Quando não há memória viva, some sem deixar buraco.
+    ...(ligacao ? [ligacao, ''] : []),
     `_"${seed.passage}"_`,
     // Sem travessão: ele é a marca registrada de texto de IA, e aparecia em
     // TODA mensagem, logo abaixo do versículo. O itálico já separa a citação
@@ -229,9 +235,13 @@ export async function entregarSemente(
   const { seed, jaExistia } = escolha;
 
   const aberta = !!u.janela_aberta;
+  // A ligação só cabe no texto livre: o template tem variáveis fixas aprovadas
+  // pela Meta e não comporta uma frase nova.
+  const ligacao = aberta ? await linhaDeLigacao(u.id, seed.family) : null;
   const r = aberta
-    ? await sendText(u.phone_e164, formatSeed(seed, u.name ?? undefined))
+    ? await sendText(u.phone_e164, formatSeed(seed, u.name ?? undefined, true, ligacao?.texto))
     : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
+  if (r.ok && ligacao) await registrarUso(ligacao.memoriaId);
 
   if (r.ok) {
     // sent_wa_at é o que impede o reenvio. Marcado na entrega DE HOJE desta
@@ -349,8 +359,10 @@ export async function replyFor(
   texto: string,
   leitura: { family: string; needs_care: boolean; summary: string } | null,
   contexto: string[],
+  memorias: Memoria[] = [],
 ): Promise<{ resposta: string; quer_semente: boolean }> {
   const ctx = contexto.length ? `\n\nMensagens anteriores dela:\n${contexto.map((m) => `- ${m}`).join('\n')}` : '';
+  const mem = paraPrompt(memorias);
   const leituraTxt = leitura
     ? `\n\nLeitura interna: família ${leitura.family}${leitura.needs_care ? ' · SOFRIMENTO INTENSO' : ''} · ${leitura.summary}`
     : '';
@@ -367,7 +379,7 @@ export async function replyFor(
       system: [{ type: 'text', text: REPLY_SYSTEM, cache_control: { type: 'ephemeral' } }],
       tools: [REPLY_TOOL as any],
       tool_choice: { type: 'tool', name: 'responder' },
-      messages: [{ role: 'user', content: `Mensagem dela: "${texto}"${leituraTxt}${ctx}` }],
+      messages: [{ role: 'user', content: `Mensagem dela: "${texto}"${leituraTxt}${mem}${ctx}` }],
     });
     const tu = res.content.find((b) => b.type === 'tool_use');
     if (!tu || tu.type !== 'tool_use') return RESERVA;
