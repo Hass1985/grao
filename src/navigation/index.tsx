@@ -15,6 +15,7 @@ import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
 import WhatsAppDemo from '../screens/WhatsAppDemo';
+import Plantio from '../screens/Plantio';
 
 import FloatingTabBar from '../components/ui/FloatingTabBar';
 import { colors } from '../theme/colors';
@@ -86,6 +87,7 @@ function AppNavigator() {
       <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <AppStack.Screen name="Credits" component={Credits} />
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
+      <AppStack.Screen name="Plantio" component={Plantio} />
     </AppStack.Navigator>
   );
 }

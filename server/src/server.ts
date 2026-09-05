@@ -60,7 +60,22 @@ async function diagnose() {
       dbError = err?.message;
     }
   }
-  return { ok: hasKey && db === 'ok', anthropicKey: hasKey ? 'ok' : 'faltando', db, dbError };
+  // Presença das integrações, nunca o valor. Serve para responder de fora
+  // "o Render está com a chave?" sem abrir o painel nem revelar segredo. Foi
+  // o que faltou nas últimas configurações: dava para conferir que o webhook
+  // recusa token errado, mas não que a chave chegou a ser cadastrada.
+  const integracoes = {
+    anthropic: hasKey,
+    meta: !!process.env.WA_ACCESS_TOKEN && !!process.env.WA_PHONE_NUMBER_ID,
+    supabase: !!process.env.SUPABASE_URL,
+    asaas: !!process.env.ASAAS_API_KEY,
+    asaasWebhook: !!process.env.ASAAS_WEBHOOK_TOKEN,
+  };
+  return {
+    ok: hasKey && db === 'ok',
+    anthropicKey: hasKey ? 'ok' : 'faltando',
+    db, dbError, integracoes,
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { Seed } from '../data/seeds';
 import { colors } from '../theme/colors';
@@ -16,6 +17,8 @@ interface SeedCardProps {
   featured?: boolean;
   /** Inclui a música dentro do mesmo card (Raiz). */
   embedMusic?: boolean;
+  /** Abre o fluxo explicativo do Plantio (free). */
+  onSaibaMais?: () => void;
 }
 
 const typeLabel: Record<string, string> = {
@@ -48,6 +51,7 @@ export default function SeedCard({
   compact = false,
   featured = false,
   embedMusic = false,
+  onSaibaMais,
 }: SeedCardProps) {
   const open = (url?: string) => {
     if (url) Linking.openURL(url);
@@ -114,8 +118,33 @@ export default function SeedCard({
 
           {isDevocional ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>No Plantio</Text>
+              <Text style={styles.sectionTitle}>Faça parte da comunidade</Text>
               <View style={styles.locked}>
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={[
+                    'rgba(251, 246, 236, 0.2)',
+                    'rgba(251, 246, 236, 0.12)',
+                    'rgba(251, 246, 236, 0.16)',
+                  ]}
+                  locations={[0, 0.5, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.lockedShine}
+                />
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={[
+                    'rgba(251, 246, 236, 0.22)',
+                    'transparent',
+                    'transparent',
+                    'rgba(251, 246, 236, 0.1)',
+                  ]}
+                  locations={[0, 0.08, 0.92, 1]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.lockedEdge}
+                />
                 <Text style={styles.lockedLead}>
                   A semente personalizada traz:
                 </Text>
@@ -132,6 +161,17 @@ export default function SeedCard({
                     </View>
                   ))}
                 </View>
+                {onSaibaMais ? (
+                  <TouchableOpacity
+                    onPress={onSaibaMais}
+                    style={styles.saibaMais}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clique e saiba mais sobre o Plantio"
+                    hitSlop={8}
+                  >
+                    <Text style={styles.saibaMaisText}>Clique e saiba mais</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
           ) : null}
@@ -195,8 +235,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 28,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
   },
   blur: {
     overflow: 'hidden',
@@ -276,17 +314,40 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   locked: {
-    backgroundColor: 'rgba(192, 120, 38, 0.14)',
-    borderRadius: radius.md,
-    paddingVertical: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(72, 48, 24, 0.28)',
+    borderRadius: 18,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     gap: 10,
+    borderWidth: 0,
+    ...(Platform.OS === 'web'
+      ? ({
+          backdropFilter: 'blur(22px)',
+          WebkitBackdropFilter: 'blur(22px)',
+          boxShadow: '0 10px 28px rgba(36, 23, 8, 0.16)',
+        } as object)
+      : {
+          shadowColor: '#241708',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
+          elevation: 3,
+        }),
+  },
+  lockedShine: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+  },
+  lockedEdge: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
   },
   lockedLead: {
-    fontFamily: fonts.sans,
+    fontFamily: fonts.sansSemi,
     fontSize: 14,
     lineHeight: 22,
-    color: colors.foregroundMuted,
+    color: colors.palha,
   },
   lockedList: {
     gap: 8,
@@ -300,14 +361,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 22,
-    color: 'rgba(247, 240, 226, 0.4)',
+    color: 'rgba(247, 240, 226, 0.55)',
   },
   lockedItem: {
     flex: 1,
     fontFamily: fonts.sans,
     fontSize: 14,
     lineHeight: 22,
-    color: colors.foregroundMuted,
+    color: colors.palha,
+  },
+  saibaMais: {
+    alignSelf: 'center',
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(192, 120, 38, 0.22)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(216, 154, 85, 0.45)',
+  },
+  saibaMaisText: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    color: colors.ambarSoft,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   musicBlock: {
     marginTop: 24,

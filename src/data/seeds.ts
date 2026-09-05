@@ -9,7 +9,10 @@ export type EmotionalFamily =
   | 'solidão'
   | 'paz'
   | 'alegria'
-  | 'fé';
+  | 'fé'
+  | 'medo'
+  | 'tristeza'
+  | 'raiva';
 
 export interface Music {
   title: string;
@@ -204,4 +207,7 @@ export const emotionalFamilies: { id: EmotionalFamily; label: string; emoji: str
   { id: 'paz', label: 'Paz', emoji: '☁️' },
   { id: 'alegria', label: 'Alegria', emoji: '✨' },
   { id: 'fé', label: 'Fé', emoji: '🕊️' },
+  { id: 'medo', label: 'Medo', emoji: '😨' },
+  { id: 'tristeza', label: 'Tristeza', emoji: '😢' },
+  { id: 'raiva', label: 'Raiva', emoji: '😠' },
 ];

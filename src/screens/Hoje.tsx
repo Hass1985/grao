@@ -185,7 +185,11 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 <Text style={styles.sectionEyebrow}>Devocional diário</Text>
               </View>
 
-              <SeedCard seed={seed} featured={true} />
+              <SeedCard
+                seed={seed}
+                featured={true}
+                onSaibaMais={() => navigation.navigate('Plantio')}
+              />
 
               {isSemente && seed.music ? (
                 <MusicPlayer music={seed.music} inline style={styles.player} />

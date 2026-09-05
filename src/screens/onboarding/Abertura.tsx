@@ -63,6 +63,9 @@ const LOCAL_RESPONSES: Record<string, string> = {
   luto: 'Sinto muito pela sua dor. Não tem pressa aqui, só presença. Deus está perto de quem tem o coração partido, e eu vou estar por perto também.',
   culpa: 'O que pesa em você não é maior que a graça. Um recomeço por dia: é assim que a gente vai.',
   alegria: 'Que alegria boa de ouvir! Vamos cuidar dela, porque alegria também se rega todo dia.',
+  medo: 'O medo aperta, mas você não precisa enfrentar sozinho. Vamos colocar luz no que assusta, um dia de cada vez.',
+  tristeza: 'Sua tristeza tem lugar aqui. Sem pressa para sorrir: a Palavra também abraça quem chora.',
+  raiva: 'Raiva também é um pedido de cuidado. Vamos transformar esse fogo em caminho, com honestidade e graça.',
 };
 
 function MicIcon({ size = 34, color = '#FFFFFF' }: { size?: number; color?: string }) {

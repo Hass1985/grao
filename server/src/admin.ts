@@ -306,6 +306,13 @@ async function montarPainel(dias: number) {
     ['Token do cron', estado(!!process.env.GRAO_API_TOKEN), 'disparo diário pelo GitHub Actions'],
     ['Token do painel', process.env.GRAO_ADMIN_TOKEN ? 'ok' : 'padrao',
       process.env.GRAO_ADMIN_TOKEN ? 'separado do token do cron' : 'usando o token do cron — melhor separar'],
+    ['Chave do Asaas', estado(!!process.env.ASAAS_API_KEY),
+      process.env.ASAAS_API_KEY?.includes('_hmlg_')
+        ? 'SANDBOX, não cobra de verdade'
+        : process.env.ASAAS_API_KEY ? 'PRODUÇÃO, cobranças reais' : 'cobrança por Pix'],
+    ['Token do webhook de pagamento', estado(!!process.env.ASAAS_WEBHOOK_TOKEN),
+      'prova que o webhook veio mesmo do Asaas'],
+    ['Contas (Supabase)', estado(!!process.env.SUPABASE_URL), 'login por Google e e-mail'],
     ['URL pública', process.env.PUBLIC_BASE_URL ? 'ok' : 'padrao',
       `imagem do preview do louvor · em uso: ${BASE_URL()}`],
     ['Origens liberadas (CORS)', process.env.CORS_ORIGINS ? 'ok' : 'aberto',

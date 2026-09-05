@@ -43,7 +43,10 @@ const LEXICON: { channel: keyof VakDelta; words: string[] }[] = [
 // de verdade é o cérebro (server/src/brain.ts). Por isso a regra de honestidade
 // em emotionalHintFromText: sinal fraco ou ambíguo → null (não afirmamos nada).
 const EMOTION_HINTS: { family: EmotionalFamily; words: string[] }[] = [
-  { family: 'ansiedade', words: ['ansiedad', 'ansios', 'medo', 'preocup', 'aflição', 'aflit', 'angusti', 'angústi', 'nervos', 'não durmo', 'nao durmo', 'insôni', 'insoni', 'pânico', 'panico', 'desesper', 'apertando', 'sufoc', 'cabeça a mil', 'cabeca a mil', 'estress'] },
+  { family: 'ansiedade', words: ['ansiedad', 'ansios', 'preocup', 'aflição', 'aflit', 'angusti', 'angústi', 'nervos', 'não durmo', 'nao durmo', 'insôni', 'insoni', 'pânico', 'panico', 'desesper', 'apertando', 'sufoc', 'cabeça a mil', 'cabeca a mil', 'estress'] },
+  { family: 'medo', words: ['medo', 'temor', 'temeros', 'pavor', 'assustad', 'apavor', 'terror', 'receio', 'com medo'] },
+  { family: 'tristeza', words: ['trist', 'choro', 'chorand', 'deprim', 'melancol', 'desanimad', 'abatid', 'desolad', 'mágoa', 'magoa'] },
+  { family: 'raiva', words: ['raiva', 'irad', 'bravo', 'brava', 'revolt', 'indignad', 'ódio', 'odio', 'irritad', 'furios'] },
   { family: 'paz', words: ['descanso', 'descansar', 'calma', 'tranquil', 'sossego', 'quiet', 'silêncio com deus', 'alívio', 'alivio'] },
   { family: 'esperança', words: ['esperança', 'esperanca', 'futuro', 'sonho', 'milagre', 'recomeç', 'recomec', 'abrir uma porta', 'abrir portas', 'dias melhores', 'vai melhorar'] },
   { family: 'propósito', words: ['direção', 'direcao', 'propósito', 'proposito', 'caminho', 'vontade de deus', 'chamado', 'vocação', 'vocacao', 'sentido', 'decisão', 'decisao', 'qual rumo'] },

@@ -101,6 +101,29 @@ export default function FamilyIcon({ family, size = 22, color }: Props) {
         </>
       );
 
+    case 'medo': // alerta / tremor
+      return svg(
+        <>
+          <Path {...s} d="M12 3 L 21 20 H 3 Z" />
+          <Path {...s} d="M12 10 V 14" />
+          <Circle {...s} cx={12} cy={17} r={0.8} fill={color} />
+        </>
+      );
+
+    case 'tristeza': // lágrimas caídas
+      return svg(
+        <>
+          <Circle {...s} cx={9} cy={10} r={1.2} />
+          <Circle {...s} cx={15} cy={10} r={1.2} />
+          <Path {...s} d="M8 16 C 9.5 18.5 14.5 18.5 16 16" />
+        </>
+      );
+
+    case 'raiva': // raios
+      return svg(
+        <Path {...s} d="M13 2 L 6 13 H 11 L 10 22 L 18 10 H 13 Z" />
+      );
+
     default:
       return svg(<Circle {...s} cx={12} cy={12} r={7} />);
   }
