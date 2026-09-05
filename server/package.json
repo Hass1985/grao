@@ -36,7 +36,8 @@
     "wa:preview": "tsx scripts/testar-preview.ts",
     "content:travessao": "tsx scripts/tirar-travessao.ts",
     "acesso": "tsx scripts/acesso.ts",
-    "content:devocional": "tsx scripts/import-devocional.ts"
+    "content:devocional": "tsx scripts/import-devocional.ts",
+    "content:ancorar": "tsx scripts/ancorar-devocional.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

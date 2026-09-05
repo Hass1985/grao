@@ -20,8 +20,14 @@ export interface DiaDevocional {
   data: string;          // "2026-09-04", no fuso da pessoa
   title: string;
   body: string;
+  /** Paráfrase na voz do devocional. NÃO é citação bíblica. */
   verse: string;
+  /** Livro e capítulo da paráfrase, sem versículo. */
   reference: string;
+  /** Texto bíblico LITERAL, copiado da Bíblia Livre. Nunca gerado. */
+  verseLiteral: string | null;
+  /** Referência exata, com versículo, validada contra bible_verses. */
+  referenceExact: string | null;
 }
 
 /**
@@ -42,7 +48,9 @@ export async function devocionalDeHoje(userId?: string | null): Promise<DiaDevoc
          (SELECT timezone FROM users WHERE id = $1), 'America/Sao_Paulo') tz
      ),
      hoje AS (SELECT (now() AT TIME ZONE (SELECT tz FROM fuso))::date d)
-     SELECT v.title, v.body, v.verse, v.reference, (SELECT d FROM hoje)::text data
+     SELECT v.title, v.body, v.verse, v.reference,
+            v.verse_literal "verseLiteral", v.reference_exact "referenceExact",
+            (SELECT d FROM hoje)::text data
        FROM devotionals v, hoje
       WHERE v.month = extract(month from hoje.d)::int
         AND v.day = extract(day from hoje.d)::int`,
@@ -74,7 +82,8 @@ export async function devocionaisAte(
        SELECT generate_series((SELECT d FROM hoje) - ($2::int - 1),
                               (SELECT d FROM hoje), interval '1 day')::date d
      )
-     SELECT dias.d::text data, v.title, v.body, v.verse, v.reference
+     SELECT dias.d::text data, v.title, v.body, v.verse, v.reference,
+            v.verse_literal "verseLiteral", v.reference_exact "referenceExact"
        FROM dias
        JOIN devotionals v
          ON v.month = extract(month from dias.d)::int
@@ -108,12 +117,19 @@ const SITE = () => (process.env.GRAO_SITE_URL || 'https://www.graoapp.com.br').r
  */
 export function textoCompartilhavel(d: {
   title: string; body: string; verse: string; reference: string;
+  verseLiteral?: string | null; referenceExact?: string | null;
 }): string {
+  // O que se compartilha é o versículo LITERAL, com capítulo e versículo. É o
+  // que a pessoa manda para o grupo da igreja, e é onde um erro de citação
+  // apareceria para mais gente de uma vez.
+  const citacao = d.verseLiteral || d.verse;
+  const ref = d.referenceExact || d.reference;
+
   // A semente não tem título; filtrar o vazio evita uma linha em branco solta
   // no meio da mensagem, que num WhatsApp parece texto cortado.
   return [
-    `"${d.verse}"`,
-    d.reference,
+    `"${citacao}"`,
+    ref,
     '',
     d.title,
     d.body,

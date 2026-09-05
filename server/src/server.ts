@@ -384,8 +384,12 @@ app.get('/seed/today/:userId', async (req, res) => {
       ...dia,
       compartilhavel: textoCompartilhavel(dia),
       id: `d-${dia.data}`,
-      passage: dia.verse,
-      reference: dia.reference,
+      // `passage` recebe o versículo LITERAL, não a paráfrase: é o campo que a
+      // tela mostra entre aspas, ao lado de uma referência. Colocar paráfrase
+      // ali é justamente o que fazia o material parecer citar a Bíblia sem
+      // citar.
+      passage: dia.verseLiteral ?? dia.verse,
+      reference: dia.referenceExact ?? dia.reference,
       reflection: dia.body,
       prayer: null, practice: null, music: null,
       completa: false,
@@ -448,8 +452,8 @@ app.get('/seeds/history/:userId', async (req, res) => {
         ...d,
         id: `d-${d.data}`,
         date: d.data,
-        passage: d.verse,
-        reference: d.reference,
+        passage: d.verseLiteral ?? d.verse,
+        reference: d.referenceExact ?? d.reference,
         reflection: d.body,
         prayer: null, practice: null, music: null,
         completa: false,
