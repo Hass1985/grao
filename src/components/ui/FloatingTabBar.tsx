@@ -8,10 +8,9 @@ import { fonts } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 
 /** Altura reservada acima da safe area para conteúdo (player / scroll). */
-export const TAB_DOCK_CLEARANCE = 78;
+export const TAB_DOCK_CLEARANCE = 70;
 
-const CIRCLE = 44;
-const ICON = 20;
+const ICON = 15;
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   Hoje: Sprout,
@@ -20,8 +19,8 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 };
 
 /**
- * Dock flutuante — três círculos sem barra contínua.
- * Ícones Lucide por aba; label inativo em âmbar médio (creme e marrom).
+ * Três bolinhas separadas — ícone + label dentro de cada uma,
+ * para o texto não conflitar com o conteúdo ao rolar.
  */
 export default function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -59,16 +58,16 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? String(label)}
-              style={styles.item}
+              style={({ pressed }) => [pressed && { opacity: 0.8 }]}
             >
-              <View style={[styles.circle, focused && styles.circleActive]}>
+              <View style={[styles.bubble, focused && styles.bubbleActive]}>
                 <Icon
                   size={ICON}
-                  color={colors.accent}
-                  strokeWidth={focused ? 2.25 : 1.75}
+                  color={focused ? colors.casca : colors.casca80}
+                  strokeWidth={focused ? 2.3 : 1.9}
                 />
+                <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
               </View>
-              <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -84,41 +83,38 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 6,
     backgroundColor: 'transparent',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
-    gap: 24,
-    paddingHorizontal: 24,
+    gap: 12,
+    paddingHorizontal: 20,
   },
-  item: {
-    alignItems: 'center',
-    gap: 5,
-    minWidth: 56,
-  },
-  circle: {
-    width: CIRCLE,
-    height: CIRCLE,
-    borderRadius: CIRCLE / 2,
-    backgroundColor: colors.surfaceSoft,
+  bubble: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: colors.palhaWarm,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  circleActive: {
-    backgroundColor: colors.surface,
+    gap: 1,
     ...(shadows.sm as object),
+  },
+  bubbleActive: {
+    backgroundColor: colors.peneiraSoft,
+    ...(shadows.md as object),
   },
   label: {
     fontFamily: fonts.sansMedium,
-    fontSize: 11,
-    color: colors.ambarSoft,
-    letterSpacing: 0.15,
+    fontSize: 9,
+    color: colors.casca60,
+    letterSpacing: 0.02,
   },
   labelActive: {
-    color: colors.accent,
+    color: colors.casca,
     fontFamily: fonts.sansSemi,
   },
 });

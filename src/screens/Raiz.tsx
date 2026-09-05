@@ -61,12 +61,15 @@ export default function Raiz({ navigation }: { navigation: any }) {
           contentContainerStyle={[styles.list, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <AppHeader
-              title="Raiz"
-              subtitle="Suas sementes, guardadas."
-              onLogoPress={() => navigation.navigate('Settings')}
-              onProfilePress={() => navigation.navigate('Settings')}
-            />
+            <View>
+              <AppHeader
+                title="Raiz"
+                subtitle="Suas sementes, guardadas."
+                onLogoPress={() => navigation.navigate('Settings')}
+                onProfilePress={() => navigation.navigate('Settings')}
+              />
+              <View style={{ height: 16 }} />
+            </View>
           }
           renderItem={({ item, index }) => (
             <>

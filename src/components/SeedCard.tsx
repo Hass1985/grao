@@ -37,7 +37,7 @@ const YouTubeGlyph = ({ s = 12 }: { s?: number }) => (
   </Svg>
 );
 
-/** Card da semente — casca escura, texto em creme (leitura invertida). */
+/** Card da semente — bege limpo estilo Glorify (modo claro). */
 export default function SeedCard({
   seed,
   compact = false,
@@ -51,7 +51,13 @@ export default function SeedCard({
   const showMusic = embedMusic && seed.music;
 
   return (
-    <View style={[styles.card, featured && styles.cardFeatured, (featured ? shadows.md : shadows.sm) as any]}>
+    <View
+      style={[
+        styles.card,
+        featured && styles.cardFeatured,
+        (featured ? shadows.md : shadows.sm) as any,
+      ]}
+    >
       <View style={styles.inner}>
         <View style={styles.tags}>
           <Text style={styles.tagText}>{typeLabel[seed.type]}</Text>
@@ -142,62 +148,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   tagText: {
     fontFamily: fonts.sansMedium,
     fontSize: 12,
-    color: 'rgba(247, 241, 232, 0.55)',
+    color: colors.foregroundMuted,
     letterSpacing: 0.2,
   },
   dot: {
-    color: 'rgba(247, 241, 232, 0.45)',
+    color: colors.foregroundSubtle,
     fontSize: 12,
   },
   passage: {
     fontFamily: fonts.serifMedium,
     fontSize: 24,
-    color: colors.palha,
+    color: colors.foreground,
     lineHeight: 34,
     letterSpacing: -0.4,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   reference: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.sm,
-    color: colors.ambarSoft,
+    color: colors.accent,
     marginBottom: 8,
   },
   section: {
-    marginTop: 28,
+    marginTop: 26,
     gap: 8,
   },
   sectionTitle: {
     fontFamily: fonts.sansSemi,
-    fontSize: 12,
-    color: 'rgba(247, 241, 232, 0.55)',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    color: colors.foregroundSubtle,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
   body: {
     fontFamily: fonts.serif,
     fontSize: 16,
-    color: 'rgba(247, 241, 232, 0.72)',
+    color: colors.casca80,
     lineHeight: 26,
   },
   musicBlock: {
-    marginTop: 28,
-    paddingTop: 22,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(247, 241, 232, 0.12)',
+    marginTop: 26,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.hairline,
     gap: 12,
   },
   musicLabel: {
-    fontFamily: fonts.sansMedium,
+    fontFamily: fonts.sansSemi,
     fontSize: 11,
-    color: 'rgba(247, 241, 232, 0.45)',
+    color: colors.foregroundSubtle,
     textTransform: 'uppercase',
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
   },
   musicRow: {
     flexDirection: 'row',
@@ -210,14 +216,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   musicTitle: {
-    fontFamily: fonts.serifMedium,
+    fontFamily: fonts.sansSemi,
     fontSize: fontSizes.base,
-    color: colors.palha,
+    color: colors.foreground,
   },
   musicArtist: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
-    color: 'rgba(247, 241, 232, 0.55)',
+    color: colors.foregroundMuted,
   },
   musicLinks: {
     flexDirection: 'row',

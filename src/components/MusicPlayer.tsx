@@ -7,6 +7,8 @@ import {
   Linking,
   Platform,
   Animated,
+  ViewStyle,
+  StyleProp,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Play } from 'lucide-react-native';
@@ -16,10 +18,12 @@ import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
-import { TAB_DOCK_CLEARANCE } from './ui/FloatingTabBar';
 
 type Props = {
   music: Music;
+  /** No fluxo do scroll, abaixo do card (Hoje). */
+  inline?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 const SpotifyGlyph = ({ s = 12 }: { s?: number }) => (
@@ -31,8 +35,7 @@ const SpotifyGlyph = ({ s = 12 }: { s?: number }) => (
   </Svg>
 );
 
-/** Player slim flutuante — creme claro, centrado e um pouco acima do dock. */
-export default function MusicPlayer({ music }: Props) {
+export default function MusicPlayer({ music, inline = false, style }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const url = music.spotifyUrl || music.youtubeUrl;
 
@@ -58,51 +61,56 @@ export default function MusicPlayer({ music }: Props) {
     }).start();
   };
 
-  return (
-    <View pointerEvents="box-none" style={styles.dock}>
-      <View style={styles.bar}>
-        <View style={styles.art}>
-          <SpotifyGlyph />
-        </View>
-        <View style={styles.meta}>
-          <Text style={styles.title} numberOfLines={1}>
-            {music.title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {music.artist}
-          </Text>
-        </View>
-        <Pressable onPress={open} onPressIn={onPressIn} onPressOut={onPressOut} accessibilityLabel="Ouvir música">
-          <Animated.View style={{ transform: [{ scale }] }}>
-            <LinearGradient
-              colors={['#D4924A', '#C07826', '#A8651C']}
-              start={{ x: 0.15, y: 0 }}
-              end={{ x: 0.85, y: 1 }}
-              style={styles.playBtn}
-            >
-              <Play size={14} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
-            </LinearGradient>
-          </Animated.View>
-        </Pressable>
+  const bar = (
+    <View style={inline ? styles.barInline : styles.barFloating}>
+      <View style={styles.art}>
+        <SpotifyGlyph />
       </View>
+      <View style={styles.meta}>
+        <Text style={styles.title} numberOfLines={1}>
+          {music.title}
+        </Text>
+        <Text style={styles.artist} numberOfLines={1}>
+          {music.artist}
+        </Text>
+      </View>
+      <Pressable onPress={open} onPressIn={onPressIn} onPressOut={onPressOut} accessibilityLabel="Ouvir música">
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <LinearGradient
+            colors={['#D4924A', '#C07826', '#A8651C']}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0.85, y: 1 }}
+            style={styles.playBtn}
+          >
+            <Play size={14} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
+          </LinearGradient>
+        </Animated.View>
+      </Pressable>
     </View>
   );
-}
 
-/** Espaço sob o conteúdo: player + dock de tabs. */
-export const MUSIC_PLAYER_CLEARANCE = 72 + TAB_DOCK_CLEARANCE;
+  if (inline) {
+    return <View style={[styles.inlineWrap, style]}>{bar}</View>;
+  }
+
+  return <View style={[styles.dock, style]}>{bar}</View>;
+}
 
 const styles = StyleSheet.create({
   dock: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: TAB_DOCK_CLEARANCE + 10,
+    bottom: 0,
     paddingHorizontal: 36,
     zIndex: 20,
     alignItems: 'center',
   },
-  bar: {
+  inlineWrap: {
+    width: '100%',
+    alignSelf: 'stretch',
+  },
+  barFloating: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
@@ -113,13 +121,25 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 8,
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.surface,
+    ...(shadows.sm as object),
+  },
+  barInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    alignSelf: 'stretch',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surfaceSeed,
     ...(shadows.md as object),
   },
   art: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#1DB954',
     alignItems: 'center',
     justifyContent: 'center',
@@ -141,9 +161,9 @@ const styles = StyleSheet.create({
     color: colors.foregroundMuted,
   },
   playBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 2,

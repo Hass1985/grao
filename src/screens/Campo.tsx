@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
   },
 
   calendarCard: {
+    marginTop: 16,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     paddingHorizontal: 14,

@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { Check } from 'lucide-react-native';
 import SeedCard from '../components/SeedCard';
-import MusicPlayer, { MUSIC_PLAYER_CLEARANCE } from '../components/MusicPlayer';
+import MusicPlayer from '../components/MusicPlayer';
+import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import EmotionPicker from '../components/EmotionPicker';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
@@ -61,7 +62,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: MUSIC_PLAYER_CLEARANCE + 24 }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 24 }]}
           showsVerticalScrollIndicator={false}
         >
           <AppHeader
@@ -71,15 +72,21 @@ export default function Hoje({ navigation }: { navigation: any }) {
             onProfilePress={() => navigation.navigate('Settings')}
           />
 
-          <Text style={styles.greeting}>Sua semente{'\n'}para agora.</Text>
+          <View style={styles.greetingBand}>
+            <Text style={styles.greeting} numberOfLines={1}>
+              A semente para seu momento atual
+            </Text>
+          </View>
 
           <SeedCard seed={seed} featured={true} />
+
+          <MusicPlayer music={seed.music} inline style={styles.player} />
 
           {!planted ? (
             <Button
               title="Levar esta semente"
               onPress={() => setPlanted(true)}
-              style={{ marginTop: 28 }}
+              style={styles.plantBtn}
             />
           ) : (
             <View style={styles.plantedState}>
@@ -92,8 +99,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
             <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
           </TouchableOpacity>
         </ScrollView>
-
-        <MusicPlayer music={seed.music} />
 
         <Modal
           visible={modalVisible}
@@ -123,13 +128,25 @@ export default function Hoje({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: space.gutter },
+  greetingBand: {
+    paddingVertical: 28,
+    justifyContent: 'center',
+  },
   greeting: {
     fontFamily: fonts.serifMedium,
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 24,
+    lineHeight: 30,
     color: colors.foreground,
-    letterSpacing: -0.6,
-    marginBottom: 22,
+    letterSpacing: -0.45,
+    textAlign: 'left',
+  },
+  /** Próximo ao card; mais respiro embaixo, antes do botão. */
+  player: {
+    marginTop: 12,
+    marginBottom: 32,
+  },
+  plantBtn: {
+    marginTop: 0,
   },
   plantedState: {
     flexDirection: 'row',
@@ -137,7 +154,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 18,
-    marginTop: 20,
+    marginTop: 0,
   },
   plantedText: {
     fontFamily: fonts.serif,
