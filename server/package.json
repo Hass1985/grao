@@ -37,7 +37,8 @@
     "content:travessao": "tsx scripts/tirar-travessao.ts",
     "acesso": "tsx scripts/acesso.ts",
     "content:devocional": "tsx scripts/import-devocional.ts",
-    "content:ancorar": "tsx scripts/ancorar-devocional.ts"
+    "content:ancorar": "tsx scripts/ancorar-devocional.ts",
+    "supabase": "bash scripts/configurar-supabase.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

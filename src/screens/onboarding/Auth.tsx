@@ -225,7 +225,7 @@ export default function Auth({ navigation, onFinish }: Props) {
               : 'Entre para receber o que Deus tem para você hoje.'}
           </Text>
 
-          <Text style={styles.fieldLabel}>E-mail</Text>
+          <Text style={styles.fieldLabel}>E-mail / Telefone</Text>
           <TextInput
             style={styles.underline}
             placeholder=""

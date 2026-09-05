@@ -148,7 +148,7 @@ export default function Intro({ navigation }: Props) {
             ))}
           </View>
           <Button
-            title={index === SLIDES.length - 1 ? 'Junte-se a nós' : 'Continuar'}
+            title={index === SLIDES.length - 1 ? 'Vamos começar' : 'Continuar'}
             onPress={next}
             variant="dark"
             uppercase
