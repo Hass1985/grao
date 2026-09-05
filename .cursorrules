@@ -1,0 +1,26 @@
+Leia CONTEXTO.md antes de alterar qualquer coisa em src/.
+
+Regras que não podem ser quebradas:
+
+1. O paywall é do servidor. /seed/today já devolve cortado para quem não
+   assina. `null` em prayer/practice/music significa BLOQUEADO, não
+   inexistente: é o gancho do convite para assinar, não um espaço vazio.
+
+2. O app NUNCA escreve, completa ou "melhora" versículo bíblico. Todo texto
+   bíblico vem da API, recuperado de uma base fechada. O campo `verse` é
+   paráfrase e não pode aparecer entre aspas com uma referência ao lado.
+
+3. A resposta de segurança emocional (quando needsCare é true) é texto fixo
+   com o CVV 188. Mostre como veio: não resuma, não reformate, não enfeite.
+
+4. Sem travessão (—) em texto que o usuário lê. Vírgula, dois-pontos ou ponto
+   final. Hífen normal continua.
+
+5. Não altere server/. Backend, motor emocional, memória e cobrança são
+   mantidos fora do Cursor.
+
+6. Toda chamada nova ao backend entra em src/onboarding/aiClient.ts, não
+   espalhada nas telas.
+
+Escreva em português do Brasil, incluindo nomes de variáveis novas quando
+fizer sentido, seguindo o estilo do código existente.
