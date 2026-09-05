@@ -13,6 +13,7 @@ import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMome
 import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './brain.js';
 import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
 import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
+import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -150,7 +151,11 @@ export async function resolveUserByPhone(phone: string, name?: string): Promise<
 export const BASE_URL = () =>
   (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
 
-export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
+export function formatSeed(
+  seed: SelectedSeed,
+  nome?: string | null,
+  completa = true,
+): string {
   const saudacao = nome ? `${nome}, sua semente de hoje 🌱` : 'Sua semente de hoje 🌱';
   const partes = [
     saudacao,
@@ -162,11 +167,25 @@ export function formatSeed(seed: SelectedSeed, nome?: string | null): string {
     `_${seed.reference}_`,
     '',
     `*Reflexão*\n${seed.reflection}`,
+  ];
+
+  // O canal é do plano pago, então em tese ninguém chega aqui sem assinatura.
+  // O corte existe mesmo assim porque um caminho escapa do filtro: quem manda
+  // mensagem direto para o número e pede a semente. Deixar a curadoria sair
+  // por essa porta anularia o paywall inteiro.
+  if (!completa) {
+    partes.push('',
+      'A oração, a prática e o louvor de hoje fazem parte do plano completo.',
+      'Assine para receber a semente inteira todos os dias. 🌱');
+    return partes.join('\n');
+  }
+
+  partes.push(
     '',
     `*Oração*\n${seed.prayer}`,
     '',
     `*Prática de hoje*\n${seed.practice}`,
-  ];
+  );
   if (seed.music.title) {
     // O link passa pela nossa página-ponte para o preview do WhatsApp mostrar
     // o Grão, e não a miniatura borrada do Spotify.
@@ -271,7 +290,9 @@ export async function entregarSeJaPassouOHorario(userId: string): Promise<boolea
       `SELECT u.id, u.phone_e164, u.name,
               (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
          FROM users u
+         JOIN subscriptions s ON s.user_id = u.id
         WHERE u.id = $1
+          AND ${TEM_ACESSO_SQL('s')}
           AND u.wa_opt_in_at IS NOT NULL
           AND u.phone_e164 IS NOT NULL
           AND (now() AT TIME ZONE u.timezone)::time >= u.delivery_time
@@ -451,7 +472,9 @@ export function registerWhatsAppRoutes(app: Express) {
       const { rows: usuarios } = await pool.query(
         `SELECT u.id, u.phone_e164, u.name
            FROM users u
-          WHERE u.wa_opt_in_at IS NOT NULL
+           JOIN subscriptions s ON s.user_id = u.id
+          WHERE ${TEM_ACESSO_SQL('s')}
+            AND u.wa_opt_in_at IS NOT NULL
             AND u.phone_e164 IS NOT NULL
             AND (now() AT TIME ZONE u.timezone)::time >= u.delivery_time
             AND NOT EXISTS (

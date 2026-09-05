@@ -17,10 +17,15 @@
 // O critério é sent_wa_at, não "existe entrega hoje". A diferença derrubou a
 // entrega uma vez: abrir o app grava a semente do dia, e a agenda concluía que
 // já tinha mandado. Quem usava mais o app recebia menos mensagem.
+//
+// O WhatsApp é do plano pago: o JOIN com subscriptions é o que garante isso.
+// Fosse um filtro no envio, em vez de na busca, uma assinatura vencida ainda
+// consumiria template da Meta antes de alguém perceber.
 
 import { pool, logEvent } from './db.js';
 import { entregarSemente } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
+import { TEM_ACESSO_SQL } from './acesso.js';
 
 /** De quanto em quanto tempo a agenda acorda. */
 const INTERVALO_MS = 60_000;
@@ -75,7 +80,9 @@ export async function despacharDevidos(): Promise<ResultadoVarredura> {
         `SELECT u.id, u.phone_e164, u.name,
                 (u.wa_last_inbound_at > now() - interval '24 hours') janela_aberta
            FROM users u
-          WHERE u.wa_opt_in_at IS NOT NULL
+           JOIN subscriptions s ON s.user_id = u.id
+          WHERE ${TEM_ACESSO_SQL('s')}
+            AND u.wa_opt_in_at IS NOT NULL
             AND u.phone_e164 IS NOT NULL
             AND ((now() AT TIME ZONE u.timezone)::time - u.delivery_time)
                   BETWEEN interval '0' AND ($1::int * interval '1 hour')

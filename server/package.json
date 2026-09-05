@@ -34,7 +34,8 @@
     "funil": "tsx scripts/funil.ts",
     "watch": "tsx scripts/watch.ts",
     "wa:preview": "tsx scripts/testar-preview.ts",
-    "content:travessao": "tsx scripts/tirar-travessao.ts"
+    "content:travessao": "tsx scripts/tirar-travessao.ts",
+    "acesso": "tsx scripts/acesso.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0",

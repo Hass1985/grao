@@ -20,6 +20,7 @@ import path from 'node:path';
 import { pool } from './db.js';
 import { BASE_URL, horarioCurto } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
+import { TEM_ACESSO_SQL } from './acesso.js';
 
 const TZ = 'America/Sao_Paulo';
 
@@ -97,7 +98,8 @@ async function montarPainel(dias: number) {
         WHERE delivered_at > now() - $1::interval) entregas,
       (SELECT count(*) FROM seed_deliveries
         WHERE delivered_at > now() - $1::interval AND planted) plantios,
-      (SELECT count(*) FROM subscriptions WHERE status IN ('trial','ativa')) assinaturas`,
+      (SELECT count(*) FROM subscriptions WHERE status IN ('trial','ativa')) assinaturas,
+      (SELECT count(*) FROM subscriptions s WHERE ${TEM_ACESSO_SQL('s')}) acesso_completo`,
     [janelaSql]);
 
   // --- pessoas, e o funil que sai delas ------------------------------------
@@ -311,6 +313,7 @@ async function montarPainel(dias: number) {
       taxaPlantio: num(resumo.entregas)
         ? Math.round((num(resumo.plantios) / num(resumo.entregas)) * 100) : 0,
       assinaturas: num(resumo.assinaturas),
+      acessoCompleto: num(resumo.acesso_completo),
     },
     funil,
     serie: serie.map((d: any) => ({

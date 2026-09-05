@@ -23,6 +23,7 @@ import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
+import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import { iniciarAgenda } from './agenda.js';
 
 const app = express();
@@ -357,17 +358,27 @@ app.post('/profile/:userId/plan', async (req, res) => {
 });
 
 // Semente do dia, escolhida pelo perfil + momento + canal.
+//
+// O corte do plano gratuito acontece AQUI, não na tela: devolver a semente
+// inteira e deixar o app esconder poria a curadoria a um F12 de distância.
 app.get('/seed/today/:userId', async (req, res) => {
+  const acesso = await acessoDoUsuario(req.params.userId);
+
   // Se a pessoa já recebeu a semente hoje — pelo WhatsApp ou por uma abertura
   // anterior do app — devolvemos A MESMA. Abrir o app não pode trocar a
   // semente do dia nem consumir outra das 380.
   const jaEntregue = await getTodaySeed(req.params.userId);
-  if (jaEntregue) return res.json(jaEntregue);
+  if (jaEntregue) return res.json({ ...limitarSemente(jaEntregue, acesso.completo), acesso });
 
   const seed = await selectSeedForUser(req.params.userId);
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
   void logEvent(req.params.userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'app' });
-  res.json(seed);
+  res.json({ ...limitarSemente(seed, acesso.completo), acesso });
+});
+
+/** Situação da assinatura, para a tela saber o que oferecer. */
+app.get('/acesso/:userId', async (req, res) => {
+  res.json(await acessoDoUsuario(req.params.userId));
 });
 
 /**
@@ -380,6 +391,10 @@ app.get('/seed/today/:userId', async (req, res) => {
 app.get('/seeds/history/:userId', async (req, res) => {
   try {
     const limite = Math.min(Number(req.query.limit ?? 120), 400);
+    // O histórico repete a mesma regra do dia: sem assinatura, o Campo e a
+    // Raiz mostram versículo e reflexão. Uma tela liberar o que a outra
+    // bloqueia é o jeito mais comum de um paywall vazar.
+    const acesso = await acessoDoUsuario(req.params.userId);
     const { rows } = await pool.query(
       `SELECT s.id, s.family, s.type, s.passage, s.reference, s.reflection,
               s.prayer, s.practice, s.music_title, s.music_artist,
@@ -393,7 +408,7 @@ app.get('/seeds/history/:userId', async (req, res) => {
         ORDER BY d.delivered_at DESC
         LIMIT $2`, [req.params.userId, limite]);
 
-    res.json(rows.map((r: any) => ({
+    res.json(rows.map((r: any) => limitarSemente({
       id: r.id,
       date: r.data instanceof Date ? r.data.toISOString().slice(0, 10) : String(r.data).slice(0, 10),
       family: r.family,
@@ -410,7 +425,7 @@ app.get('/seeds/history/:userId', async (req, res) => {
         spotifyUrl: r.music_spotify ?? undefined,
         youtubeUrl: r.music_youtube ?? undefined,
       },
-    })));
+    }, acesso.completo)));
   } catch (err: any) {
     console.error('[history]', err?.message || err);
     res.status(500).json({ error: 'Falha ao carregar o histórico.' });

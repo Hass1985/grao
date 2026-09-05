@@ -719,7 +719,8 @@ function secPlanos() {
     : vazio('Nenhum teste terminando nos próximos 3 dias.');
 
   return aviso + '<div class="grade g3">' +
-      kpi('Planos escolhidos', n(totalPessoas), 'incluindo quem está em teste') +
+      kpi('Com acesso completo', n(D.resumo.acessoCompleto),
+        n(Math.max(0, D.resumo.usuarios - D.resumo.acessoCompleto)) + ' no plano gratuito') +
       kpi('Receita projetada', reais(p.mrrReais), 'por mês, se todos virarem pagantes') +
       kpi('Conversão do cadastro', pct(totalPessoas, D.resumo.usuarios) + '%',
         'de quem se cadastrou escolheu um plano') +

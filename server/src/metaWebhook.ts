@@ -17,6 +17,7 @@ import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser } from './seedSelector.js';
 import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
 import { despacharDevidos } from './agenda.js';
+import { acessoDoUsuario } from './acesso.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -84,7 +85,8 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
   if (!entrega || !entrega.do_dia) {
     const fresca = await selectSeedForUser(userId);
     if (!fresca) { await sendText(msg.from, 'Estou aqui. Me conta como você está hoje?'); return; }
-    const r = await sendText(msg.from, formatSeed(fresca, perfil ? null : undefined));
+    const r = await sendText(msg.from,
+      formatSeed(fresca, perfil ? null : undefined, (await acessoDoUsuario(userId)).completo));
     if (!r.ok) { console.error(`[wa] falha ao entregar semente do dia: ${r.erro}`); return; }
     await pool.query(
       `UPDATE seed_deliveries SET planted = true
@@ -95,6 +97,7 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
 
   // Texto livre: sem teto de 1024, com negrito e itálico, e gratuito porque o
   // toque acabou de abrir a janela de 24h.
+  const completo = (await acessoDoUsuario(userId)).completo;
   const texto = formatSeed({
     id: entrega.id, family: entrega.family, type: entrega.type,
     passage: entrega.passage, reference: entrega.reference,
@@ -104,7 +107,7 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
       spotifyUrl: entrega.music_spotify || undefined, youtubeUrl: entrega.music_youtube || undefined,
     },
     reason: { family: entrega.family, source: 'momento', preferredType: entrega.type },
-  }, perfil ? null : undefined);
+  }, perfil ? null : undefined, completo);
 
   const r = await sendText(msg.from, texto);
   if (!r.ok) { console.error(`[wa] falha ao entregar a semente: ${r.erro}`); return; }
@@ -160,7 +163,8 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
   if (quer_semente) {
     const seed = await selectSeedForUser(userId);
     if (seed) {
-      const r = await sendText(msg.from, formatSeed(seed, perfil ? null : nome));
+      const r = await sendText(msg.from,
+        formatSeed(seed, perfil ? null : nome, (await acessoDoUsuario(userId)).completo));
       if (r.ok) void logEvent(userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'whatsapp' });
       else console.error(`[wa] falha ao enviar semente para ${e164}: ${r.erro}`);
     }
