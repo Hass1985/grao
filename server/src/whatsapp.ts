@@ -16,6 +16,7 @@ import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 import { paraPrompt, linhaDeLigacao, registrarUso, type Memoria } from './memoria.js';
 import { fundirUsuarios } from './auth.js';
+import { normalizePhone } from './telefone.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -108,14 +109,9 @@ export function horarioCurto(bruto: string | null | undefined): string | null {
   return bruto ? String(bruto).slice(0, 5) : null;
 }
 
-/** Telefone em E.164 (+5511999999999). Devolve null se não der para normalizar. */
-export function normalizePhone(raw: string): string | null {
-  const digits = (raw ?? '').replace(/\D/g, '');
-  if (digits.length < 10 || digits.length > 15) return null;
-  // Número brasileiro sem DDI: o BSP às vezes entrega assim.
-  const comDDI = digits.length <= 11 ? `55${digits}` : digits;
-  return `+${comDDI}`;
-}
+// Mora em telefone.ts (a mesma regra serve ao login por telefone). Continua
+// sendo exportada daqui porque metaWebhook.ts a importa deste módulo.
+export { normalizePhone };
 
 /**
  * Encontra o usuário pelo telefone, ou cria um novo.

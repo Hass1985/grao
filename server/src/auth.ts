@@ -24,6 +24,8 @@
 import type { Express, Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { pool, logEvent } from './db.js';
+import { normalizePhone } from './telefone.js';
+import { TEM_ACESSO_SQL } from './acesso.js';
 
 const URL_PROJETO = () => (process.env.SUPABASE_URL ?? '').replace(/\/+$/, '');
 const SEGREDO_LEGADO = () => process.env.SUPABASE_JWT_SECRET ?? '';
@@ -75,6 +77,7 @@ async function verificar(token: string, emissor: string): Promise<JWTPayload | n
 export interface Conta {
   uid: string;
   email: string | null;
+  telefone: string | null;
   nome: string | null;
   provedor: string | null;
 }
@@ -98,9 +101,13 @@ export async function lerToken(token: string): Promise<Conta | null> {
   if (!sub) return null;
 
   const meta = (dados.user_metadata ?? {}) as Record<string, any>;
+  // O Supabase manda o telefone sem o "+" (5511999999999). normalizePhone é a
+  // mesma função que o WhatsApp usa, para os dois lados gravarem a mesma string.
+  const telefoneBruto = (dados.phone as string) || meta.phone || '';
   return {
     uid: sub,
     email: (dados.email as string) ?? meta.email ?? null,
+    telefone: telefoneBruto ? normalizePhone(telefoneBruto) : null,
     nome: meta.full_name ?? meta.name ?? null,
     provedor: (dados.app_metadata as any)?.provider ?? null,
   };
@@ -137,14 +144,25 @@ export async function fundirUsuarios(de: string, para: string): Promise<void> {
     await pool.query(`UPDATE ${tabela} SET user_id = $2 WHERE user_id = $1`, [de, para]);
   }
 
-  await pool.query(
-    `UPDATE users SET
-       name = coalesce((SELECT name FROM users WHERE id = $1), name),
-       phone_e164 = coalesce(phone_e164, (SELECT phone_e164 FROM users WHERE id = $1)),
-       email = coalesce(email, (SELECT email FROM users WHERE id = $1)),
-       wa_opt_in_at = coalesce(wa_opt_in_at, (SELECT wa_opt_in_at FROM users WHERE id = $1))
-     WHERE id = $2`, [de, para]);
+  // Lê, APAGA, e só então grava no que fica.
+  //
+  // A ordem importa: phone_e164 é UNIQUE. Copiar o telefone para o cadastro que
+  // sobrevive com o outro ainda vivo estoura a restrição, e a fusão inteira é
+  // desfeita. Não aparecia enquanto só o WhatsApp fundia (lá o telefone já
+  // estava no destino); aparece agora, com quem cria conta pelo telefone.
+  const { rows: [origem] } = await pool.query(
+    `SELECT name, phone_e164, email, wa_opt_in_at FROM users WHERE id = $1`, [de]);
   await pool.query(`DELETE FROM users WHERE id = $1`, [de]);
+  if (origem) {
+    await pool.query(
+      `UPDATE users SET
+         name = coalesce($2, name),
+         phone_e164 = coalesce(phone_e164, $3),
+         email = coalesce(email, $4),
+         wa_opt_in_at = coalesce(wa_opt_in_at, $5)
+       WHERE id = $1`,
+      [para, origem.name, origem.phone_e164, origem.email, origem.wa_opt_in_at]);
+  }
 }
 
 export function registerAuthRoutes(app: Express) {
@@ -198,8 +216,47 @@ export function registerAuthRoutes(app: Express) {
             WHERE id = $1`, [userId, conta.uid, conta.email, conta.nome]);
       }
 
-      void logEvent(idFinal, 'conta_vinculada', { provedor: conta.provedor, fundiu });
-      return res.json({ ok: true, userId: idFinal, merged: fundiu, email: conta.email });
+      // Conta feita pelo telefone: é o MESMO número do WhatsApp. Pode já existir
+      // um cadastro criado pela conversa lá, com o histórico de entregas e até a
+      // assinatura. Sem juntar os dois, a pessoa entraria no app e veria a
+      // primeira tela de sempre, enquanto o Grão continua mandando semente para
+      // ela todo dia por outro cadastro.
+      //
+      // A fusão para no cadastro que tem plano pago. Enquanto o Supabase estiver
+      // com a confirmação por código desligada, ninguém prova ser dono do
+      // número: bastaria digitar o telefone de outra pessoa para herdar o
+      // cadastro dela. Histórico de devocional é um estrago; assinatura ativa é
+      // outro tamanho de estrago, e esse não corremos. O caso fica registrado
+      // para aparecer no painel.
+      if (conta.telefone) {
+        const { rows: [doTelefone] } = await pool.query(
+          `SELECT u.id, ${TEM_ACESSO_SQL('s')} AS pago
+             FROM users u
+             LEFT JOIN subscriptions s ON s.user_id = u.id
+            WHERE u.phone_e164 = $1`, [conta.telefone]);
+
+        if (doTelefone && doTelefone.id !== idFinal) {
+          if (doTelefone.pago) {
+            void logEvent(idFinal, 'telefone_em_uso',
+              { telefone: conta.telefone, motivo: 'cadastro com plano ativo' });
+          } else {
+            await fundirUsuarios(doTelefone.id, idFinal);
+            fundiu = true;
+          }
+        } else if (!doTelefone) {
+          await pool.query(
+            `UPDATE users SET phone_e164 = coalesce(phone_e164, $2) WHERE id = $1`,
+            [idFinal, conta.telefone]);
+        }
+      }
+
+      void logEvent(idFinal, 'conta_vinculada', {
+        provedor: conta.provedor, fundiu, porTelefone: !!conta.telefone,
+      });
+      return res.json({
+        ok: true, userId: idFinal, merged: fundiu,
+        email: conta.email, telefone: conta.telefone,
+      });
     } catch (err: any) {
       console.error('[auth/vincular]', err?.message || err);
       return res.status(500).json({ error: 'Falha ao vincular a conta.' });

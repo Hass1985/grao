@@ -39,6 +39,62 @@ type Props = {
 
 type Mode = 'criar' | 'entrar';
 
+/**
+ * O Supabase responde em inglês. Sem traduzir, a pessoa que erra a senha lê
+ * "Invalid login credentials" na tela de um produto que fala português com
+ * ela do começo ao fim.
+ *
+ * Só as mensagens que o usuário realmente encontra. O resto cai no texto
+ * genérico, que é melhor que uma tradução torta de um erro raro.
+ */
+function emPortugues(msg: string | undefined): string {
+  const m = (msg ?? '').toLowerCase();
+  // Telefone primeiro: estas mensagens também contêm palavras genéricas.
+  if (m.includes('phone provider') || m.includes('phone signups') || m.includes('sms'))
+    return 'A entrada por telefone ainda não está ligada no servidor. Use e-mail ou o Google.';
+  if (m.includes('invalid phone')) return 'Esse número não parece certo. Confira o DDD.';
+  if (m.includes('token has expired') || m.includes('invalid otp') || m.includes('otp_expired'))
+    return 'Código vencido ou errado. Peça um novo.';
+  if (m.includes('invalid login credentials')) return 'E-mail, telefone ou senha não conferem.';
+  if (m.includes('email not confirmed'))
+    return 'Falta confirmar o e-mail. Procure a mensagem que enviamos (veja também o spam).';
+  if (m.includes('already registered') || m.includes('already been registered'))
+    return 'Esse e-mail já tem conta. Toque em "Eu já tenho uma conta".';
+  if (m.includes('password should be')) return 'A senha precisa de pelo menos 8 caracteres.';
+  if (m.includes('unable to validate email') || m.includes('invalid format'))
+    return 'Esse e-mail não parece válido.';
+  if (m.includes('for security purposes')) return 'Espere alguns segundos e tente de novo.';
+  if (m.includes('rate limit')) return 'Muitas tentativas seguidas. Tente daqui a alguns minutos.';
+  if (m.includes('failed to fetch') || m.includes('network'))
+    return 'Sem conexão agora. Confira a internet e tente de novo.';
+  return 'Não foi possível entrar. Tente de novo.';
+}
+
+/**
+ * Telefone em E.164, na MESMA regra do servidor (whatsapp.ts, normalizePhone):
+ * até 11 dígitos é número brasileiro sem DDI.
+ *
+ * Tem que ser a mesma string dos dois lados. Se o app gravasse "11987654321" e
+ * o servidor "+5511987654321", a conta criada por telefone não encontraria o
+ * cadastro do WhatsApp e a mesma pessoa viraria duas no banco: uma recebendo a
+ * semente, outra vendo o app vazio.
+ */
+function normalizarTelefone(bruto: string): string | null {
+  const digitos = (bruto ?? '').replace(/\D/g, '');
+  if (digitos.length < 10 || digitos.length > 15) return null;
+  return `+${digitos.length <= 11 ? `55${digitos}` : digitos}`;
+}
+
+/** +5511987654321 → +55 (11) 98765-4321, para a pessoa conferir o DDD. */
+function exibirTelefone(e164: string): string {
+  const d = e164.replace(/\D/g, '');
+  if (d.length !== 12 && d.length !== 13) return e164;
+  const ddd = d.slice(2, 4);
+  const resto = d.slice(4);
+  const corte = resto.length === 9 ? 5 : 4;
+  return `+55 (${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}
+
 const GoogleIcon = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24">
     <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -51,20 +107,28 @@ const GoogleIcon = () => (
 export default function Auth({ navigation, onFinish }: Props) {
   const { configured, enterDemo, acceptSession } = useAuth();
   const [mode, setMode] = useState<Mode>('criar');
-  const [email, setEmail] = useState('');
+  const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // Telefone que está esperando confirmação por código, quando o Supabase
+  // estiver configurado para exigir.
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState('');
 
-  const emailOk = email.trim().includes('@');
+  // Um campo só para os dois. Boa parte do público mais velho não tem e-mail,
+  // e obrigar a criar um seria barrar justamente quem o Grão quer alcançar.
+  const ehEmail = identificador.includes('@');
+  const telefone = ehEmail ? null : normalizarTelefone(identificador);
+  const identificadorOk = ehEmail ? identificador.trim().length >= 5 : !!telefone;
   const passOk = password.length >= 8;
-  const canEmail =
+  const podeEnviar =
     mode === 'entrar'
-      ? emailOk && password.length >= 6 && !busy
-      : emailOk && passOk && accepted && !busy;
+      ? identificadorOk && password.length >= 6 && !busy
+      : identificadorOk && passOk && accepted && !busy;
 
   const finishWithUser = async (session?: Session | null, userId?: string) => {
     if (session) await acceptSession(session);
@@ -123,45 +187,77 @@ export default function Auth({ navigation, onFinish }: Props) {
         setInfo('Continue no provedor. Ao voltar, o Grão abre sozinho.');
       }
     } catch (e: any) {
-      setError(e?.message || 'Não foi possível entrar. Tente de novo.');
+      setError(emPortugues(e?.message));
     } finally {
       setBusy(false);
     }
   };
 
-  const emailAuth = async () => {
-    if (!canEmail) return;
+  /**
+   * Entrar ou criar conta, por e-mail ou por telefone.
+   *
+   * As duas chamadas do Supabase aceitam `email` OU `phone`; o resto do fluxo é
+   * idêntico. A única diferença de verdade é o que acontece quando não vem
+   * sessão: no e-mail, a confirmação chega por mensagem; no telefone, por um
+   * código digitado aqui mesmo.
+   */
+  const entrar = async () => {
+    if (!podeEnviar) return;
     if (!supabase) {
       setError('Supabase ainda não está configurado neste build.');
       return;
     }
-    const mail = email.trim().toLowerCase();
+    const credencial = telefone
+      ? { phone: telefone }
+      : { email: identificador.trim().toLowerCase() };
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
       if (mode === 'criar') {
-        const { data, error: err } = await supabase.auth.signUp({
-          email: mail,
-          password,
-        });
+        const { data, error: err } = await supabase.auth.signUp({ ...credencial, password });
         if (err) throw err;
         if (!data.session) {
-          setInfo('Enviamos um e-mail de confirmação. Depois disso, entre aqui.');
-          setMode('entrar');
+          if (telefone) {
+            setConfirmando(telefone);
+            setInfo(`Enviamos um código para ${exibirTelefone(telefone)}.`);
+          } else {
+            setInfo('Enviamos um e-mail de confirmação. Depois dele, entre por aqui.');
+            setMode('entrar');
+          }
           return;
         }
         await finishWithUser(data.session, data.user?.id);
       } else {
         const { data, error: err } = await supabase.auth.signInWithPassword({
-          email: mail,
+          ...credencial,
           password,
         });
         if (err) throw err;
         await finishWithUser(data.session, data.user?.id);
       }
     } catch (e: any) {
-      setError(e?.message || 'Não foi possível autenticar.');
+      setError(emPortugues(e?.message));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Confirma o telefone com o código de 6 dígitos. */
+  const confirmarCodigo = async () => {
+    if (!supabase || !confirmando || codigo.replace(/\D/g, '').length < 6) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase.auth.verifyOtp({
+        phone: confirmando,
+        token: codigo.replace(/\D/g, ''),
+        type: 'sms',
+      });
+      if (err) throw err;
+      await finishWithUser(data.session, data.user?.id);
+    } catch (e: any) {
+      setError(emPortugues(e?.message));
     } finally {
       setBusy(false);
     }
@@ -181,6 +277,10 @@ export default function Auth({ navigation, onFinish }: Props) {
     setMode(mode === 'criar' ? 'entrar' : 'criar');
     setError(null);
     setInfo(null);
+    // Sai da espera do código: sem isto o botão continuaria pedindo confirmação
+    // de um cadastro que a pessoa acabou de abandonar.
+    setConfirmando(null);
+    setCodigo('');
   };
 
   return (
@@ -207,17 +307,22 @@ export default function Auth({ navigation, onFinish }: Props) {
               : 'Entre para receber o que Deus tem para você hoje.'}
           </Text>
 
-          <Text style={styles.fieldLabel}>E-mail / Telefone</Text>
+          <Text style={styles.fieldLabel}>E-mail ou telefone</Text>
           <TextInput
             style={styles.underline}
             placeholder=""
             autoCapitalize="none"
             autoCorrect={false}
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-            editable={!busy}
+            keyboardType="default"
+            value={identificador}
+            onChangeText={setIdentificador}
+            editable={!busy && !confirmando}
           />
+          {/* Devolve o número já entendido. Quem digita sem DDD, ou com o 0 da
+              operadora na frente, vê na hora que o Grão leu outra coisa. */}
+          {telefone ? (
+            <Text style={styles.hint}>Vamos usar o número {exibirTelefone(telefone)}.</Text>
+          ) : null}
 
           <Text style={[styles.fieldLabel, { marginTop: 28 }]}>Senha</Text>
           <View style={styles.passRow}>
@@ -254,13 +359,34 @@ export default function Auth({ navigation, onFinish }: Props) {
             <View style={{ height: 20 }} />
           )}
 
+          {confirmando ? (
+            <>
+              <Text style={[styles.fieldLabel, { marginTop: 28 }]}>Código recebido</Text>
+              <TextInput
+                style={styles.underline}
+                placeholder=""
+                keyboardType="number-pad"
+                maxLength={6}
+                value={codigo}
+                onChangeText={setCodigo}
+                editable={!busy}
+              />
+            </>
+          ) : null}
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
           <Button
-            title={mode === 'criar' ? 'Continuar com e-mail' : 'Entrar com e-mail'}
-            onPress={emailAuth}
-            disabled={!canEmail}
+            title={
+              confirmando
+                ? 'Confirmar código'
+                : mode === 'criar'
+                  ? 'Criar minha conta'
+                  : 'Entrar'
+            }
+            onPress={confirmando ? confirmarCodigo : entrar}
+            disabled={confirmando ? codigo.replace(/\D/g, '').length < 6 || busy : !podeEnviar}
             variant="dark"
             uppercase
             style={styles.primaryCta}
@@ -285,15 +411,20 @@ export default function Auth({ navigation, onFinish }: Props) {
             </Text>
           </Pressable>
 
-          <Pressable onPress={demo} style={styles.demo} disabled={busy}>
-            {busy ? (
-              <ActivityIndicator color={colors.accent} />
-            ) : (
-              <Text style={styles.demoText}>Continuar sem conta</Text>
-            )}
-          </Pressable>
+          {/* "Continuar sem conta" saiu: entrar agora é obrigatório, inclusive
+              para quem só vai testar — sem conta não existe fusão de cadastro,
+              nem assinatura, e o histórico morre junto com o cache do navegador.
+              Fica de pé apenas onde o Supabase não está configurado, senão um
+              build de desenvolvimento ficaria sem nenhuma porta de entrada. */}
           {!configured ? (
-            <Text style={styles.demoHint}>Supabase ainda não configurado neste build.</Text>
+            <>
+              <Pressable onPress={demo} style={styles.demo} disabled={busy}>
+                <Text style={styles.demoText}>Continuar sem conta</Text>
+              </Pressable>
+              <Text style={styles.demoHint}>Supabase ainda não configurado neste build.</Text>
+            </>
+          ) : busy ? (
+            <ActivityIndicator color={colors.accent} style={styles.demo} />
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -379,6 +510,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.foregroundMuted,
     marginTop: 12,
+  },
+  hint: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.foregroundSubtle,
+    marginTop: 8,
   },
   primaryCta: {
     marginTop: 28,

@@ -9,7 +9,7 @@ import React, {
 import type { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase';
-import { setUserId } from '../onboarding/aiClient';
+import { vincularConta } from '../onboarding/aiClient';
 
 const DEMO_KEY = 'grao.auth.demo.v1';
 
@@ -51,15 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data } = await supabase.auth.getSession();
       if (!alive) return;
       setSession(data.session);
-      if (data.session?.user?.id) {
-        await setUserId(data.session.user.id);
-      }
+      // Sem esperar: na abertura o id do aparelho já é o certo, e travar o
+      // splash numa ida à rede atrasa todo mundo por um caso que quase nunca
+      // muda (fusão feita em outro aparelho).
+      if (data.session?.access_token) void vincularConta(data.session.access_token);
       setReady(true);
 
       const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
         setSession(next);
-        if (next?.user?.id) {
-          void setUserId(next.user.id);
+        if (next?.access_token) {
+          void vincularConta(next.access_token);
           void AsyncStorage.removeItem(DEMO_KEY);
           setDemo(false);
         }
@@ -87,9 +88,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDemo(true);
   }, []);
 
+  /**
+   * Recém-logado: liga a conta ao cadastro que já existe no aparelho.
+   *
+   * O id que vale para o backend é o de `users.id`, NÃO o uid do Supabase — são
+   * duas numerações diferentes. Aqui se esperava a resposta de propósito: a
+   * próxima tela já consulta a semente do dia, e consultar com o id errado
+   * mostraria uma tela Hoje vazia para quem acabou de entrar.
+   */
   const acceptSession = useCallback(async (next: Session) => {
     setSession(next);
-    if (next.user?.id) await setUserId(next.user.id);
+    if (next.access_token) await vincularConta(next.access_token);
     await AsyncStorage.removeItem(DEMO_KEY);
     setDemo(false);
   }, []);
