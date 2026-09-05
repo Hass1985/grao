@@ -24,6 +24,7 @@ import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
+import { devocionalDeHoje, devocionaisAte } from './devocional.js';
 import { iniciarAgenda } from './agenda.js';
 
 const app = express();
@@ -364,16 +365,44 @@ app.post('/profile/:userId/plan', async (req, res) => {
 app.get('/seed/today/:userId', async (req, res) => {
   const acesso = await acessoDoUsuario(req.params.userId);
 
+  // GRATUITO: a página do dia no devocional anual. Não é semente cortada, é
+  // outro material — 365 páginas fixas, iguais para todo mundo, sem motor e
+  // sem custo de API. Só quem assina entra no motor emocional.
+  if (!acesso.completo) {
+    const dia = await devocionalDeHoje(req.params.userId);
+    if (!dia) return res.status(404).json({ error: 'devocional do dia não encontrado' });
+    // Cria a linha do usuário na primeira leitura. Quem lê o devocional É
+    // usuário do produto e precisa aparecer no funil; sem isto o evento bateria
+    // na chave estrangeira, sairia um aviso no log e a leitura não seria
+    // contada em lugar nenhum.
+    await ensureUser(req.params.userId).catch(() => {});
+    void logEvent(req.params.userId, 'devocional_lido', { data: dia.data });
+    // Os campos são espelhados nos nomes da semente (passage/reference/
+    // reflection) para a tela do dia servir aos dois produtos sem virar duas
+    // telas. `tipo` é o que diz qual dos dois está na mão.
+    return res.json({
+      ...dia,
+      id: `d-${dia.data}`,
+      passage: dia.verse,
+      reference: dia.reference,
+      reflection: dia.body,
+      prayer: null, practice: null, music: null,
+      completa: false,
+      bloqueado: { prayer: true, practice: true, music: true },
+      acesso,
+    });
+  }
+
   // Se a pessoa já recebeu a semente hoje — pelo WhatsApp ou por uma abertura
   // anterior do app — devolvemos A MESMA. Abrir o app não pode trocar a
   // semente do dia nem consumir outra das 380.
   const jaEntregue = await getTodaySeed(req.params.userId);
-  if (jaEntregue) return res.json({ ...limitarSemente(jaEntregue, acesso.completo), acesso });
+  if (jaEntregue) return res.json({ tipo: 'semente', ...limitarSemente(jaEntregue, true), acesso });
 
   const seed = await selectSeedForUser(req.params.userId);
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
   void logEvent(req.params.userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'app' });
-  res.json({ ...limitarSemente(seed, acesso.completo), acesso });
+  res.json({ tipo: 'semente', ...limitarSemente(seed, true), acesso });
 });
 
 /** Situação da assinatura, para a tela saber o que oferecer. */
@@ -391,10 +420,24 @@ app.get('/acesso/:userId', async (req, res) => {
 app.get('/seeds/history/:userId', async (req, res) => {
   try {
     const limite = Math.min(Number(req.query.limit ?? 120), 400);
-    // O histórico repete a mesma regra do dia: sem assinatura, o Campo e a
-    // Raiz mostram versículo e reflexão. Uma tela liberar o que a outra
-    // bloqueia é o jeito mais comum de um paywall vazar.
     const acesso = await acessoDoUsuario(req.params.userId);
+
+    // GRATUITO: o histórico é o próprio calendário, as páginas que já vieram
+    // até hoje. Sem isto o Campo e a Raiz nasceriam vazios para quem não
+    // assina, já que essas telas leem entregas do motor.
+    if (!acesso.completo) {
+      const dias = await devocionaisAte(req.params.userId, limite);
+      return res.json(dias.map((d) => ({
+        ...d,
+        id: `d-${d.data}`,
+        date: d.data,
+        passage: d.verse,
+        reference: d.reference,
+        reflection: d.body,
+        prayer: null, practice: null, music: null,
+        completa: false,
+      })));
+    }
     const { rows } = await pool.query(
       `SELECT s.id, s.family, s.type, s.passage, s.reference, s.reflection,
               s.prayer, s.practice, s.music_title, s.music_artist,
@@ -425,7 +468,7 @@ app.get('/seeds/history/:userId', async (req, res) => {
         spotifyUrl: r.music_spotify ?? undefined,
         youtubeUrl: r.music_youtube ?? undefined,
       },
-    }, acesso.completo)));
+    }, true)));
   } catch (err: any) {
     console.error('[history]', err?.message || err);
     res.status(500).json({ error: 'Falha ao carregar o histórico.' });

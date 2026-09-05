@@ -75,6 +75,7 @@ const EVENTOS: Record<string, string> = {
   wa_send_failed: 'falha no envio',
   wa_dispatch: 'disparo automático',
   brain_failed: '⚠ o cérebro falhou',
+  devocional_lido: 'leu o devocional do dia',
 };
 
 async function montarPainel(dias: number) {
