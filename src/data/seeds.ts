@@ -202,7 +202,6 @@ export const emotionalFamilies: { id: EmotionalFamily; label: string; emoji: str
   { id: 'luto', label: 'Luto', emoji: '💔' },
   { id: 'esperança', label: 'Esperança', emoji: '🌱' },
   { id: 'culpa', label: 'Culpa', emoji: '😔' },
-  { id: 'propósito', label: 'Propósito', emoji: '🧭' },
   { id: 'solidão', label: 'Solidão', emoji: '🌑' },
   { id: 'paz', label: 'Paz', emoji: '☁️' },
   { id: 'alegria', label: 'Alegria', emoji: '✨' },

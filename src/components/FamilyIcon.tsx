@@ -110,12 +110,12 @@ export default function FamilyIcon({ family, size = 22, color }: Props) {
         </>
       );
 
-    case 'tristeza': // lágrimas caídas
+    case 'tristeza': // rosto triste
       return svg(
         <>
-          <Circle {...s} cx={9} cy={10} r={1.2} />
-          <Circle {...s} cx={15} cy={10} r={1.2} />
-          <Path {...s} d="M8 16 C 9.5 18.5 14.5 18.5 16 16" />
+          <Circle {...s} cx={9} cy={10} r={1.15} />
+          <Circle {...s} cx={15} cy={10} r={1.15} />
+          <Path {...s} d="M8.5 17.5 C 10.2 15.2 13.8 15.2 15.5 17.5" />
         </>
       );
 
