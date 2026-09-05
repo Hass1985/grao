@@ -170,6 +170,32 @@ export async function aplicarEvento(evento: string, pagamento: any): Promise<str
   const userId = pagamento?.externalReference;
   if (!userId) return 'sem externalReference';
 
+  const vencimento = pagamento?.dueDate ? new Date(pagamento.dueDate) : null;
+
+  // PAYMENT_CREATED é quem sabe QUANDO é a próxima cobrança.
+  //
+  // Eu tinha lido o vencimento do PAYMENT_CONFIRMED, e está errado: ali o
+  // vencimento é o da cobrança que ACABOU de ser paga, ou seja, uma data no
+  // passado. O aviso de 24h nunca mais dispararia depois do primeiro mês, e o
+  // sintoma só apareceria na segunda cobrança de cada assinante, como uma
+  // fatura sem aviso. Exatamente a reclamação que este produto quer não ter.
+  //
+  // Quando o Asaas gera a cobrança do ciclo seguinte, ele avisa por aqui com o
+  // vencimento novo. `avisado_em` volta a NULL porque é outra cobrança, e ela
+  // merece o seu próprio aviso.
+  if (evento === 'PAYMENT_CREATED') {
+    if (!vencimento) return 'PAYMENT_CREATED sem dueDate';
+    const { rowCount } = await pool.query(
+      `UPDATE subscriptions
+          SET next_charge_at = $2, avisado_em = NULL, updated_at = now()
+        WHERE user_id = $1`, [userId, vencimento]);
+    void logEvent(userId, 'pagamento_evento',
+      { evento, aplicado: true, proximaCobranca: pagamento.dueDate });
+    return rowCount
+      ? `próxima cobrança marcada para ${pagamento.dueDate}`
+      : 'assinatura não encontrada';
+  }
+
   const novo =
     evento === 'PAYMENT_CONFIRMED' || evento === 'PAYMENT_RECEIVED' ? 'ativa'
     : evento === 'PAYMENT_OVERDUE' ? 'expirada'
@@ -181,13 +207,10 @@ export async function aplicarEvento(evento: string, pagamento: any): Promise<str
     return `evento ${evento} registrado, sem efeito no acesso`;
   }
 
+  // O status muda, o next_charge_at NÃO: quem o define é o PAYMENT_CREATED.
   const { rowCount } = await pool.query(
-    `UPDATE subscriptions
-        SET status = $2,
-            next_charge_at = CASE WHEN $2 = 'ativa' THEN $3::timestamptz ELSE next_charge_at END,
-            updated_at = now()
-      WHERE user_id = $1`,
-    [userId, novo, pagamento?.dueDate ? new Date(pagamento.dueDate) : null]);
+    `UPDATE subscriptions SET status = $2, updated_at = now() WHERE user_id = $1`,
+    [userId, novo]);
 
   void logEvent(userId, 'pagamento_evento', { evento, aplicado: true, status: novo });
   return rowCount ? `${evento} → ${novo}` : 'assinatura não encontrada';
