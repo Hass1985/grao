@@ -6,15 +6,21 @@
 #   .env         EXPO_PUBLIC_SUPABASE_URL          (o app faz o login)
 #                EXPO_PUBLIC_SUPABASE_ANON_KEY
 #
-# A URL do projeto não é segredo e vem como argumento. A chave anon TAMBÉM é
-# pública por natureza (ela vai dentro do app, e qualquer pessoa consegue
-# extrair do bundle), mas é longa demais para digitar, então vem da área de
-# transferência. Quem protege os dados é o RLS do Supabase, não o sigilo dela.
+# A URL do projeto não é segredo e vem como argumento. A chave pública TAMBÉM
+# não é (ela vai dentro do app, e qualquer pessoa extrai do bundle), mas é
+# longa demais para digitar, então vem da área de transferência. Quem protege
+# os dados é o RLS do Supabase, não o sigilo dela.
 #
-# A service_role NUNCA entra aqui. Ela ignora todas as regras de acesso.
+# A chave SECRETA nunca entra aqui: ela ignora todas as regras de acesso.
+#
+# Dois formatos convivem hoje. O Supabase está aposentando `anon` (um JWT que
+# começa com eyJ) em favor de `sb_publishable_...`, e o mesmo vale do lado
+# secreto: `service_role` virou `sb_secret_...`. O script aceita os dois
+# públicos e recusa os dois secretos, porque durante a transição é fácil pegar
+# o par errado sem perceber.
 #
 # Uso:
-#   1. copie a chave "anon public" (Supabase → Settings → API)
+#   1. copie a chave pública (Supabase → Settings → API Keys)
 #   2. bash scripts/configurar-supabase.sh https://SEU-PROJETO.supabase.co
 
 set -euo pipefail
@@ -39,17 +45,36 @@ if [ -z "$CHAVE" ]; then
   echo "✗ Área de transferência vazia. Copie a chave 'anon public' e rode de novo."
   exit 1
 fi
-# A service_role tem "service_role" no payload do próprio token. Barrar aqui
-# evita o erro que daria acesso total a quem baixasse o app.
+# As duas formas de chave secreta, barradas antes de qualquer coisa: colocar
+# uma delas dentro do app daria acesso total a quem baixasse o bundle.
+case "$CHAVE" in
+  sb_secret_*)
+    echo "✗ Isso é a chave SECRETA (sb_secret_…), não a pública."
+    echo "  Ela ignora todas as regras de acesso e NUNCA pode ir para dentro do app."
+    exit 1 ;;
+esac
 if printf '%s' "$CHAVE" | grep -q 'service_role'; then
-  echo "✗ Isso é a chave SERVICE_ROLE, não a anon."
+  echo "✗ Isso é a chave SERVICE_ROLE, não a pública."
   echo "  Ela ignora todas as regras de acesso e NUNCA pode ir para dentro do app."
   exit 1
 fi
-if [ "${#CHAVE}" -lt 40 ]; then
-  echo "✗ A chave tem só ${#CHAVE} caracteres. Copiou a chave certa?"
+
+# Formato: o novo (sb_publishable_) ou o antigo (JWT começando com eyJ).
+case "$CHAVE" in
+  sb_publishable_*) FORMATO="publishable (novo)" ;;
+  eyJ*)             FORMATO="anon (formato antigo, ainda aceito)" ;;
+  *)
+    echo "✗ Isso não parece uma chave pública do Supabase."
+    echo "  Esperado começar com 'sb_publishable_' ou com 'eyJ'."
+    echo "  Ela está em Settings → API Keys."
+    exit 1 ;;
+esac
+if [ "${#CHAVE}" -lt 30 ]; then
+  echo "✗ A chave tem só ${#CHAVE} caracteres. Copiou inteira?"
   exit 1
 fi
+echo "Chave reconhecida: $FORMATO"
+echo
 
 grava() {  # arquivo, nome, valor
   local arq="$1" nome="$2" valor="$3"
