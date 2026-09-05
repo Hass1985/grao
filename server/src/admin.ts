@@ -77,6 +77,11 @@ const EVENTOS: Record<string, string> = {
   brain_failed: '⚠ o cérebro falhou',
   devocional_lido: 'leu o devocional do dia',
   risco_detectado: '⚠ SINAL DE RISCO EMOCIONAL',
+  memoria_guardada: 'o Grão guardou algo da vida dela',
+  assinatura_criada: 'assinou',
+  assinatura_cancelada: 'cancelou a assinatura',
+  cobranca_avisada: 'foi avisada da cobrança de amanhã',
+  pagamento_evento: 'evento de pagamento',
 };
 
 async function montarPainel(dias: number) {

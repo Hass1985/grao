@@ -20,6 +20,7 @@ import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { guardarMemorias, memoriasVivas, linhaDeLigacao, registrarUso } from './memoria.js';
+import { cancelarPara } from './cobranca.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
 
 /** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
@@ -142,6 +143,17 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
   const texto = msg.text.body;
   await saveTurn(userId, 'user', texto);
   void logEvent(userId, 'message_in', { source: 'whatsapp', chars: texto.length });
+
+  // CANCELAR resolve na hora, sem formulário, sem e-mail e sem falar com
+  // ninguém. Vem antes da IA porque cancelamento não é assunto de conversa: é
+  // um pedido objetivo, e transformá-lo em diálogo é a fricção que gera metade
+  // das reclamações contra o concorrente.
+  if (/^\s*cancelar\s*!?\s*$/i.test(texto)) {
+    const resposta = await cancelarPara(userId, 'usuario');
+    await sendText(msg.from, resposta);
+    await saveTurn(userId, 'assistant', resposta);
+    return;
+  }
 
   // SEGURANÇA EMOCIONAL, antes de qualquer chamada de IA.
   //

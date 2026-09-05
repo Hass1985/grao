@@ -27,6 +27,7 @@ import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import { devocionalDeHoje, devocionaisAte, textoCompartilhavel } from './devocional.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
+import { registerCobrancaRoutes } from './cobranca.js';
 
 const app = express();
 
@@ -541,6 +542,9 @@ registerMetaWebhookRoutes(app);
 
 // Painel de controle (/admin). Protegido por GRAO_ADMIN_TOKEN.
 registerAdminRoutes(app);
+
+// Cobrança pelo Asaas, com Pix. Só entra em ação com ASAAS_API_KEY.
+registerCobrancaRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {

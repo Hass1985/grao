@@ -26,6 +26,7 @@ import { pool, logEvent } from './db.js';
 import { entregarSemente } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL } from './acesso.js';
+import { avisarCobrancasProximas } from './cobranca.js';
 
 /** De quanto em quanto tempo a agenda acorda. */
 const INTERVALO_MS = 60_000;
@@ -128,6 +129,14 @@ export function iniciarAgenda(): void {
     return;
   }
   console.log(`[agenda] varrendo a cada ${INTERVALO_MS / 1000}s`);
+
+  // O aviso de cobrança de 24h roda de hora em hora, na mesma agenda. Não
+  // precisa de precisão de minuto: o que importa é sair no dia anterior, com
+  // folga para a pessoa ler e decidir.
+  setInterval(() => {
+    avisarCobrancasProximas().catch((e) => console.error('[cobrança]', e?.message || e));
+  }, 3_600_000).unref?.();
+
   setInterval(() => {
     // Guarda contra sobreposição dentro do MESMO processo: uma varredura lenta
     // (muitas entregas, Meta devagar) não pode acumular ticks por cima.
