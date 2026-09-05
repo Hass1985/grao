@@ -84,3 +84,41 @@ export async function devocionaisAte(
 
   return rows.map((r: any) => ({ tipo: 'devocional' as const, ...r, planted: false }));
 }
+
+/**
+ * O endereço que vai no fim de todo texto compartilhado.
+ *
+ * O apex graoapp.com.br não resolve hoje (só o www), e um link quebrado num
+ * compartilhamento é pior que nenhum link: a pessoa que recebeu tenta abrir,
+ * não abre, e a impressão que fica é do Grão, não do DNS. Em variável de
+ * ambiente para arrumar o dia em que o apex subir, sem publicar app de novo.
+ */
+const SITE = () => (process.env.GRAO_SITE_URL || 'https://www.graoapp.com.br').replace(/\/+$/, '');
+
+/**
+ * O texto que a pessoa manda para alguém.
+ *
+ * Montado no SERVIDOR de propósito. O compartilhamento é o canal de aquisição
+ * mais barato que existe aqui, e ele evolui: muda o convite, muda o link,
+ * entra uma campanha. Se o texto morasse no app, cada ajuste desses exigiria
+ * publicar uma versão nova e esperar todo mundo atualizar.
+ *
+ * Ordem deliberada: a âncora bíblica primeiro. É ela que a pessoa quer mandar
+ * para alguém, e é o que aparece na prévia de uma mensagem antes de abrir.
+ */
+export function textoCompartilhavel(d: {
+  title: string; body: string; verse: string; reference: string;
+}): string {
+  // A semente não tem título; filtrar o vazio evita uma linha em branco solta
+  // no meio da mensagem, que num WhatsApp parece texto cortado.
+  return [
+    `"${d.verse}"`,
+    d.reference,
+    '',
+    d.title,
+    d.body,
+    '',
+    'De Grão em Grão, devocional diário',
+    SITE(),
+  ].filter((l, i, todas) => l !== '' || todas[i - 1] !== '').join('\n');
+}

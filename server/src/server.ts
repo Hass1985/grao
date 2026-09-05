@@ -24,7 +24,7 @@ import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
-import { devocionalDeHoje, devocionaisAte } from './devocional.js';
+import { devocionalDeHoje, devocionaisAte, textoCompartilhavel } from './devocional.js';
 import { iniciarAgenda } from './agenda.js';
 
 const app = express();
@@ -382,6 +382,7 @@ app.get('/seed/today/:userId', async (req, res) => {
     // telas. `tipo` é o que diz qual dos dois está na mão.
     return res.json({
       ...dia,
+      compartilhavel: textoCompartilhavel(dia),
       id: `d-${dia.data}`,
       passage: dia.verse,
       reference: dia.reference,
@@ -397,12 +398,28 @@ app.get('/seed/today/:userId', async (req, res) => {
   // anterior do app — devolvemos A MESMA. Abrir o app não pode trocar a
   // semente do dia nem consumir outra das 380.
   const jaEntregue = await getTodaySeed(req.params.userId);
-  if (jaEntregue) return res.json({ tipo: 'semente', ...limitarSemente(jaEntregue, true), acesso });
+  if (jaEntregue) {
+    return res.json({
+      tipo: 'semente', ...limitarSemente(jaEntregue, true),
+      compartilhavel: textoCompartilhavel({
+        title: '', body: jaEntregue.reflection,
+        verse: jaEntregue.passage, reference: jaEntregue.reference,
+      }),
+      acesso,
+    });
+  }
 
   const seed = await selectSeedForUser(req.params.userId);
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
   void logEvent(req.params.userId, 'seed_delivered', { seedId: seed.id, family: seed.family, source: 'app' });
-  res.json({ tipo: 'semente', ...limitarSemente(seed, true), acesso });
+  res.json({
+    tipo: 'semente', ...limitarSemente(seed, true),
+    compartilhavel: textoCompartilhavel({
+      title: '', body: seed.reflection,
+      verse: seed.passage, reference: seed.reference,
+    }),
+    acesso,
+  });
 });
 
 /** Situação da assinatura, para a tela saber o que oferecer. */
