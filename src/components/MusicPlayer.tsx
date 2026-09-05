@@ -18,6 +18,7 @@ import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
+import { glassCard } from '../theme/glass';
 
 type Props = {
   music: Music;
@@ -77,7 +78,7 @@ export default function MusicPlayer({ music, inline = false, style }: Props) {
       <Pressable onPress={open} onPressIn={onPressIn} onPressOut={onPressOut} accessibilityLabel="Ouvir música">
         <Animated.View style={{ transform: [{ scale }] }}>
           <LinearGradient
-            colors={['#D4924A', '#C07826', '#A8651C']}
+            colors={['#D89A55', '#C07826', '#A8651C']}
             start={{ x: 0.15, y: 0 }}
             end={{ x: 0.85, y: 1 }}
             style={styles.playBtn}
@@ -111,6 +112,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   barFloating: {
+    ...glassCard,
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'center',
@@ -121,20 +123,20 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 8,
     borderRadius: radius.pill,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceSolid,
     ...(shadows.sm as object),
   },
   barInline: {
+    ...glassCard,
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     alignSelf: 'stretch',
     gap: 12,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: radius.xl,
-    backgroundColor: colors.surfaceSeed,
-    ...(shadows.md as object),
+    paddingHorizontal: 18,
+    borderRadius: 28,
+    ...(shadows.sm as object),
   },
   art: {
     width: 34,
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.sansSemi,
     fontSize: 13,
-    color: colors.foreground,
+    color: colors.palha,
     letterSpacing: -0.1,
   },
   artist: {

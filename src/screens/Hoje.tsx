@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,12 @@ import {
   ScrollView,
   Modal,
   StatusBar,
+  Share,
+  Platform,
+  Animated,
+  Easing,
 } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { BookOpen, Share2, Sprout } from 'lucide-react-native';
 import SeedCard from '../components/SeedCard';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
@@ -22,17 +26,38 @@ import { selectTodaySeed, setMoment } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
+import { radius } from '../theme/radius';
+import { shadows } from '../theme/shadows';
+import { glassCard } from '../theme/glass';
+
+const NATIVE = Platform.OS !== 'web';
+const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+function weekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const start = new Date(now);
+  start.setDate(now.getDate() - day);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
 
 export default function Hoje({ navigation }: { navigation: any }) {
-  const [planted, setPlanted] = useState(false);
+  const [opened, setOpened] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [seed, setSeed] = useState<Seed>(todaySeed);
   const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
+  const reveal = useRef(new Animated.Value(0)).current;
+  const days = weekDates();
+  const todayIdx = new Date().getDay();
 
   const loadSeed = React.useCallback(async () => {
     try {
-      const { seed } = await selectTodaySeed();
-      setSeed(seed);
+      const { seed: next } = await selectTodaySeed();
+      setSeed(next);
     } catch {
       setSeed(todaySeed);
     }
@@ -42,62 +67,151 @@ export default function Hoje({ navigation }: { navigation: any }) {
     loadSeed();
   }, [loadSeed]);
 
+  const openToday = () => {
+    if (opened) return;
+    setOpened(true);
+    Animated.timing(reveal, {
+      toValue: 1,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: NATIVE,
+    }).start();
+  };
+
   const confirmFamily = async (family: EmotionalFamily) => {
     setPendingFamily(family);
     await setMoment(family);
     setModalVisible(false);
-    setPlanted(false);
+    setOpened(false);
+    reveal.setValue(0);
     setPendingFamily(null);
     await loadSeed();
   };
 
-  const today = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  const share = async () => {
+    const message = seed.compartilhavel?.trim();
+    if (!message) return;
+    try {
+      await Share.share(
+        Platform.OS === 'ios' ? { message } : { message, title: 'Grão' }
+      );
+    } catch {
+      /* cancelou */
+    }
+  };
+
+  const dateLine = new Date()
+    .toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })
+    .toUpperCase()
+    .replace('.', '');
+
+  const isFree = seed.tipo === 'devocional' || seed.completa === false;
+  const isSemente = !isFree;
+  const contentOp = reveal;
+  const contentTy = reveal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
 
   return (
     <ScreenBackground>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="light-content" backgroundColor="transparent" />
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 24 }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
         >
           <AppHeader
             title="Hoje"
-            subtitle={today.charAt(0).toUpperCase() + today.slice(1)}
+            subtitle={new Date()
+              .toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })
+              .replace(/^./, (c) => c.toUpperCase())}
             onLogoPress={() => navigation.navigate('Settings')}
             onProfilePress={() => navigation.navigate('Settings')}
           />
 
-          <View style={styles.greetingBand}>
-            <Text style={styles.greeting} numberOfLines={1}>
-              A semente para seu momento atual
-            </Text>
+          <View style={styles.weekWrap}>
+            <View style={styles.week}>
+              {days.map((d, i) => {
+                const active = i === todayIdx;
+                return (
+                  <View key={i} style={styles.dayCol}>
+                    <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
+                      {WEEK[i]}
+                    </Text>
+                    <View style={[styles.dayDot, active && styles.dayDotActive]}>
+                      <Text style={[styles.dayNum, active && styles.dayNumActive]}>
+                        {d.getDate()}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Campo')}
+              style={styles.calLink}
+            >
+              <Text style={styles.calLinkText}>Ver calendário</Text>
+            </TouchableOpacity>
           </View>
 
-          <SeedCard seed={seed} featured={true} />
+          {!opened ? (
+            <View style={styles.hero}>
+              <Text style={styles.dateLine}>{dateLine}</Text>
+              <Text style={styles.heroTitle}>Deus, o que temos para hoje?</Text>
+              <Text style={styles.sectionEyebrow}>Devocional diário</Text>
 
-          <MusicPlayer music={seed.music} inline style={styles.player} />
-
-          {!planted ? (
-            <Button
-              title="Levar esta semente"
-              onPress={() => setPlanted(true)}
-              style={styles.plantBtn}
-            />
-          ) : (
-            <View style={styles.plantedState}>
-              <Check size={20} color={colors.accent} strokeWidth={2.5} />
-              <Text style={styles.plantedText}>Semente plantada hoje</Text>
+              <View style={styles.passCard}>
+                <View style={styles.passTop}>
+                  <View style={styles.passLabelRow}>
+                    <BookOpen size={16} color={colors.ambarSoft} strokeWidth={2.2} />
+                    <Text style={styles.passLabel}>Passagem</Text>
+                  </View>
+                  <Text style={styles.passMeta}>1 min</Text>
+                </View>
+                <Text style={styles.passTitle}>Toque para abrir a semente de hoje</Text>
+                <Button title="Abrir" onPress={openToday} variant="dark" uppercase />
+              </View>
             </View>
-          )}
+          ) : (
+            <Animated.View style={{ opacity: contentOp, transform: [{ translateY: contentTy }] }}>
+              <View style={styles.hero}>
+                <Text style={styles.dateLine}>{dateLine}</Text>
+                <Text style={styles.heroTitle}>
+                  {seed.title || seed.reference || 'Semente de hoje'}
+                </Text>
+                <Text style={styles.sectionEyebrow}>Devocional diário</Text>
+              </View>
 
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
-            <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
-          </TouchableOpacity>
+              <SeedCard seed={seed} featured={true} />
+
+              {isSemente && seed.music ? (
+                <MusicPlayer music={seed.music} inline style={styles.player} />
+              ) : null}
+
+              {seed.compartilhavel ? (
+                <TouchableOpacity
+                  onPress={share}
+                  style={styles.shareBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Compartilhar"
+                  hitSlop={8}
+                >
+                  <Share2 size={15} color={colors.foregroundMuted} strokeWidth={2} />
+                  <Text style={styles.shareText}>Compartilhar</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {isSemente ? (
+                <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
+                  <Sprout size={14} color={colors.foregroundMuted} strokeWidth={2} />
+                  <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
+                </TouchableOpacity>
+              ) : null}
+            </Animated.View>
+          )}
         </ScrollView>
 
         <Modal
@@ -128,42 +242,145 @@ export default function Hoje({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingHorizontal: space.gutter },
-  greetingBand: {
-    paddingVertical: 28,
+  weekWrap: {
+    marginTop: 8,
+    marginBottom: 8,
+    paddingTop: 8,
+  },
+  week: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  dayCol: { alignItems: 'center', gap: 8, width: 36 },
+  dayLetter: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 12,
+    color: colors.ambarSoft,
+  },
+  dayLetterActive: {
+    color: colors.ambarSoft,
+  },
+  dayDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  greeting: {
+  dayDotActive: {
+    backgroundColor: colors.accent,
+  },
+  dayNum: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    color: colors.foregroundMuted,
+  },
+  dayNumActive: {
+    color: colors.palha,
+    fontFamily: fonts.sansSemi,
+  },
+  calLink: {
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  calLinkText: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.ambarSoft,
+  },
+  hero: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  dateLine: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    color: colors.foregroundSubtle,
+    marginBottom: 10,
+  },
+  heroTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.palha,
+    letterSpacing: -0.5,
+    marginBottom: 22,
+  },
+  sectionEyebrow: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+    color: colors.foregroundSubtle,
+    marginBottom: 14,
+  },
+  passCard: {
+    ...glassCard,
+    borderRadius: 28,
+    padding: 22,
+    ...(shadows.sm as object),
+  },
+  passTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  passLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  passLabel: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 14,
+    color: colors.ambarSoft,
+  },
+  passMeta: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.foregroundMuted,
+  },
+  passTitle: {
     fontFamily: fonts.serifMedium,
     fontSize: 24,
     lineHeight: 30,
-    color: colors.foreground,
-    letterSpacing: -0.45,
-    textAlign: 'left',
+    color: colors.palha,
+    letterSpacing: -0.3,
+    marginBottom: 20,
   },
-  /** Próximo ao card; mais respiro embaixo, antes do botão. */
   player: {
     marginTop: 12,
-    marginBottom: 32,
+    marginBottom: 8,
   },
-  plantBtn: {
-    marginTop: 0,
-  },
-  plantedState: {
+  shareBtn: {
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  shareText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    color: colors.foregroundMuted,
+  },
+  otherLink: {
+    alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
     gap: 8,
     paddingVertical: 18,
-    marginTop: 0,
   },
-  plantedText: {
-    fontFamily: fonts.serif,
-    fontSize: fontSizes.base,
-    color: colors.accent,
-  },
-  otherLink: { alignItems: 'center', paddingVertical: 16 },
   otherLinkText: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
   },
@@ -179,9 +396,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontFamily: fonts.serifMedium,
-    fontSize: 30,
-    lineHeight: 36,
-    color: colors.foreground,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.palha,
     letterSpacing: -0.5,
   },
   modalClose: {

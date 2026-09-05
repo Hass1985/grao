@@ -421,7 +421,7 @@ export default function Conversa({ navigation }: Props) {
             >
               {input.trim() ? (
                 <LinearGradient
-                  colors={['#D4924A', '#C07826', '#A8651C']}
+                  colors={['#F0A53A', '#E0891A', '#C46E10']}
                   start={{ x: 0.15, y: 0 }}
                   end={{ x: 0.85, y: 1 }}
                   style={styles.sendBtn}

@@ -143,3 +143,40 @@ export async function escolherPlano(userId: string, plan: 'plantio' | 'anual'): 
     /* segue o fluxo */
   }
 }
+
+/**
+ * Liga a conta recém-autenticada ao cadastro que o app já tinha.
+ *
+ * Chamado UMA vez, logo depois do login pelo SDK do Supabase, com o access
+ * token dele.
+ *
+ * O retorno pode trazer um userId DIFERENTE do enviado, e nesse caso o app
+ * precisa gravar o novo. Acontece quando a pessoa já tinha conta em outro
+ * aparelho: os dois cadastros são fundidos, o da conta vence, e seguir usando o
+ * id antigo faria o app consultar um cadastro que acabou de ser apagado, com a
+ * tela Hoje vazia e sem explicação.
+ */
+export async function vincularConta(
+  accessToken: string,
+): Promise<{ userId: string; merged: boolean } | null> {
+  if (!API_URL) return null;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/auth/vincular`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (j.userId && j.userId !== userId) await setUserId(j.userId);
+    return { userId: j.userId, merged: !!j.merged };
+  } catch {
+    // Falha de rede não pode travar quem acabou de logar: a pessoa entra, e a
+    // ligação acontece na próxima abertura do app.
+    return null;
+  }
+}

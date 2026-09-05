@@ -21,20 +21,32 @@ export interface Music {
 export interface Seed {
   id: string;
   date: string;
+  /** `devocional` = gratuito anual; `semente` = assinante. */
+  tipo?: 'devocional' | 'semente';
+  title?: string;
   type: SeedType;
   family: EmotionalFamily;
   passage: string;
   reference: string;
+  /** Paráfrase na voz do devocional. Nunca como citação com referência. */
+  verse?: string;
   reflection: string;
-  prayer: string;
-  practice: string;
-  music: Music;
+  /** `null` = bloqueado pelo plano (não inexistente). */
+  prayer: string | null;
+  practice: string | null;
+  music: Music | null;
   planted: boolean;
+  /** Texto pronto da API para o Share do sistema. */
+  compartilhavel?: string;
+  completa?: boolean;
+  bloqueado?: { prayer: boolean; practice: boolean; music: boolean } | null;
 }
 
 export const todaySeed: Seed = {
   id: 'seed-today',
   date: new Date().toISOString().split('T')[0],
+  tipo: 'devocional',
+  title: 'Esperança para o caminho',
   type: 'reflexão',
   family: 'esperança',
   passage:
@@ -42,17 +54,14 @@ export const todaySeed: Seed = {
   reference: 'Jeremias 29:11',
   reflection:
     'Mesmo quando o presente parece incerto, existe um projeto maior traçado com cuidado para a sua vida. Hoje, permita-se confiar no que ainda não consegue ver.',
-  prayer:
-    'Senhor, ajuda-me a descansar nos teus planos quando os meus não fazem sentido. Que eu encontre paz sabendo que meu futuro está nas tuas mãos.',
-  practice:
-    'Escreva uma coisa boa que aconteceu hoje, por menor que seja. Deixe que ela seja evidência de que há cuidado no seu caminho.',
-  music: {
-    title: 'Deus Proverá',
-    artist: 'Gabriela Gomes',
-    spotifyUrl: 'https://open.spotify.com/track/2zouxoanOhjJi3HB8mBr9F',
-    youtubeUrl: 'https://www.youtube.com/results?search_query=Gabriela+Gomes+Deus+Prover%C3%A1',
-  },
+  prayer: null,
+  practice: null,
+  music: null,
   planted: false,
+  completa: false,
+  bloqueado: { prayer: true, practice: true, music: true },
+  compartilhavel:
+    'Porque eu sei os planos que tenho para vocês, diz o Senhor.\nJeremias 29:11\n\nGrão · uma semente por dia',
 };
 
 export const pastSeeds: Seed[] = [

@@ -11,6 +11,7 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
 import { radius } from '../../theme/radius';
+import { glassCard } from '../../theme/glass';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
 import { space } from '../../theme/spacing';
 import { getUserId, escolherPlano } from '../../onboarding/aiClient';
@@ -176,10 +177,8 @@ const styles = StyleSheet.create({
   list: { gap: 14, marginBottom: 28 },
 
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...glassCard,
+    borderRadius: 28,
     overflow: 'hidden',
     ...(shadows.sm as object),
   },

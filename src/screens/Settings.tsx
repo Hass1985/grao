@@ -37,7 +37,9 @@ import { fonts, fontSizes } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
 import { space } from '../theme/spacing';
+import { glassCard } from '../theme/glass';
 import { webScreenFill, webScroll } from '../theme/webScreen';
+import { useAuth } from '../auth/AuthContext';
 import {
   ChevronRight,
   Camera,
@@ -120,6 +122,7 @@ function Row({
 }
 
 export default function Settings({ navigation }: Props) {
+  const { signOut } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState('Você');
   const [memberSince, setMemberSince] = useState('');
@@ -419,6 +422,9 @@ export default function Settings({ navigation }: Props) {
 
           <Pressable
             style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              void signOut();
+            }}
           >
             <Text style={styles.signOutText}>Sair da conta</Text>
           </Pressable>
@@ -579,8 +585,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    ...glassCard,
+    borderRadius: 28,
     paddingHorizontal: 6,
     overflow: 'hidden',
     ...(shadows.sm as object),
@@ -700,10 +706,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   modalCard: {
+    ...glassCard,
     width: '100%',
     maxWidth: 360,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 28,
     padding: 24,
     ...(shadows.md as object),
   },

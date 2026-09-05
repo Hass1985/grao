@@ -15,6 +15,7 @@ import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './se
 import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 import { paraPrompt, linhaDeLigacao, registrarUso, type Memoria } from './memoria.js';
+import { fundirUsuarios } from './auth.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -565,31 +566,12 @@ export function registerWhatsAppRoutes(app: Express) {
       let idFinal = userId;
 
       if (dono && dono.id !== userId) {
-        // Fusão: o telefone manda, porque é a chave que o WhatsApp usa.
+        // Fusão: o telefone manda, porque é a chave que o WhatsApp usa. A
+        // mecânica vive em auth.ts, num lugar só: duas cópias de uma fusão
+        // divergem na primeira tabela nova que alguém esquecer de atualizar, e
+        // o sintoma seria histórico sumindo sem explicação.
         idFinal = dono.id;
-        await pool.query(`UPDATE conversation_turns SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
-        await pool.query(`UPDATE emotional_readings SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
-        await pool.query(`UPDATE events SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
-        // Entregas e momento podem colidir na chave: só migra o que não existir.
-        await pool.query(
-          `UPDATE seed_deliveries d SET user_id = $2 WHERE d.user_id = $1
-            AND NOT EXISTS (SELECT 1 FROM seed_deliveries x WHERE x.user_id = $2 AND x.seed_id = d.seed_id)`,
-          [userId, dono.id]);
-        // Perfil e momento têm o user_id como chave: mover só funciona se o
-        // destino não tiver o seu. O perfil do webapp é o mais recente (acabou
-        // de sair da Abertura), então ele prevalece.
-        for (const tabela of ['profiles', 'user_moment']) {
-          await pool.query(
-            `DELETE FROM ${tabela} WHERE user_id = $2
-              AND EXISTS (SELECT 1 FROM ${tabela} WHERE user_id = $1)`, [userId, dono.id]);
-          await pool.query(`UPDATE ${tabela} SET user_id = $2 WHERE user_id = $1`, [userId, dono.id]);
-        }
-        // O nome vindo do WhatsApp costuma ser o do perfil do aparelho; o do
-        // onboarding é o que a pessoa escolheu. Este vence.
-        await pool.query(
-          `UPDATE users SET name = coalesce((SELECT name FROM users WHERE id = $1), name)
-            WHERE id = $2`, [userId, dono.id]);
-        await pool.query(`DELETE FROM users WHERE id = $1`, [userId]);
+        await fundirUsuarios(userId, dono.id);
         void logEvent(idFinal, 'user_merged', { de: userId, motivo: 'telefone já existia' });
       } else if (!dono) {
         await pool.query(`UPDATE users SET phone_e164 = $2 WHERE id = $1`, [userId, e164]);

@@ -62,16 +62,18 @@ export default function ProfileButton({ onPress, size = 38 }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: 'rgba(216, 154, 85, 0.28)',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   initialsWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: 'rgba(216, 154, 85, 0.28)',
   },
   initials: {
     fontFamily: fonts.serif,
-    color: colors.foreground,
+    color: colors.palha,
     marginTop: 1,
   },
 });

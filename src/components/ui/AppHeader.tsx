@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import GraoSymbol from '../GraoSymbol';
 import ProfileButton from '../ProfileButton';
 import { colors } from '../../theme/colors';
-import { fonts, fontSizes } from '../../theme/typography';
+import { fonts } from '../../theme/typography';
 import { logoSize, logoSlot, space } from '../../theme/spacing';
 
 type Props = {
@@ -13,15 +13,27 @@ type Props = {
   onProfilePress: () => void;
 };
 
-/**
- * Cabeçalho padrão do app (Hoje / Campo / Raiz).
- * Barra palha full-bleed atrás de logo · título · avatar · data.
- */
+/** Cabeçalho no ritmo do site: marca palha + título claro. */
 export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress }: Props) {
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
         <View style={styles.row}>
+          <View style={styles.side}>
+            <ProfileButton onPress={onProfilePress} size={36} />
+          </View>
+
+          <View style={styles.center}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+            {subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+
           <TouchableOpacity
             onPress={onLogoPress}
             disabled={!onLogoPress}
@@ -29,23 +41,9 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
             accessibilityLabel="Grão"
             style={styles.side}
           >
-            <GraoSymbol size={logoSize} color={colors.accent} filled={false} />
+            <GraoSymbol size={logoSize} color={colors.ambarSoft} filled={false} />
           </TouchableOpacity>
-
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-
-          <View style={styles.side}>
-            <ProfileButton onPress={onProfilePress} size={32} />
-          </View>
         </View>
-
-        {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        ) : null}
       </View>
     </View>
   );
@@ -53,16 +51,15 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
 
 const styles = StyleSheet.create({
   bar: {
-    // Escapa o padding do ScrollView para ir de borda a borda
     marginHorizontal: -space.gutter,
-    marginBottom: 0,
-    backgroundColor: colors.surfaceSeed,
+    backgroundColor: colors.surfaceSoft,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   inner: {
     paddingHorizontal: space.gutter,
-    paddingTop: 4,
-    paddingBottom: 8,
-    gap: 2,
+    paddingTop: 6,
+    paddingBottom: 14,
   },
   row: {
     flexDirection: 'row',
@@ -75,20 +72,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
+  center: {
     flex: 1,
-    textAlign: 'center',
+    alignItems: 'center',
+    gap: 2,
+  },
+  title: {
     fontFamily: fonts.serifMedium,
     fontSize: 22,
     lineHeight: 26,
-    color: colors.foreground,
+    color: colors.palha,
     letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     color: colors.foregroundMuted,
-    marginTop: -2,
   },
 });

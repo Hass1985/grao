@@ -54,7 +54,7 @@ export default function Raiz({ navigation }: { navigation: any }) {
   return (
     <ScreenBackground>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="light-content" backgroundColor="transparent" />
         <FlatList
           data={sementes}
           keyExtractor={(item) => item.id}

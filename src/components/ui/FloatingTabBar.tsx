@@ -6,11 +6,11 @@ import { Sprout, CalendarDays, BookOpen, type LucideIcon } from 'lucide-react-na
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
+import { radius } from '../../theme/radius';
 
-/** Altura reservada acima da safe area para conteúdo (player / scroll). */
-export const TAB_DOCK_CLEARANCE = 70;
+export const TAB_DOCK_CLEARANCE = 78;
 
-const ICON = 15;
+const ICON = 18;
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   Hoje: Sprout,
@@ -18,19 +18,15 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   Raiz: BookOpen,
 };
 
-/**
- * Três bolinhas separadas — ícone + label dentro de cada uma,
- * para o texto não conflitar com o conteúdo ao rolar.
- */
 export default function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 10) }]}
+      style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) }]}
     >
-      <View style={styles.row}>
+      <View style={styles.pill}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const label =
@@ -58,16 +54,18 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? String(label)}
-              style={({ pressed }) => [pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [
+                styles.item,
+                focused && styles.itemActive,
+                pressed && { opacity: 0.85 },
+              ]}
             >
-              <View style={[styles.bubble, focused && styles.bubbleActive]}>
-                <Icon
-                  size={ICON}
-                  color={focused ? colors.casca : colors.casca80}
-                  strokeWidth={focused ? 2.3 : 1.9}
-                />
-                <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
-              </View>
+              <Icon
+                size={ICON}
+                color={focused ? colors.ambarSoft : colors.foregroundSubtle}
+                strokeWidth={focused ? 2.4 : 1.9}
+              />
+              <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -86,35 +84,38 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     backgroundColor: 'transparent',
   },
-  row: {
+  pill: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSolid,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
+    ...(shadows.float as object),
   },
-  bubble: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.palhaWarm,
+  item: {
+    minWidth: 72,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
-    ...(shadows.sm as object),
+    gap: 3,
   },
-  bubbleActive: {
-    backgroundColor: colors.peneiraSoft,
-    ...(shadows.md as object),
+  itemActive: {
+    backgroundColor: colors.surfaceAccent,
   },
   label: {
     fontFamily: fonts.sansMedium,
-    fontSize: 9,
-    color: colors.casca60,
-    letterSpacing: 0.02,
+    fontSize: 10,
+    color: colors.foregroundSubtle,
+    letterSpacing: 0.1,
   },
   labelActive: {
-    color: colors.casca,
+    color: colors.palha,
     fontFamily: fonts.sansSemi,
   },
 });

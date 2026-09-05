@@ -18,6 +18,7 @@ import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
 import { space } from '../theme/spacing';
+import { glassCard } from '../theme/glass';
 
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -43,13 +44,15 @@ function StatusIcon({ kind, size = 16 }: { kind: DayKind; size?: number }) {
     );
   }
   if (kind === 'open') {
-    return <Sprout size={size} color={colors.casca40} strokeWidth={1.9} />;
+    return (
+      <Sprout size={size} color={colors.foregroundMuted} strokeWidth={2} />
+    );
   }
   return (
     <Circle
-      size={Math.max(6, Math.round(size * 0.42))}
-      color={colors.casca20}
-      fill={colors.casca12}
+      size={Math.max(7, Math.round(size * 0.48))}
+      color={colors.foregroundSubtle}
+      fill={colors.foregroundSubtle}
       strokeWidth={0}
     />
   );
@@ -144,7 +147,7 @@ export default function Campo({ navigation }: { navigation: any }) {
   return (
     <ScreenBackground>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="light-content" backgroundColor="transparent" />
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
@@ -218,9 +221,9 @@ const styles = StyleSheet.create({
   },
 
   calendarCard: {
+    ...glassCard,
     marginTop: 16,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 28,
     paddingHorizontal: 14,
     paddingTop: 18,
     paddingBottom: 12,
@@ -346,6 +349,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   legendItem: {
     flexDirection: 'row',
@@ -363,13 +368,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(247, 240, 226, 0.08)',
   },
   legendSwatchPlanted: {
     backgroundColor: 'rgba(192, 120, 38, 0.16)',
   },
   legendSwatchOpen: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(247, 240, 226, 0.08)',
   },
   legendText: {
     fontFamily: fonts.sansMedium,

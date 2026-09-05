@@ -1,13 +1,14 @@
 export const colors = {
-  // Paleta Grão — hierarquia soft no estilo Pi (creme + tipografia escura)
+  // Paleta oficial do site graoapp.com.br
   ambar: '#C07826',
-  ambarSoft: '#D4924A',
-  ambar08: 'rgba(192, 120, 38, 0.10)',
-  palha: '#F2E9DC',
-  palhaWarm: '#F7F1E8',
+  ambarSoft: '#D89A55',
+  ambar08: 'rgba(192, 120, 38, 0.22)',
+  palha: '#F7F0E2',
+  palhaWarm: '#FBF6EC',
   casca: '#3B2208',
-  peneira: '#EFE4D2',
-  peneiraSoft: '#F3E9DA',
+  cascaDeep: '#241708',
+  peneira: '#EDE0C6',
+  peneiraSoft: 'rgba(237, 224, 198, 0.16)',
   ceu: '#3D6EBD',
   white: '#FFFFFF',
 
@@ -19,32 +20,31 @@ export const colors = {
   casca12: 'rgba(59, 34, 8, 0.10)',
   casca08: 'rgba(59, 34, 8, 0.07)',
 
-  // Superfícies: contraste por preenchimento, não por borda
-  background: '#F2E9DC',
-  backgroundElevated: '#F7F1E8',
-  surface: '#FAF6F0',
-  /** Papel de trigo — superfícies claras secundárias. */
-  surfaceCard: '#EDE0C4',
-  /** Card da semente — palha um pouco mais escura que o fundo. */
-  surfaceSeed: '#E9DCC8',
-  surfaceSeedSoft: '#EFE4D2',
-  /** Reservado para modo noturno do card. */
-  surfaceSeedNight: '#3B2208',
-  surfaceSeedNightSoft: '#4A2E14',
-  surfaceMuted: '#EFE4D2',
-  surfaceSoft: '#F1E7D8',
-  surfaceAccent: 'rgba(192, 120, 38, 0.09)',
-  bubble: '#EFE6D8',
+  // App: glass marrom claro (mesmo tom dos cards do Hoje)
+  background: '#2A1C0C',
+  backgroundElevated: '#3A2814',
+  surface: 'rgba(72, 48, 24, 0.44)',
+  surfaceSolid: 'rgba(72, 48, 24, 0.72)',
+  surfaceCard: 'rgba(72, 48, 24, 0.44)',
+  surfaceSeed: 'rgba(72, 48, 24, 0.48)',
+  surfaceSeedSoft: 'rgba(72, 48, 24, 0.36)',
+  surfaceSeedNight: '#2A1C0C',
+  surfaceSeedNightSoft: '#3A2814',
+  surfaceMuted: 'rgba(72, 48, 24, 0.32)',
+  surfaceSoft: 'rgba(72, 48, 24, 0.42)',
+  surfaceAccent: 'rgba(192, 120, 38, 0.28)',
+  bubble: 'rgba(72, 48, 24, 0.5)',
 
-  foreground: '#3B2208',
-  foregroundMuted: 'rgba(59, 34, 8, 0.55)',
-  foregroundSubtle: 'rgba(59, 34, 8, 0.36)',
+  foreground: '#FBF6EC',
+  foregroundMuted: 'rgba(251, 246, 236, 0.82)',
+  foregroundSubtle: 'rgba(251, 246, 236, 0.58)',
+  foregroundInverse: '#2A1C0C',
 
   accent: '#C07826',
-  accentSoft: '#D4924A',
+  accentSoft: '#D89A55',
   accentForeground: '#FFFFFF',
 
-  border: 'transparent',
-  borderStrong: 'rgba(59, 34, 8, 0.12)',
-  hairline: 'rgba(59, 34, 8, 0.08)',
+  border: 'rgba(237, 224, 198, 0.22)',
+  borderStrong: 'rgba(237, 224, 198, 0.34)',
+  hairline: 'rgba(237, 224, 198, 0.16)',
 };

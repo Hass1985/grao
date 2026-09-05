@@ -28,6 +28,7 @@ import { devocionalDeHoje, devocionaisAte, textoCompartilhavel } from './devocio
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
+import { registerAuthRoutes } from './auth.js';
 
 const app = express();
 
@@ -545,6 +546,9 @@ registerAdminRoutes(app);
 
 // Cobrança pelo Asaas, com Pix. Só entra em ação com ASAAS_API_KEY.
 registerCobrancaRoutes(app);
+
+// Contas (Google, Apple, Facebook, e-mail/senha) via Supabase Auth.
+registerAuthRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {

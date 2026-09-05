@@ -66,9 +66,9 @@ function buildMessages(firstName: string): Msg[] {
     },
     {
       kind: 'music',
-      title: todaySeed.music.title,
-      artist: todaySeed.music.artist,
-      url: todaySeed.music.spotifyUrl,
+      title: todaySeed.music?.title ?? 'Deus Proverá',
+      artist: todaySeed.music?.artist ?? 'Gabriela Gomes',
+      url: todaySeed.music?.spotifyUrl,
     },
   ];
 }

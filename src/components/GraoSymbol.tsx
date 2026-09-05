@@ -12,7 +12,7 @@ interface GraoSymbolProps {
 
 export default function GraoSymbol({
   size = 40,
-  color = '#C07826',
+  color = '#D89A55',
   fillColor,
   filled = false,
 }: GraoSymbolProps) {

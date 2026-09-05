@@ -1,18 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { Seed } from '../data/seeds';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { shadows } from '../theme/shadows';
 import { radius } from '../theme/radius';
+import { glassBlur } from '../theme/glass';
 import Reveal from './ui/Reveal';
 
 interface SeedCardProps {
   seed: Seed;
   compact?: boolean;
   featured?: boolean;
-  /** Inclui a música dentro do mesmo card (Raiz). No Hoje o player fica flutuante. */
+  /** Inclui a música dentro do mesmo card (Raiz). */
   embedMusic?: boolean;
 }
 
@@ -37,7 +39,10 @@ const YouTubeGlyph = ({ s = 12 }: { s?: number }) => (
   </Svg>
 );
 
-/** Card da semente — bege limpo estilo Glorify (modo claro). */
+/**
+ * Card no ritmo dos planos do site:
+ * glass quente e suave, tipografia palha + âmbar.
+ */
 export default function SeedCard({
   seed,
   compact = false,
@@ -48,96 +53,168 @@ export default function SeedCard({
     if (url) Linking.openURL(url);
   };
 
-  const showMusic = embedMusic && seed.music;
+  const isDevocional = seed.tipo === 'devocional' || seed.completa === false;
+  const music = seed.music;
+  const showMusic = !isDevocional && embedMusic && !!music;
 
-  return (
-    <View
-      style={[
-        styles.card,
-        featured && styles.cardFeatured,
-        (featured ? shadows.md : shadows.sm) as any,
-      ]}
-    >
-      <View style={styles.inner}>
-        <View style={styles.tags}>
-          <Text style={styles.tagText}>{typeLabel[seed.type]}</Text>
-          <Text style={styles.dot}>·</Text>
-          <Text style={styles.tagText}>
-            {seed.family.charAt(0).toUpperCase() + seed.family.slice(1)}
-          </Text>
-        </View>
+  const content = (
+    <View style={styles.inner}>
+      <View style={styles.tags}>
+        {isDevocional ? (
+          <>
+            <Text style={styles.tagText}>Devocional</Text>
+            {seed.title ? (
+              <>
+                <Text style={styles.dot}>·</Text>
+                <Text style={styles.tagText} numberOfLines={1}>
+                  {seed.title}
+                </Text>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <Text style={styles.tagText}>{typeLabel[seed.type] || 'Semente'}</Text>
+            <Text style={styles.dot}>·</Text>
+            <Text style={styles.tagText}>
+              {seed.family.charAt(0).toUpperCase() + seed.family.slice(1)}
+            </Text>
+          </>
+        )}
+      </View>
 
-        <Reveal triggerKey={seed.id} delay={60}>
-          <Text style={styles.passage}>{seed.passage}</Text>
-          <Text style={styles.reference}>{seed.reference}</Text>
-        </Reveal>
+      <Reveal triggerKey={seed.id} delay={60}>
+        <Text style={styles.passage}>{seed.passage}</Text>
+        <Text style={styles.reference}>{seed.reference}</Text>
+      </Reveal>
 
-        {!compact && (
-          <Reveal triggerKey={`${seed.id}-body`} delay={200}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Reflexão</Text>
-              <Text style={styles.body}>{seed.reflection}</Text>
-            </View>
+      {!compact && (
+        <Reveal triggerKey={`${seed.id}-body`} delay={200}>
+          <View style={styles.divider} />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {isDevocional ? 'Devocional' : 'Reflexão'}
+            </Text>
+            <Text style={styles.body}>{seed.reflection}</Text>
+          </View>
+
+          {!isDevocional && seed.prayer ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Oração</Text>
               <Text style={styles.body}>{seed.prayer}</Text>
             </View>
+          ) : null}
+
+          {!isDevocional && seed.practice ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Prática</Text>
               <Text style={styles.body}>{seed.practice}</Text>
             </View>
-          </Reveal>
-        )}
+          ) : null}
 
-        {showMusic && (
-          <View style={styles.musicBlock}>
-            <Text style={styles.musicLabel}>Música</Text>
-            <View style={styles.musicRow}>
-              <View style={styles.musicMeta}>
-                <Text style={styles.musicTitle} numberOfLines={1}>
-                  {seed.music.title}
+          {isDevocional ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>No Plantio</Text>
+              <View style={styles.locked}>
+                <Text style={styles.lockedLead}>
+                  A semente personalizada traz:
                 </Text>
-                <Text style={styles.musicArtist} numberOfLines={1}>
-                  {seed.music.artist}
-                </Text>
-              </View>
-              <View style={styles.musicLinks}>
-                {seed.music.spotifyUrl && (
-                  <TouchableOpacity
-                    style={[styles.musicBtn, { backgroundColor: '#1DB954' }]}
-                    onPress={() => open(seed.music.spotifyUrl)}
-                    accessibilityLabel="Ouvir no Spotify"
-                  >
-                    <SpotifyGlyph />
-                  </TouchableOpacity>
-                )}
-                {seed.music.youtubeUrl && (
-                  <TouchableOpacity
-                    style={[styles.musicBtn, { backgroundColor: '#FF0000' }]}
-                    onPress={() => open(seed.music.youtubeUrl)}
-                    accessibilityLabel="Ouvir no YouTube"
-                  >
-                    <YouTubeGlyph />
-                  </TouchableOpacity>
-                )}
+                <View style={styles.lockedList}>
+                  {[
+                    'Oração guiada para o seu momento',
+                    'Prática concreta para viver a Palavra',
+                    'Louvor escolhido para o seu dia',
+                    'Tudo no WhatsApp, todo dia, no horário certo',
+                  ].map((item) => (
+                    <View key={item} style={styles.lockedRow}>
+                      <Text style={styles.lockedBullet}>·</Text>
+                      <Text style={styles.lockedItem}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </View>
+          ) : null}
+        </Reveal>
+      )}
+
+      {showMusic && music ? (
+        <View style={styles.musicBlock}>
+          <Text style={styles.musicLabel}>Música</Text>
+          <View style={styles.musicRow}>
+            <View style={styles.musicMeta}>
+              <Text style={styles.musicTitle} numberOfLines={1}>
+                {music.title}
+              </Text>
+              <Text style={styles.musicArtist} numberOfLines={1}>
+                {music.artist}
+              </Text>
+            </View>
+            <View style={styles.musicLinks}>
+              {music.spotifyUrl && (
+                <TouchableOpacity
+                  style={[styles.musicBtn, { backgroundColor: '#1DB954' }]}
+                  onPress={() => open(music.spotifyUrl)}
+                  accessibilityLabel="Ouvir no Spotify"
+                >
+                  <SpotifyGlyph />
+                </TouchableOpacity>
+              )}
+              {music.youtubeUrl && (
+                <TouchableOpacity
+                  style={[styles.musicBtn, { backgroundColor: '#FF0000' }]}
+                  onPress={() => open(music.youtubeUrl)}
+                  accessibilityLabel="Ouvir no YouTube"
+                >
+                  <YouTubeGlyph />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        )}
-      </View>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View style={[styles.shell, shadows.md as object]}>
+      {Platform.OS === 'web' ? (
+        <View style={[styles.glass, featured && styles.glassFeatured]}>{content}</View>
+      ) : (
+        <BlurView intensity={featured ? 44 : 36} tint="dark" style={styles.blur}>
+          <View style={[styles.tint, featured && styles.tintFeatured]} />
+          {content}
+        </BlurView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  shell: {
     width: '100%',
-    backgroundColor: colors.surfaceSeedSoft,
-    borderRadius: radius.xl,
+    borderRadius: 28,
     overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  cardFeatured: {
-    backgroundColor: colors.surfaceSeed,
+  blur: {
+    overflow: 'hidden',
+    borderRadius: 28,
+  },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.surfaceSoft,
+  },
+  tintFeatured: {
+    backgroundColor: colors.surfaceSeedSoft,
+  },
+  glass: {
+    backgroundColor: colors.surface,
+    ...glassBlur,
+  },
+  glassFeatured: {
+    backgroundColor: colors.surfaceSoft,
   },
   inner: {
     paddingHorizontal: 24,
@@ -151,57 +228,98 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   tagText: {
-    fontFamily: fonts.sansMedium,
+    fontFamily: fonts.sansSemi,
     fontSize: 12,
-    color: colors.foregroundMuted,
-    letterSpacing: 0.2,
+    color: colors.ambarSoft,
+    letterSpacing: 0.3,
+    flexShrink: 1,
   },
   dot: {
-    color: colors.foregroundSubtle,
+    color: 'rgba(247, 240, 226, 0.35)',
     fontSize: 12,
   },
   passage: {
     fontFamily: fonts.serifMedium,
     fontSize: 24,
-    color: colors.foreground,
+    color: colors.palha,
     lineHeight: 34,
-    letterSpacing: -0.4,
+    letterSpacing: -0.35,
     marginBottom: 12,
   },
   reference: {
-    fontFamily: fonts.sansMedium,
+    fontFamily: fonts.sansSemi,
     fontSize: fontSizes.sm,
-    color: colors.accent,
-    marginBottom: 8,
+    color: colors.ambarSoft,
+    marginBottom: 4,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(247, 240, 226, 0.14)',
+    marginTop: 22,
+    marginBottom: 4,
   },
   section: {
-    marginTop: 26,
+    marginTop: 20,
     gap: 8,
   },
   sectionTitle: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
-    color: colors.foregroundSubtle,
-    letterSpacing: 1,
+    color: colors.ambarSoft,
+    letterSpacing: 1.3,
     textTransform: 'uppercase',
   },
   body: {
     fontFamily: fonts.serif,
     fontSize: 16,
-    color: colors.casca80,
+    color: colors.foregroundMuted,
     lineHeight: 26,
   },
+  locked: {
+    backgroundColor: 'rgba(192, 120, 38, 0.14)',
+    borderRadius: radius.md,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  lockedLead: {
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.foregroundMuted,
+  },
+  lockedList: {
+    gap: 8,
+  },
+  lockedRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  lockedBullet: {
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: 'rgba(247, 240, 226, 0.4)',
+  },
+  lockedItem: {
+    flex: 1,
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.foregroundMuted,
+  },
   musicBlock: {
-    marginTop: 26,
+    marginTop: 24,
     paddingTop: 20,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.hairline,
+    borderTopColor: 'rgba(247, 240, 226, 0.14)',
     gap: 12,
   },
   musicLabel: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
-    color: colors.foregroundSubtle,
+    color: colors.ambarSoft,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
   },
@@ -218,7 +336,7 @@ const styles = StyleSheet.create({
   musicTitle: {
     fontFamily: fonts.sansSemi,
     fontSize: fontSizes.base,
-    color: colors.foreground,
+    color: colors.palha,
   },
   musicArtist: {
     fontFamily: fonts.sans,

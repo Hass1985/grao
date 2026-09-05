@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
+import { glassCard } from '../theme/glass';
 
 type Props = {
   onSelect: (family: EmotionalFamily) => void;
@@ -110,9 +111,9 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   card: {
+    ...glassCard,
     flex: 1,
     minHeight: 148,
-    backgroundColor: colors.surfaceSoft,
     borderRadius: radius.xl,
     paddingVertical: 26,
     paddingHorizontal: 16,
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
     ...(shadows.md as object),
   },
   label: {

@@ -16,11 +16,12 @@ import {
 import 'react-native-gesture-handler';
 
 import RootNavigator from './src/navigation';
+import { AuthProvider, useAuth } from './src/auth/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function App() {
-  const [isOnboarded, setIsOnboarded] = useState(false);
+function AppShell() {
+  const { ready: authReady, isAuthenticated } = useAuth();
 
   const [fontsLoaded, fontError] = useFonts({
     Newsreader_400Regular,
@@ -32,15 +33,13 @@ export default function App() {
     DMSans_600SemiBold,
   });
 
-  // Rede de segurança: mesmo que as fontes falhem ou travem no host,
-  // o app renderiza (com a fonte do sistema) em no máximo 2,5s — nunca fica branco.
   const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setTimedOut(true), 2500);
     return () => clearTimeout(t);
   }, []);
 
-  const ready = fontsLoaded || !!fontError || timedOut;
+  const ready = (fontsLoaded || !!fontError || timedOut) && authReady;
 
   const onLayoutRootView = useCallback(async () => {
     if (ready) {
@@ -55,9 +54,19 @@ export default function App() {
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <RootNavigator
-        isOnboarded={isOnboarded}
-        onFinish={() => setIsOnboarded(true)}
+        isOnboarded={isAuthenticated}
+        onFinish={() => {
+          /* AuthProvider já marca a sessão / demo */
+        }}
       />
     </View>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }

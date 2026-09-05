@@ -11,6 +11,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
+import { glassCard } from '../../theme/glass';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
 import { space } from '../../theme/spacing';
 import Button from '../../components/ui/Button';
@@ -111,16 +112,18 @@ const styles = StyleSheet.create({
   pairsList: { gap: 10, marginBottom: 32 },
   pairRow: { flexDirection: 'row', gap: 10 },
   card: {
+    ...glassCard,
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
     ...(shadows.sm as object),
   },
-  cardSelected: { borderColor: colors.accent, borderWidth: 2, backgroundColor: colors.surfaceAccent },
+  cardSelected: {
+    borderColor: colors.accent,
+    borderWidth: 2,
+    backgroundColor: colors.surfaceAccent,
+  },
   cardLabel: { fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.foreground },
   cardLabelSelected: { color: colors.accent },
   cardSub: { fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundMuted, marginTop: 2 },

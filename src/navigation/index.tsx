@@ -6,11 +6,7 @@ import { Easing } from 'react-native';
 
 import Welcome from '../screens/onboarding/Welcome';
 import Intro from '../screens/onboarding/Intro';
-import Abertura from '../screens/onboarding/Abertura';
-import Conversa from '../screens/onboarding/Conversa';
-import Notification from '../screens/onboarding/Notification';
-import WhatsApp from '../screens/onboarding/WhatsApp';
-import Plan from '../screens/onboarding/Plan';
+import Auth from '../screens/onboarding/Auth';
 
 import Hoje from '../screens/Hoje';
 import Campo from '../screens/Campo';
@@ -62,7 +58,7 @@ const stackMotion = {
     },
   },
   cardStyleInterpolator: softSlide,
-  cardStyle: { backgroundColor: colors.background },
+  cardStyle: { backgroundColor: colors.cascaDeep },
 };
 
 function MainNavigator() {
@@ -99,16 +95,11 @@ function OnboardingNavigator({ onFinish }: { onFinish: () => void }) {
     <Stack.Navigator screenOptions={stackMotion}>
       <Stack.Screen name="Welcome" component={Welcome} />
       <Stack.Screen name="Intro" component={Intro} />
-      <Stack.Screen name="Abertura" component={Abertura} />
-      <Stack.Screen name="Conversa" component={Conversa} />
-      <Stack.Screen name="Notification" component={Notification} />
-      <Stack.Screen name="WhatsApp" component={WhatsApp} />
-      <Stack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
+      <Stack.Screen name="Auth">
+        {(props) => <Auth {...props} onFinish={onFinish} />}
+      </Stack.Screen>
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="Credits" component={Credits} />
-      <Stack.Screen name="Plan">
-        {(props) => <Plan {...props} onFinish={onFinish} />}
-      </Stack.Screen>
     </Stack.Navigator>
   );
 }

@@ -112,6 +112,8 @@ Devolve **um de dois produtos**. O campo `tipo` diz qual:
 |---|---|
 | `GET /acesso/:userId` | situação da assinatura, sem pedir a semente |
 | `GET /seeds/history/:userId?limit=` | Campo e Raiz. Mesma regra de bloqueio. Para o gratuito, devolve os dias já passados do ano |
+| `POST /auth/vincular` | depois do login. Header `Authorization: Bearer <token do Supabase>`, corpo `{ userId }`. **Se o `userId` voltar diferente, grave o novo** |
+| `GET /auth/eu` | confere a sessão, mesmo header |
 | `POST /profile/:userId/whatsapp` | liga o WhatsApp: `{ phone, time: "HH:MM", timezone }` |
 | `POST /onboarding/opening` | a Abertura (só depois de assinar) |
 | `POST /assinatura/:userId` | assinar: `{ plano: "plantio"\|"anual", cpf, email }` |
@@ -129,7 +131,8 @@ essa string para o `Share` do sistema. Não monte o texto no app: ele muda
 ```
 Splash (só "Grão")
   → Telas de apresentação (frases curtas, com efeito)
-  → Autenticação (Google, Apple, Facebook ou e-mail/senha, via Supabase Auth)
+  → Autenticação (Supabase Auth: Google e e-mail/senha prontos; Apple e
+    Facebook depois. Ver SUPABASE_AUTH.md)
   → Entra no app, na tela Hoje
        card "Deus, o que temos para hoje?" → revela o devocional do dia
        botão pequeno de compartilhar embaixo

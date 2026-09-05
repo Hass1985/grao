@@ -22,7 +22,7 @@ const C = {
   hillFar: '#AEBB84', hillNear: '#758F55', crop: '#5C7742', soil: '#9A6A38',
   sprout: '#5E7A45', trunk: '#8A5A2B',
   skin: '#E9B98C', hair: '#5A3A1E',
-  accent: '#C07826', casca: '#3B2208', cream: '#FBF3E4', heart: '#C9542F', white: '#FFFFFF',
+  accent: '#E0891A', casca: '#2A1604', cream: '#FFF8EE', heart: '#E04A2F', white: '#FFFFFF',
 };
 
 // ---- hooks de animação ----
