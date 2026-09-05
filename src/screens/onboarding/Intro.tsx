@@ -1,13 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Animated,
-  Dimensions,
   StatusBar,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/ui/Button';
@@ -20,61 +21,74 @@ import { webScreenFill } from '../../theme/webScreen';
 
 type Props = { navigation: StackNavigationProp<any> };
 
+const NATIVE = Platform.OS !== 'web';
+
 const SLIDES = [
   {
     title: 'Entre um culto\ne outro.',
     sub: 'A fé continua além da igreja. O Grão caminha com você todos os dias.',
+    dwellMs: 5500,
   },
   {
     title: 'Fale com Deus\nde onde estiver.',
     sub: 'No trabalho, no ônibus, na cozinha. Conte como está o seu coração e receba a Palavra certa para o seu dia.',
+    dwellMs: 7000,
   },
   {
     title: 'A Palavra na palma\nda sua mão.',
     sub: 'No lugar que você mais conhece: o seu WhatsApp. Simples assim.',
+    dwellMs: 5500,
   },
   {
     title: 'De grão em grão,\nmais perto de Deus.',
     sub: 'Uma semente por dia para você e para quem você ama. Compartilhe com sua família e seus irmãos na fé.',
+    dwellMs: 0,
   },
 ];
 
 export default function Intro({ navigation }: Props) {
-  const win = Dimensions.get('window');
-  const [w, setW] = useState(win.width);
-  const [scrollH, setScrollH] = useState(0);
   const [index, setIndex] = useState(0);
-  const scRef = useRef<any>(null);
-  const scrollX = useRef(new Animated.Value(0)).current;
+  const enter = useRef(new Animated.Value(1)).current;
+  const isLast = index === SLIDES.length - 1;
+  const slide = SLIDES[index];
 
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-    {
-      useNativeDriver: false,
-      listener: (e: any) => {
-        const i = Math.round(e.nativeEvent.contentOffset.x / w);
-        if (i !== index && i >= 0 && i < SLIDES.length) setIndex(i);
-      },
-    }
-  );
+  const playEnter = () => {
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: NATIVE,
+    }).start();
+  };
+
+  useEffect(() => {
+    playEnter();
+  }, [index]);
+
+  // Avança sozinho, com tempo para ler. Para na última.
+  useEffect(() => {
+    if (isLast) return;
+    const t = setTimeout(() => {
+      setIndex((i) => Math.min(i + 1, SLIDES.length - 1));
+    }, slide.dwellMs);
+    return () => clearTimeout(t);
+  }, [index, isLast, slide.dwellMs]);
 
   const goAuth = () => navigation.navigate('Auth');
-  const next = () => {
-    if (index < SLIDES.length - 1) {
-      const nextIndex = index + 1;
-      scRef.current?.scrollTo({ x: nextIndex * w, animated: true });
-      setIndex(nextIndex);
-    } else {
-      goAuth();
-    }
-  };
+
+  const opacity = enter.interpolate({
+    inputRange: [0, 0.25, 1],
+    outputRange: [0, 0.55, 1],
+  });
+  const translateY = enter.interpolate({
+    inputRange: [0, 1],
+    outputRange: [36, 0],
+  });
 
   return (
     <ScreenBackground style={webScreenFill}>
-      <SafeAreaView
-        style={styles.container}
-        onLayout={(e) => setW(e.nativeEvent.layout.width)}
-      >
+      <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
         <View style={styles.topbar}>
@@ -91,55 +105,20 @@ export default function Intro({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        <Animated.ScrollView
-          ref={scRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          onLayout={(e) => setScrollH(e.nativeEvent.layout.height)}
-          style={styles.scroll}
-        >
-          {SLIDES.map((sl, i) => {
-            const rel =
-              w > 0
-                ? scrollX.interpolate({
-                    inputRange: [(i - 1) * w, i * w, (i + 1) * w],
-                    outputRange: [-1, 0, 1],
-                    extrapolate: 'clamp',
-                  })
-                : new Animated.Value(0);
-            const opacity = rel.interpolate({
-              inputRange: [-1, -0.35, 0, 0.35, 1],
-              outputRange: [0.2, 0.75, 1, 0.75, 0.2],
-            });
-            const translateY = rel.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [28, 0, 28],
-            });
-            const scale = rel.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [0.96, 1, 0.96],
-            });
-            return (
-              <View key={i} style={[styles.page, { width: w, height: scrollH || undefined }]}>
-                <Animated.View
-                  style={{
-                    alignItems: 'center',
-                    gap: 14,
-                    opacity,
-                    transform: [{ translateY }, { scale }],
-                    paddingHorizontal: 8,
-                  }}
-                >
-                  <Text style={styles.title}>{sl.title}</Text>
-                  <Text style={styles.sub}>{sl.sub}</Text>
-                </Animated.View>
-              </View>
-            );
-          })}
-        </Animated.ScrollView>
+        <View style={styles.stage}>
+          <Animated.View
+            style={{
+              alignItems: 'center',
+              gap: 14,
+              opacity,
+              transform: [{ translateY }],
+              paddingHorizontal: 8,
+            }}
+          >
+            <Text style={styles.title}>{slide.title}</Text>
+            <Text style={styles.sub}>{slide.sub}</Text>
+          </Animated.View>
+        </View>
 
         <View style={styles.footer}>
           <View style={styles.dots}>
@@ -147,12 +126,11 @@ export default function Intro({ navigation }: Props) {
               <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
             ))}
           </View>
-          <Button
-            title={index === SLIDES.length - 1 ? 'Vamos começar' : 'Continuar'}
-            onPress={next}
-            variant="dark"
-            uppercase
-          />
+          {isLast ? (
+            <Button title="Vamos começar" onPress={goAuth} variant="dark" uppercase />
+          ) : (
+            <View style={styles.ctaPlaceholder} />
+          )}
         </View>
       </SafeAreaView>
     </ScreenBackground>
@@ -168,7 +146,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.gutter,
     paddingTop: 12,
     paddingBottom: 8,
-    zIndex: 2,
   },
   progressTrack: {
     flex: 1,
@@ -187,8 +164,8 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
   },
-  scroll: { flex: 1 },
-  page: {
+  stage: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.gutter,
@@ -213,7 +190,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingBottom: 40,
     paddingTop: 8,
-    zIndex: 2,
   },
   dots: {
     flexDirection: 'row',
@@ -224,4 +200,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.casca20 },
   dotActive: { width: 22, backgroundColor: colors.accent },
+  ctaPlaceholder: {
+    height: 56,
+  },
 });

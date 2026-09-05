@@ -27,7 +27,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 RAIZ="$(cd .. && pwd)"
 
-URL="${1:-}"
+# Sem argumento, aproveita a URL que já está no .env. Uma coisa a menos para
+# digitar errado, e o normal é ela já estar lá.
+URL="${1:-$(grep -E "^SUPABASE_URL=" .env 2>/dev/null | cut -d= -f2- || true)}"
 if [ -z "$URL" ]; then
   echo "✗ Faltou a URL do projeto."
   echo "  Uso: bash scripts/configurar-supabase.sh https://SEU-PROJETO.supabase.co"
@@ -79,6 +81,11 @@ echo
 grava() {  # arquivo, nome, valor
   local arq="$1" nome="$2" valor="$3"
   [ -f "$arq" ] || touch "$arq"
+  # Garante a quebra de linha no fim ANTES de acrescentar. Sem isto, a
+  # variável nova gruda no valor da última linha e as duas se perdem juntas:
+  # aconteceu de verdade aqui, e o ASAAS_API_KEY virou lixo com um
+  # SUPABASE_URL colado no fim.
+  [ -s "$arq" ] && [ "$(tail -c1 "$arq" | wc -l)" -eq 0 ] && printf '\n' >> "$arq"
   if grep -q "^${nome}=" "$arq"; then
     # -i '' é a forma do sed no macOS; no Linux seria -i puro.
     sed -i '' -E "s|^${nome}=.*|${nome}=${valor}|" "$arq"
