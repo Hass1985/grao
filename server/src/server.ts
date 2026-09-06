@@ -640,6 +640,37 @@ app.get('/seed/experimentar/:userId/historico', async (req, res) => {
  * onde nada acontece e a Raiz lista todos os dias do ano como se a pessoa os
  * tivesse lido. Aqui só entra o que ela confirmou.
  */
+/**
+ * "Esta semente falou com você?"
+ *
+ * A única medida barata de que a curadoria está acertando. Sem ela, avaliar o
+ * motor é ouvir uma pessoa por vez — e foi assim que descobrimos, por acaso,
+ * que todo mundo recebia a mesma semente de culpa.
+ */
+app.post('/seed/:seedId/feedback', async (req, res) => {
+  try {
+    const { userId, util } = req.body as { userId?: string; util?: boolean };
+    if (!userId || typeof util !== 'boolean') {
+      return res.status(400).json({ error: 'userId e util são obrigatórios' });
+    }
+    await ensureUser(userId);
+    const { rows: [existe] } = await pool.query(
+      `SELECT 1 FROM seeds WHERE id = $1`, [req.params.seedId]);
+    if (!existe) return res.status(404).json({ error: 'semente não encontrada' });
+
+    await pool.query(
+      `INSERT INTO seed_feedback (user_id, seed_id, util) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, seed_id) DO UPDATE
+              SET util = excluded.util, criado_em = now()`,
+      [userId, req.params.seedId, util]);
+    void logEvent(userId, 'semente_avaliada', { seedId: req.params.seedId, util });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    console.error('[seed/feedback]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao registrar.' });
+  }
+});
+
 /** Sequência e total de leituras — os dois números do topo do Campo. */
 app.get('/devocional/:userId/resumo', async (req, res) => {
   try {

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
+import AvaliarSemente from '../components/AvaliarSemente';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import EmotionPicker from '../components/EmotionPicker';
@@ -274,6 +275,10 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   <Text style={styles.shareText}>Compartilhar</Text>
                 </TouchableOpacity>
               ) : null}
+
+              {/* Só na semente: no devocional o gesto é confirmar a leitura, e
+                  duas perguntas no mesmo lugar viram formulário. */}
+              {isSemente ? <AvaliarSemente seedId={seed.id} /> : null}
 
               {isSemente ? (
                 <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>

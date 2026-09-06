@@ -286,6 +286,26 @@ export async function resumoDeLeitura(): Promise<ResumoLeitura | null> {
 }
 
 /**
+ * "Esta semente falou com você?"
+ *
+ * Silenciosa de propósito: se a rede falhar, a pessoa não precisa saber que a
+ * opinião dela não chegou — ela já fez a parte dela ao responder.
+ */
+export async function avaliarSemente(seedId: string, util: boolean): Promise<void> {
+  if (!API_URL) return;
+  try {
+    const userId = await getUserId();
+    await fetch(`${API_URL}/seed/${encodeURIComponent(seedId)}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, util }),
+    });
+  } catch {
+    /* segue o fluxo */
+  }
+}
+
+/**
  * A semente de hoje da demonstração, só para reler.
  *
  * Não pede semente nova nem gasta do teto diário: é a mesma que já foi

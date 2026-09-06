@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
+import AvaliarSemente from '../components/AvaliarSemente';
 import MusicPlayer from '../components/MusicPlayer';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import CircleBack from '../components/ui/CircleBack';
@@ -190,6 +191,8 @@ export default function HojeSementeTeste({
                   <Text style={styles.shareText}>Compartilhar</Text>
                 </TouchableOpacity>
               ) : null}
+
+              <AvaliarSemente seedId={seed.id} />
 
               <TouchableOpacity
                 onPress={() => navigation.navigate('HistoricoTeste')}

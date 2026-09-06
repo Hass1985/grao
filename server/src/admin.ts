@@ -279,6 +279,36 @@ async function montarPainel(dias: number) {
   const [leitura] = await q(`
     SELECT max(created_at) ultima, count(*)::int n FROM emotional_readings`);
 
+  // --- a curadoria: ela está escolhendo, e está acertando? -----------------
+  //
+  // Duas perguntas diferentes e as duas importam. A primeira é mecânica: o
+  // modelo respondeu, ou a entrega caiu na primeira candidata? A segunda é a
+  // que decide se a curadoria vale o que custa: a pessoa disse que a semente
+  // falou com ela?
+  const [curadoria] = await q(`
+    SELECT count(*)::int total,
+           count(*) FILTER (WHERE (payload->>'porCuradoria')::boolean)::int por_modelo,
+           avg((payload->>'confianca')::int) FILTER
+             (WHERE (payload->>'porCuradoria')::boolean)::int confianca
+      FROM events
+     WHERE type = 'curadoria' AND created_at > now() - $1::interval`, [janelaSql]);
+
+  const [avaliacao] = await q(`
+    SELECT count(*)::int total,
+           count(*) FILTER (WHERE util)::int falou
+      FROM seed_feedback WHERE criado_em > now() - $1::interval`, [janelaSql]);
+
+  const escolhasRecentes = await q(`
+    SELECT e.payload->>'escolhida' semente, e.payload->>'familia' familia,
+           e.payload->>'porque' porque, (e.payload->>'confianca')::int confianca,
+           (e.payload->>'candidatas')::int candidatas,
+           coalesce(u.name, '—') nome, e.created_at,
+           (SELECT f.util FROM seed_feedback f
+             WHERE f.user_id = e.user_id AND f.seed_id = e.payload->>'escolhida') util
+      FROM events e LEFT JOIN users u ON u.id = e.user_id
+     WHERE e.type = 'curadoria' AND e.payload->>'porque' IS NOT NULL
+     ORDER BY e.id DESC LIMIT 12`);
+
   const [ultimoDisparo] = await q(`
     SELECT payload->>'enviadas' enviadas, payload->>'falhas' falhas,
            coalesce(payload->>'origem', 'cron') origem, created_at
@@ -399,6 +429,18 @@ async function montarPainel(dias: number) {
       riscos: riscos.map((r: any) => ({
         nivel: r.nivel, origem: r.origem, nome: r.nome, quando: r.created_at,
       })),
+      curadoria: {
+        entregas: num(curadoria?.total),
+        porModelo: num(curadoria?.por_modelo),
+        confiancaMedia: curadoria?.confianca ?? null,
+        avaliadas: num(avaliacao?.total),
+        falaram: num(avaliacao?.falou),
+        escolhas: escolhasRecentes.map((e: any) => ({
+          semente: e.semente, familia: e.familia, porque: e.porque,
+          confianca: e.confianca, candidatas: e.candidatas,
+          nome: e.nome, quando: e.created_at, util: e.util,
+        })),
+      },
       cerebro: {
         ultimaLeitura: leitura?.ultima ?? null,
         leituras: num(leitura?.n),

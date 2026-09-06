@@ -844,7 +844,42 @@ function secSistema() {
     : vazio('Nenhum sinal de risco registrado. O detector roda em toda mensagem, ' +
             'sem depender da IA.');
 
+  // A curadoria: escolheu, e acertou?
+  var cur = s.curadoria || {};
+  var taxa = cur.avaliadas ? Math.round((cur.falaram / cur.avaliadas) * 100) : null;
+  var cobertura = cur.entregas ? Math.round((cur.porModelo / cur.entregas) * 100) : null;
+  var curadoria = '<div class="rolagem"><table><tbody>' +
+    linhaTabela('Sementes entregues no período', n(cur.entregas)) +
+    linhaTabela('Escolhidas pelo modelo',
+      cobertura === null ? '—' : n(cur.porModelo) + ' (' + cobertura + '%)') +
+    linhaTabela('Confiança média da escolha',
+      cur.confiancaMedia == null ? '—' : cur.confiancaMedia + '/100') +
+    linhaTabela('"Falou com você?"',
+      taxa === null ? 'ninguém respondeu ainda'
+        : cur.falaram + ' de ' + cur.avaliadas + ' disseram que sim (' + taxa + '%)') +
+    '</tbody></table></div>' +
+    ((cur.escolhas && cur.escolhas.length)
+      ? '<div class="rolagem" style="margin-top:14px"><table><thead><tr><th>Pessoa</th>' +
+        '<th>Semente</th><th>Por quê</th><th class="dir">Falou?</th></tr></thead><tbody>' +
+        cur.escolhas.map(function (e) {
+          var selo = e.util === true ? '<span class="selo">sim</span>'
+            : e.util === false ? '<span class="selo ruim">não</span>'
+            : '<span class="fraco">—</span>';
+          return '<tr><td class="forte">' + esc(e.nome) + '</td>' +
+            '<td class="mono fraco">' + esc(e.semente || '—') +
+            (e.confianca != null ? ' <span class="fraco">· ' + e.confianca + '</span>' : '') + '</td>' +
+            '<td class="fraco">' + esc(String(e.porque || '').slice(0, 150)) + '</td>' +
+            '<td class="dir">' + selo + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '') +
+    '<p class="nota" style="margin:12px 0 0">O motor lia o relato em detalhe e passava adiante ' +
+    'uma palavra só, a família. A escolha dentro dela era por contabilidade do acervo, e três ' +
+    'pessoas dizendo coisas diferentes sobre culpa recebiam a mesma semente. Agora o cérebro ' +
+    'compara as candidatas e diz qual fala com aquele relato — e por quê, aqui do lado. ' +
+    'A coluna "Falou?" é a única medida honesta de que está funcionando.</p>';
+
   return '<p class="secao-titulo">Segurança emocional</p><div class="cartao">' + listaRiscos + '</div>' +
+    '<p class="secao-titulo">Curadoria</p><div class="cartao">' + curadoria + '</div>' +
     '<div class="grade g-2-1">' +
       cartao('Configuração do servidor', 'presença, nunca o valor — um painel que mostra segredo vira vazamento', config) +
       cartao('Última entrega automática', 'a agenda varre de minuto em minuto e respeita o horário de cada pessoa', disparo) +

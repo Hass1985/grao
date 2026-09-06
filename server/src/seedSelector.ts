@@ -1,4 +1,15 @@
-import { pool, getProfile, getMoment } from './db.js';
+import { pool, getProfile, getMoment, logEvent } from './db.js';
+import { relatoDaPessoa, escolherSemente, type Escolha } from './curadoria.js';
+
+/**
+ * Quantas sementes a curadoria compara.
+ *
+ * Dez cabe no prompt sem pesar (~950 tokens) e é escolha de verdade. Duas
+ * seriam sorteio com etapa extra; trinta pagariam o triplo pelo mesmo acerto,
+ * porque a partir de certo ponto as candidatas passam a ser variações da
+ * mesma ideia.
+ */
+const MAX_CANDIDATAS = 10;
 
 // Canal sensorial → formato de semente preferido.
 // Visual: palavra para ver e reler. Auditivo: oração/voz. Sinestésico: prática/gesto.
@@ -234,21 +245,48 @@ export async function selectSeedForUser(
                  AND sim.similar_id = s.id)`;
 
   // Gesto com mais sementes inéditas primeiro; empate desfeito pelo gesto
-  // parado há mais tempo.
-  const ORDEM_GESTO = `rem.n DESC NULLS LAST, g.ultimo ASC NULLS FIRST`;
+  // parado há mais tempo, e depois por um sorteio ESTÁVEL por pessoa.
+  //
+  // A contagem entra em faixas de 8 em vez de valor exato. Sem isso, no
+  // primeiro dia de qualquer pessoa nenhuma semente foi vista ainda, todos os
+  // gestos estão cheios e a ordem fica idêntica para todo mundo: três pessoas
+  // dizendo coisas diferentes sobre culpa recebiam a MESMA semente, sempre a
+  // s-culpa-31. Em faixas, gestos de tamanho parecido empatam e o desempate
+  // por md5(id do usuário) dá uma fila própria a cada pessoa — estável, para
+  // a mesma pessoa ver sempre a mesma ordem, e auditável, porque não é random.
+  //
+  // A garantia de um ano continua de pé: gasta-se primeiro o que tem mais,
+  // só que com a folga de uma faixa.
+  const ORDEM_GESTO =
+    `(rem.n / 8) DESC NULLS LAST, g.ultimo ASC NULLS FIRST, md5(s.id || $5)`;
 
   // 1ª tentativa: família-alvo, formato do canal, inédita E sem repetição.
-  const params = [userId, family, preferredType, COOLDOWN_DIAS];
+  //
+  // Traz CANDIDATAS, não uma linha. Todas passaram pelas mesmas regras do
+  // acervo; a curadoria escolhe entre elas lendo o relato da pessoa. Se ela
+  // não responder, vale a primeira — que é a ordem de sempre.
+  //
+  // A família secundária entra na lista quando existe. Quem chega dizendo
+  // "culpa" muitas vezes está falando de culpa E solidão, e a semente que
+  // fala pode estar do outro lado dessa fronteira. O peso continua na
+  // primária: ela vem antes na ordenação.
+  const relato = await relatoDaPessoa(userId);
+  const familia2 =
+    relato.familiaSecundaria && relato.familiaSecundaria !== family
+      ? relato.familiaSecundaria
+      : null;
+
+  const params = [userId, family, preferredType, COOLDOWN_DIAS, userId, familia2];
   let { rows } = await pool.query(
     `${GESTOS_USADOS}
      SELECT s.* FROM seeds s
        LEFT JOIN gesto_ultimo g ON g.gesture = s.gesture
        LEFT JOIN gesto_restante rem ON rem.gesture = s.gesture
-      WHERE s.family = $2
+      WHERE (s.family = $2 OR s.family = $6)
         AND s.id NOT IN (SELECT seed_id FROM seed_deliveries WHERE user_id = $1)
         ${SEM_REPETICAO}
-      ORDER BY ${ORDEM_GESTO}, (s.type = $3) DESC, random()
-      LIMIT 1`,
+      ORDER BY (s.family = $2) DESC, ${ORDEM_GESTO}, (s.type = $3) DESC
+      LIMIT ${MAX_CANDIDATAS}`,
     params
   );
 
@@ -292,12 +330,38 @@ export async function selectSeedForUser(
   }
 
   if (rows.length === 0) return null;
-  const s = rows[0];
+
+  // A CURADORIA. Nunca deixa a entrega depender dela: falhou, demorou ou
+  // ficou sem saldo, vale a primeira candidata e o dia da pessoa segue.
+  let s = rows[0];
+  let escolha: Escolha | null = null;
+  if (rows.length > 1) {
+    escolha = await escolherSemente(relato, rows.map((r: any) => ({
+      id: r.id, family: r.family, type: r.type,
+      reference: r.reference, passage: r.passage, reflection: r.reflection,
+    })));
+    if (escolha) {
+      const encontrada = rows.find((r: any) => r.id === escolha!.id);
+      if (encontrada) s = encontrada;
+    }
+  }
 
   await pool.query(
     `INSERT INTO seed_deliveries (user_id, seed_id) VALUES ($1, $2)`,
     [userId, s.id]
   );
+
+  // O porquê da escolha fica gravado. Curadoria que ninguém audita é
+  // curadoria que ninguém melhora — e é isso que este registro resolve.
+  void logEvent(userId, 'curadoria', {
+    escolhida: s.id,
+    familia: s.family,
+    candidatas: rows.length,
+    porCuradoria: !!escolha,
+    porque: escolha?.porque ?? null,
+    confianca: escolha?.confianca ?? null,
+    familiaSecundaria: familia2,
+  });
 
   return {
     id: s.id,
