@@ -19,6 +19,7 @@ import WhatsAppDemo from '../screens/WhatsAppDemo';
 import Plantio from '../screens/Plantio';
 import MomentoSementeTeste from '../screens/MomentoSementeTeste';
 import HojeSementeTeste from '../screens/HojeSementeTeste';
+import HistoricoTeste from '../screens/HistoricoTeste';
 
 import FloatingTabBar from '../components/ui/FloatingTabBar';
 import { colors } from '../theme/colors';
@@ -94,6 +95,7 @@ function AppNavigator() {
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="MomentoSementeTeste" component={MomentoSementeTeste} />
       <AppStack.Screen name="HojeSementeTeste" component={HojeSementeTeste} />
+      <AppStack.Screen name="HistoricoTeste" component={HistoricoTeste} />
     </AppStack.Navigator>
   );
 }

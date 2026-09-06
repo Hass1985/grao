@@ -87,6 +87,14 @@ export default function Campo({ navigation }: { navigation: any }) {
   const seedMap = buildSeedMap(sementes);
   const plantedCount = Object.values(seedMap).filter((s) => s.planted).length;
 
+  // O gratuito lê devocional e confirma leitura; quem assina recebe semente e
+  // planta. É a mesma tela contando duas histórias, e a palavra errada faz a
+  // pessoa procurar um gesto que não existe no plano dela.
+  const ehDevocional = sementes.length > 0 && sementes.every((s) => s.tipo !== 'semente');
+  const rotulo = ehDevocional
+    ? { feito: 'Lido', aberto: 'Não lido', unidade: plantedCount === 1 ? 'dia lido' : 'dias lidos' }
+    : { feito: 'Plantada', aberto: 'Aberta', unidade: plantedCount === 1 ? 'semente plantada' : 'sementes plantadas' };
+
   const cells: Array<number | null> = [
     ...Array(firstDayOfWeek).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -154,11 +162,7 @@ export default function Campo({ navigation }: { navigation: any }) {
         >
           <AppHeader
             title="Campo"
-            subtitle={
-              plantedCount === 1
-                ? '1 semente plantada este mês'
-                : `${plantedCount} sementes plantadas este mês`
-            }
+            subtitle={`${plantedCount} ${rotulo.unidade} este mês`}
             onLogoPress={() => navigation.navigate('Settings')}
             onProfilePress={() => navigation.navigate('Settings')}
           />
@@ -191,14 +195,14 @@ export default function Campo({ navigation }: { navigation: any }) {
               <View style={[styles.legendSwatch, styles.legendSwatchPlanted]}>
                 <StatusIcon kind="planted" size={13} />
               </View>
-              <Text style={styles.legendText}>Plantada</Text>
+              <Text style={styles.legendText}>{rotulo.feito}</Text>
             </View>
             <View style={styles.legendDivider} />
             <View style={styles.legendItem}>
               <View style={[styles.legendSwatch, styles.legendSwatchOpen]}>
                 <StatusIcon kind="open" size={13} />
               </View>
-              <Text style={styles.legendText}>Não plantada</Text>
+              <Text style={styles.legendText}>{rotulo.aberto}</Text>
             </View>
             <View style={styles.legendDivider} />
             <View style={styles.legendItem}>

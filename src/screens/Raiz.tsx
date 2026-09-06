@@ -27,7 +27,9 @@ function SeedEntry({ seed }: { seed: Seed }) {
         <View style={styles.plantedBadge}>
           {seed.planted ? <Text style={styles.plantedEmoji}>🌱</Text> : null}
           <Text style={[styles.plantedLabel, !seed.planted && styles.plantedLabelEmpty]}>
-            {seed.planted ? 'Plantada' : 'Não plantada'}
+            {seed.tipo === 'semente'
+              ? seed.planted ? 'Plantada' : 'Não plantada'
+              : 'Lido'}
           </Text>
         </View>
       </View>
@@ -51,12 +53,18 @@ export default function Raiz({ navigation }: { navigation: any }) {
     return un;
   }, [carregar, navigation]);
 
+  // A Raiz guarda o que a pessoa VIVEU, não o calendário inteiro. No gratuito,
+  // isso é o devocional que ela confirmou ter lido; listar todos os dias do ano
+  // seria dizer que ela leu tudo, e o histórico perderia o sentido.
+  const guardadas = sementes.filter((s) => s.tipo === 'semente' || s.planted);
+  const ehDevocional = guardadas.every((s) => s.tipo !== 'semente');
+
   return (
     <ScreenBackground>
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" />
         <FlatList
-          data={sementes}
+          data={guardadas}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.list, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
@@ -64,17 +72,32 @@ export default function Raiz({ navigation }: { navigation: any }) {
             <View>
               <AppHeader
                 title="Raiz"
-                subtitle="Suas sementes, guardadas."
+                subtitle={
+                  guardadas.length === 0
+                    ? 'O que você guardar aparece aqui.'
+                    : ehDevocional
+                      ? `${guardadas.length} ${guardadas.length === 1 ? 'devocional lido' : 'devocionais lidos'}.`
+                      : 'Suas sementes, guardadas.'
+                }
                 onLogoPress={() => navigation.navigate('Settings')}
                 onProfilePress={() => navigation.navigate('Settings')}
               />
               <View style={{ height: 16 }} />
             </View>
           }
+          ListEmptyComponent={
+            <View style={styles.vazio}>
+              <Text style={styles.vazioTitulo}>Sua raiz começa hoje.</Text>
+              <Text style={styles.vazioTexto}>
+                Leia o devocional de hoje e toque em confirmar leitura. Cada dia
+                confirmado fica guardado aqui, para você voltar quando quiser.
+              </Text>
+            </View>
+          }
           renderItem={({ item, index }) => (
             <>
               <SeedEntry seed={item} />
-              {index < sementes.length - 1 && <View style={styles.separator} />}
+              {index < guardadas.length - 1 && <View style={styles.separator} />}
             </>
           )}
         />
@@ -101,6 +124,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     flex: 1,
+  },
+  vazio: { paddingTop: 32, paddingHorizontal: 4, gap: 12 },
+  vazioTitulo: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 24,
+    lineHeight: 30,
+    color: colors.palha,
+    letterSpacing: -0.3,
+  },
+  vazioTexto: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    lineHeight: 25,
+    color: colors.foregroundMuted,
   },
   plantedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   plantedEmoji: { fontSize: 14 },

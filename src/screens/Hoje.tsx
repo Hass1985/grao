@@ -23,7 +23,9 @@ import AppHeader from '../components/ui/AppHeader';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
-import { selectTodaySeed, setMoment, getMoment } from '../onboarding/seedDelivery';
+import {
+  selectTodaySeed, setMoment, getMoment, confirmarLeitura,
+} from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
@@ -51,6 +53,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [seed, setSeed] = useState<Seed>(todaySeed);
   const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
+  const [lido, setLido] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   const reveal = useRef(new Animated.Value(0)).current;
   /** Momento vigente quando a semente na tela foi carregada. */
   const momentoCarregado = useRef<EmotionalFamily | null>(null);
@@ -59,8 +63,9 @@ export default function Hoje({ navigation }: { navigation: any }) {
 
   const loadSeed = React.useCallback(async () => {
     try {
-      const { seed: next } = await selectTodaySeed();
+      const { seed: next, lido: jaLido } = await selectTodaySeed();
       setSeed(next);
+      setLido(!!jaLido);
       momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
@@ -110,6 +115,20 @@ export default function Hoje({ navigation }: { navigation: any }) {
     reveal.setValue(0);
     setPendingFamily(null);
     await loadSeed();
+  };
+
+  const confirmarLeituraDeHoje = async () => {
+    if (confirmando || lido) return;
+    setConfirmando(true);
+    // Marca na tela antes da resposta: confirmar leitura é um gesto de leitura,
+    // não uma transação. Se a rede falhar, o servidor recebe na próxima vez em
+    // que a tela abrir; travar o botão esperando ida e volta é pior.
+    setLido(true);
+    try {
+      await confirmarLeitura();
+    } finally {
+      setConfirmando(false);
+    }
   };
 
   const share = async () => {
@@ -217,6 +236,30 @@ export default function Hoje({ navigation }: { navigation: any }) {
 
               {isSemente && seed.music ? (
                 <MusicPlayer music={seed.music} inline style={styles.player} />
+              ) : null}
+
+              {/* No gratuito, é este gesto que constrói o histórico: marca o
+                  dia no Campo e guarda a página na Raiz. Sem ele as duas telas
+                  seriam um calendário onde nada acontece. */}
+              {isFree ? (
+                <View style={styles.leituraWrap}>
+                  {lido ? (
+                    <View style={styles.leituraFeita}>
+                      <Sprout size={16} color={colors.accent} strokeWidth={2.2} />
+                      <Text style={styles.leituraFeitaText}>
+                        Leitura de hoje confirmada
+                      </Text>
+                    </View>
+                  ) : (
+                    <Button
+                      title="Confirmar leitura"
+                      onPress={confirmarLeituraDeHoje}
+                      variant="dark"
+                      uppercase
+                      disabled={confirmando}
+                    />
+                  )}
+                </View>
               ) : null}
 
               {seed.compartilhavel ? (
@@ -385,6 +428,21 @@ const styles = StyleSheet.create({
   player: {
     marginTop: 12,
     marginBottom: 8,
+  },
+  leituraWrap: {
+    marginTop: 22,
+  },
+  leituraFeita: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  leituraFeitaText: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.sm,
+    color: colors.accent,
   },
   shareBtn: {
     alignSelf: 'center',

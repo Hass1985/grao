@@ -18,6 +18,9 @@ import { pool } from './db.js';
 export interface DiaDevocional {
   tipo: 'devocional';
   data: string;          // "2026-09-04", no fuso da pessoa
+  /** Leitura confirmada pela pessoa. É o que popula o Campo e a Raiz. */
+  planted?: boolean;
+  lidoEm?: string | null;
   title: string;
   body: string;
   /** Paráfrase na voz do devocional. NÃO é citação bíblica. */
@@ -83,15 +86,57 @@ export async function devocionaisAte(
                               (SELECT d FROM hoje), interval '1 day')::date d
      )
      SELECT dias.d::text data, v.title, v.body, v.verse, v.reference,
-            v.verse_literal "verseLiteral", v.reference_exact "referenceExact"
+            v.verse_literal "verseLiteral", v.reference_exact "referenceExact",
+            (l.data IS NOT NULL) planted, l.lido_em "lidoEm"
        FROM dias
        JOIN devotionals v
          ON v.month = extract(month from dias.d)::int
         AND v.day = extract(day from dias.d)::int
+       LEFT JOIN devotional_reads l
+         ON l.user_id = $1 AND l.data = dias.d
       ORDER BY dias.d DESC`,
     [userId ?? null, Math.min(Math.max(limite, 1), 366)]);
 
-  return rows.map((r: any) => ({ tipo: 'devocional' as const, ...r, planted: false }));
+  return rows.map((r: any) => ({ tipo: 'devocional' as const, ...r }));
+}
+
+/**
+ * Confirma a leitura do devocional de um dia.
+ *
+ * A data padrão é hoje NO FUSO DA PESSOA, resolvida no banco pelo mesmo
+ * caminho de `devocionalDeHoje`. Se fosse a data do servidor, quem lê à noite
+ * em Manaus confirmaria a página de amanhã.
+ *
+ * Confirmar de novo não duplica nem reescreve a hora: a primeira leitura é a
+ * que conta, e é ela que a Raiz mostra.
+ */
+export async function marcarDevocionalLido(
+  userId: string,
+  data?: string | null,
+): Promise<{ data: string; jaEstava: boolean } | null> {
+  const { rows: [r] } = await pool.query(
+    `WITH fuso AS (
+       SELECT coalesce(
+         (SELECT timezone FROM users WHERE id = $1), 'America/Sao_Paulo') tz
+     ),
+     alvo AS (
+       SELECT coalesce($2::date,
+                       (now() AT TIME ZONE (SELECT tz FROM fuso))::date) d
+     )
+     INSERT INTO devotional_reads (user_id, data)
+     SELECT $1, d FROM alvo
+     ON CONFLICT (user_id, data) DO UPDATE SET data = excluded.data
+     RETURNING data::text, (xmax <> 0) "jaEstava"`,
+    [userId, data ?? null]);
+
+  return r ?? null;
+}
+
+/** Quantos dias a pessoa já confirmou. Serve ao painel e à própria tela. */
+export async function leiturasDoUsuario(userId: string): Promise<number> {
+  const { rows: [r] } = await pool.query(
+    `SELECT count(*)::int n FROM devotional_reads WHERE user_id = $1`, [userId]);
+  return r?.n ?? 0;
 }
 
 /**

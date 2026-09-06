@@ -24,7 +24,10 @@ import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
-import { devocionalDeHoje, devocionaisAte, textoCompartilhavel } from './devocional.js';
+import {
+  devocionalDeHoje, devocionaisAte, textoCompartilhavel,
+  marcarDevocionalLido, leiturasDoUsuario,
+} from './devocional.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
@@ -444,6 +447,11 @@ app.get('/seed/today/:userId', async (req, res) => {
     // contada em lugar nenhum.
     await ensureUser(req.params.userId).catch(() => {});
     void logEvent(req.params.userId, 'devocional_lido', { data: dia.data });
+    // A tela precisa saber se o dia já foi confirmado para não oferecer de
+    // novo um gesto que a pessoa já fez.
+    const { rows: [leitura] } = await pool.query(
+      `SELECT 1 FROM devotional_reads WHERE user_id = $1 AND data = $2::date`,
+      [req.params.userId, dia.data]);
     // Os campos são espelhados nos nomes da semente (passage/reference/
     // reflection) para a tela do dia servir aos dois produtos sem virar duas
     // telas. `tipo` é o que diz qual dos dois está na mão.
@@ -461,6 +469,7 @@ app.get('/seed/today/:userId', async (req, res) => {
       prayer: null, practice: null, music: null,
       completa: false,
       bloqueado: { prayer: true, practice: true, music: true },
+      lido: !!leitura,
       acesso,
     });
   }
@@ -564,6 +573,65 @@ app.post('/seed/experimentar/:userId', async (req, res) => {
     teste: true,
     restantesHoje: MAX_TESTES_DIA - uso.n - 1,
   });
+});
+
+/**
+ * Histórico das sementes da demonstração — o Campo e a Raiz do fluxo de teste.
+ *
+ * Separado do histórico de verdade de propósito. Quem é gratuito tem o
+ * devocional no Campo e na Raiz; misturar as sementes da demonstração ali
+ * faria o histórico contar duas histórias ao mesmo tempo, e nenhuma delas
+ * seria a da pessoa.
+ */
+app.get('/seed/experimentar/:userId/historico', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT s.id, s.family, s.type, s.passage, s.reference, s.reflection,
+            s.prayer, s.practice, s.music_title, s.music_artist,
+            s.music_spotify, s.music_youtube, d.planted,
+            (d.delivered_at AT TIME ZONE u.timezone)::date data
+       FROM seed_deliveries d
+       JOIN seeds s ON s.id = d.seed_id
+       JOIN users u ON u.id = d.user_id
+      WHERE d.user_id = $1
+      ORDER BY d.delivered_at DESC
+      LIMIT 60`, [req.params.userId]);
+
+  res.json(rows.map((r: any) => ({
+    ...limitarSemente({
+      id: r.id, family: r.family, type: r.type, passage: r.passage,
+      reference: r.reference, reflection: r.reflection,
+      prayer: r.prayer, practice: r.practice,
+      music: {
+        title: r.music_title || undefined, artist: r.music_artist || undefined,
+        spotifyUrl: r.music_spotify || undefined, youtubeUrl: r.music_youtube || undefined,
+      },
+    } as any, true),
+    tipo: 'semente',
+    date: String(r.data instanceof Date ? r.data.toISOString().slice(0, 10) : r.data).slice(0, 10),
+    planted: r.planted,
+  })));
+});
+
+/**
+ * A leitura confirmada do devocional do dia.
+ *
+ * É o gesto que dá história ao plano gratuito: sem ele o Campo é um calendário
+ * onde nada acontece e a Raiz lista todos os dias do ano como se a pessoa os
+ * tivesse lido. Aqui só entra o que ela confirmou.
+ */
+app.post('/devocional/:userId/lido', async (req, res) => {
+  try {
+    const { data } = req.body as { data?: string };
+    await ensureUser(req.params.userId);
+    const r = await marcarDevocionalLido(req.params.userId, data ?? null);
+    if (!r) return res.status(500).json({ error: 'não foi possível confirmar' });
+    if (!r.jaEstava) void logEvent(req.params.userId, 'devocional_confirmado', { data: r.data });
+    const total = await leiturasDoUsuario(req.params.userId);
+    return res.json({ ok: true, data: r.data, jaEstava: r.jaEstava, totalLidos: total });
+  } catch (err: any) {
+    console.error('[devocional/lido]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao confirmar a leitura.' });
+  }
 });
 
 /** Situação da assinatura, para a tela saber o que oferecer. */

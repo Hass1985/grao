@@ -166,6 +166,14 @@ export default function HojeSementeTeste({
               ) : null}
 
               <TouchableOpacity
+                onPress={() => navigation.navigate('HistoricoTeste')}
+                style={styles.otherLink}
+              >
+                <BookOpen size={14} color={colors.foregroundMuted} strokeWidth={2} />
+                <Text style={styles.otherLinkText}>Ver meu campo e minha raiz</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 onPress={() => navigation.replace('MomentoSementeTeste')}
                 style={styles.otherLink}
               >

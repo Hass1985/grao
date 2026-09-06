@@ -77,6 +77,8 @@ export async function clearMoment(): Promise<void> {
 
 export interface SeedSelection {
   seed: Seed;
+  /** Devocional do dia já confirmado como lido (só no plano gratuito). */
+  lido?: boolean;
   family: EmotionalFamily;
   source: 'momento' | 'perfil' | 'padrão';
   channel: Channel;
@@ -154,6 +156,7 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
             : j.reason?.preferredType === 'prática'
               ? 'sinestesico'
               : channel) as Channel,
+          lido: !!j.lido,
         };
       }
     } catch {
@@ -236,6 +239,49 @@ export async function selectSementeTeste(
   }
 
   return sementeLocalPaga(family, ctx.channel, source);
+}
+
+/**
+ * Confirma a leitura do devocional de hoje.
+ *
+ * É o gesto que dá história ao plano gratuito: é ele que marca o dia no Campo
+ * e guarda a página na Raiz. Sem ele, o Campo é um calendário onde nada
+ * acontece e a Raiz mostra o ano inteiro como se tudo já tivesse sido lido.
+ */
+export async function confirmarLeitura(): Promise<{ totalLidos: number } | null> {
+  if (!API_URL) return null;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/devocional/${userId}/lido`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return { totalLidos: j.totalLidos ?? 0 };
+  } catch {
+    return null;
+  }
+}
+
+/** Histórico só da demonstração do plano pago — Campo e Raiz do modo teste. */
+export async function fetchHistoricoTeste(): Promise<Seed[]> {
+  if (!API_URL) return [];
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/seed/experimentar/${userId}/historico`);
+    if (!res.ok) return [];
+    const lista = await res.json();
+    if (!Array.isArray(lista)) return [];
+    return lista.map((j: any) => ({
+      ...daApi(j),
+      date: j.date || j.data,
+      planted: !!j.planted,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
