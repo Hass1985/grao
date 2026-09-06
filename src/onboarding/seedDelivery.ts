@@ -11,12 +11,13 @@ import { API_URL, getUserId } from './aiClient';
 
 /** Converte a resposta do backend para o formato que as telas usam. */
 function daApi(j: any): Seed {
-  // Assinante só quando o backend confirma de forma explícita.
-  // Qualquer ambiguidade cai no gratuito (devocional).
+  // Assinante só com sinal explícito de plano pago.
   const confirmedPaid =
     j.tipo === 'semente' ||
-    j.completa === true ||
-    j.acesso?.completo === true;
+    j.acesso?.completo === true ||
+    j.assinante === true ||
+    j.plano === 'plantio' ||
+    j.plano === 'anual';
 
   const tipo: Seed['tipo'] = confirmedPaid ? 'semente' : 'devocional';
   const isFree = !confirmedPaid;
@@ -42,7 +43,6 @@ function daApi(j: any): Seed {
     reference: j.reference,
     verse: j.verse,
     reflection: j.reflection || j.body || '',
-    // Free: null = bloqueado. Nunca inventar conteúdo pago no cliente.
     prayer: isFree ? null : j.prayer ?? null,
     practice: isFree ? null : j.practice ?? null,
     music: isFree ? null : musicRaw,
@@ -82,36 +82,13 @@ export interface SeedSelection {
   channel: Channel;
 }
 
-/**
- * Escolhe a semente do dia com base no perfil-base e no momento atual.
- * No protótipo, seleciona sobre o banco local (todaySeed + pastSeeds).
- */
-export async function selectTodaySeed(): Promise<SeedSelection> {
-  if (API_URL) {
-    try {
-      const userId = await getUserId();
-      const res = await fetch(`${API_URL}/seed/today/${userId}`);
-      if (res.ok) {
-        const j = await res.json();
-        return {
-          seed: daApi(j),
-          family: (j.family as EmotionalFamily) || 'esperança',
-          source: j.reason?.source ?? 'perfil',
-          channel: (j.reason?.preferredType === 'oração'
-            ? 'auditivo'
-            : j.reason?.preferredType === 'prática'
-              ? 'sinestesico'
-              : 'visual') as Channel,
-        };
-      }
-    } catch {
-      // Rede fora: cai na escolha local em vez de deixar a tela vazia.
-    }
-  }
-
+async function contextoEmocional(): Promise<{
+  family: EmotionalFamily;
+  source: SeedSelection['source'];
+  channel: Channel;
+}> {
   const profile = await getProfile();
   const moment = await getMoment();
-
   const family: EmotionalFamily =
     moment || (profile?.emotionalHint as EmotionalFamily) || 'esperança';
   const source: SeedSelection['source'] = moment
@@ -120,16 +97,76 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
       ? 'perfil'
       : 'padrão';
   const channel: Channel = profile?.sensory.dominant || 'visual';
+  return { family, source, channel };
+}
+
+/** Semente local completa (fluxo pago de teste / demo sem assinatura). */
+function sementeLocalPaga(
+  family: EmotionalFamily,
+  channel: Channel,
+  source: SeedSelection['source']
+): SeedSelection {
   const preferredType = CHANNEL_TO_TYPE[channel];
+  const bank = pastSeeds.filter((s) => s.prayer && s.practice && s.music);
+  const inFamily = bank.filter((s) => s.family === family);
+  const byType = inFamily.find((s) => s.type === preferredType);
+  const base = byType || inFamily[0] || bank[0] || pastSeeds[0];
 
+  return {
+    seed: {
+      ...base,
+      id: `test-pago-${base.id}`,
+      date: new Date().toISOString().split('T')[0],
+      tipo: 'semente',
+      completa: true,
+      bloqueado: null,
+      compartilhavel:
+        base.compartilhavel ||
+        `${base.passage}\n\n${base.reference}\n\n${base.reflection}\n\nGrão`,
+    },
+    family,
+    source,
+    channel,
+  };
+}
+
+/**
+ * Escolhe a semente do dia com base no perfil-base e no momento atual.
+ * No protótipo, seleciona sobre o banco local (todaySeed + pastSeeds).
+ * Sempre respeita o paywall do servidor: free = devocional.
+ */
+export async function selectTodaySeed(): Promise<SeedSelection> {
+  const { family, source, channel } = await contextoEmocional();
+
+  if (API_URL) {
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_URL}/seed/today/${userId}`);
+      if (res.ok) {
+        const j = await res.json();
+        const seed = daApi(j);
+        return {
+          seed,
+          family: (j.family as EmotionalFamily) || family,
+          source: j.reason?.source ?? source,
+          channel: (j.reason?.preferredType === 'oração'
+            ? 'auditivo'
+            : j.reason?.preferredType === 'prática'
+              ? 'sinestesico'
+              : channel) as Channel,
+        };
+      }
+    } catch {
+      // Rede fora: cai na escolha local.
+    }
+  }
+
+  const preferredType = CHANNEL_TO_TYPE[channel];
   const bank: Seed[] = [todaySeed, ...pastSeeds];
-
   const inFamily = bank.filter((s) => s.family === family);
   const byType = inFamily.find((s) => s.type === preferredType);
   const base = byType || inFamily[0] || todaySeed;
 
-  // Sem API (ou falha): o padrão do produto é o gratuito.
-  // Assinante só aparece quando o backend confirma.
   const free: Seed = {
     ...base,
     tipo: 'devocional',
@@ -153,6 +190,26 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 }
 
 /**
+ * Semente completa da tela de DEMONSTRAÇÃO do plano pago.
+ *
+ * Sai inteira do banco local, de propósito: não consulta o servidor, não
+ * consome uma das 380 sementes, não registra leitura e não depende do paywall.
+ * A demonstração precisa ser previsível e repetível — alguém vai mostrar isso
+ * a outra pessoa — e nada do que acontece aqui pode aparecer depois na tela
+ * Hoje de quem demonstrou.
+ */
+export async function selectSementeTeste(
+  familyOverride?: EmotionalFamily | null
+): Promise<SeedSelection> {
+  const ctx = await contextoEmocional();
+  // A família vem da conversa de teste quando existe. O contexto real só entra
+  // como fundo, e nunca é reescrito por aqui.
+  const family = familyOverride ?? ctx.family;
+  const source = familyOverride ? 'momento' : ctx.source;
+  return sementeLocalPaga(family, ctx.channel, source);
+}
+
+/**
  * Histórico real de sementes entregues — Campo e Raiz.
  */
 export async function fetchHistory(): Promise<Seed[]> {
@@ -163,7 +220,11 @@ export async function fetchHistory(): Promise<Seed[]> {
     if (!res.ok) return pastSeeds;
     const lista = await res.json();
     if (!Array.isArray(lista)) return pastSeeds;
-    return lista.map((j: any) => ({ ...daApi(j), date: j.date || j.data, planted: !!j.planted }));
+    return lista.map((j: any) => ({
+      ...daApi(j),
+      date: j.date || j.data,
+      planted: !!j.planted,
+    }));
   } catch {
     return pastSeeds;
   }

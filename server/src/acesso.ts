@@ -25,7 +25,10 @@ import { pool } from './db.js';
  *                 gateway), e sem isto todo testador viraria gratuito no 8º dia
  *                 e avaliaria um produto pela metade.
  */
-export type SituacaoAssinatura = 'ativa' | 'trial' | 'cortesia' | 'cancelada' | 'expirada';
+// 'escolhida' = a pessoa escolheu um plano e ainda não pagou. Não dá acesso:
+// só existe para o funil saber quem chegou até a escolha.
+export type SituacaoAssinatura =
+  | 'ativa' | 'trial' | 'cortesia' | 'escolhida' | 'cancelada' | 'expirada';
 
 export interface Acesso {
   completo: boolean;

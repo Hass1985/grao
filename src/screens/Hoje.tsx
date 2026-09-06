@@ -13,7 +13,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { BookOpen, Share2, Sprout } from 'lucide-react-native';
+import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
@@ -21,8 +21,9 @@ import EmotionPicker from '../components/EmotionPicker';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import Button from '../components/ui/Button';
+import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
-import { selectTodaySeed, setMoment } from '../onboarding/seedDelivery';
+import { selectTodaySeed, setMoment, getMoment } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
@@ -51,6 +52,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const [seed, setSeed] = useState<Seed>(todaySeed);
   const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
   const reveal = useRef(new Animated.Value(0)).current;
+  /** Momento vigente quando a semente na tela foi carregada. */
+  const momentoCarregado = useRef<EmotionalFamily | null>(null);
   const days = weekDates();
   const todayIdx = new Date().getDay();
 
@@ -58,6 +61,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
     try {
       const { seed: next } = await selectTodaySeed();
       setSeed(next);
+      momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
     }
@@ -66,6 +70,26 @@ export default function Hoje({ navigation }: { navigation: any }) {
   useEffect(() => {
     loadSeed();
   }, [loadSeed]);
+
+  // A tela vive dentro das abas e não desmonta ao trocar de aba. Quem mudava o
+  // sentimento nos Ajustes voltava para o Hoje e via o conteúdo velho, como se
+  // a escolha não tivesse valido. Recarrega ao voltar o foco, e só quando o
+  // momento realmente mudou — trocar de aba não custa uma ida à rede.
+  useFocusEffect(
+    React.useCallback(() => {
+      let vivo = true;
+      (async () => {
+        const agora = await getMoment();
+        if (!vivo || agora === momentoCarregado.current) return;
+        setOpened(false);
+        reveal.setValue(0);
+        await loadSeed();
+      })();
+      return () => {
+        vivo = false;
+      };
+    }, [loadSeed, reveal])
+  );
 
   const openToday = () => {
     if (opened) return;
@@ -105,7 +129,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
     .toUpperCase()
     .replace('.', '');
 
-  const isFree = seed.tipo === 'devocional' || seed.completa === false;
+  const isFree = seed.tipo !== 'semente';
   const isSemente = !isFree;
   const contentOp = reveal;
   const contentTy = reveal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });

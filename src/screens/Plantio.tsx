@@ -6,11 +6,10 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
-  Easing,
   Platform,
   Pressable,
 } from 'react-native';
-import { Mic, MessageCircle, Sprout, Smartphone } from 'lucide-react-native';
+import { Mic, MessageCircle, Sprout, Smartphone } from '../components/icons';
 import Button from '../components/ui/Button';
 import CircleBack from '../components/ui/CircleBack';
 import ScreenBackground from '../components/ui/ScreenBackground';
@@ -19,6 +18,7 @@ import { fonts, fontSizes } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { space } from '../theme/spacing';
 import { glassCard } from '../theme/glass';
+import { motion } from '../theme/motion';
 import { webScreenFill } from '../theme/webScreen';
 
 type Props = { navigation: any };
@@ -31,35 +31,30 @@ const STEPS = [
     eyebrow: 'Passo 1',
     title: 'Conte o seu\nmomento.',
     body: 'Em áudio ou por escrito. Como está o seu coração hoje, sem filtro e sem pressa.',
-    dwellMs: 5500,
   },
   {
     icon: 'heart' as const,
     eyebrow: 'Passo 2',
     title: 'O Grão escuta\ncom cuidado.',
     body: 'A partir do que você compartilha, entendemos o momento emocional e escolhemos a Palavra certa para o seu dia.',
-    dwellMs: 6500,
   },
   {
     icon: 'sprout' as const,
     eyebrow: 'Passo 3',
     title: 'A semente chega\nno app.',
     body: 'Reflexão, oração, prática e louvor, feitos para você. Não é o mesmo texto para todo mundo.',
-    dwellMs: 6000,
   },
   {
     icon: 'whatsapp' as const,
     eyebrow: 'Passo 4',
     title: 'E também no\nWhatsApp.',
     body: 'No horário que você escolher. Um toque em Plantar e a semente fica guardada no seu Campo.',
-    dwellMs: 6000,
   },
   {
     icon: 'path' as const,
     eyebrow: 'Plantio',
     title: 'Alguém que caminha\nao seu lado.',
     body: 'De grão em grão, um acompanhamento personalizado. Do culto para a semana inteira, com você.',
-    dwellMs: 0,
   },
 ];
 
@@ -70,7 +65,6 @@ function StepIcon({ name }: { name: (typeof STEPS)[number]['icon'] }) {
   if (name === 'sprout') return <Sprout size={size} color={color} strokeWidth={1.8} />;
   if (name === 'whatsapp') return <MessageCircle size={size} color={color} strokeWidth={1.8} />;
   if (name === 'path') return <Smartphone size={size} color={color} strokeWidth={1.8} />;
-  // heart / escuta
   return (
     <View style={styles.hearDots}>
       <View style={styles.hearDot} />
@@ -82,35 +76,49 @@ function StepIcon({ name }: { name: (typeof STEPS)[number]['icon'] }) {
 
 export default function Plantio({ navigation }: Props) {
   const [index, setIndex] = useState(0);
-  const enter = useRef(new Animated.Value(1)).current;
+  const enter = useRef(new Animated.Value(0)).current;
   const isLast = index === STEPS.length - 1;
   const step = STEPS[index];
 
   useEffect(() => {
+    let dwellTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
     enter.setValue(0);
-    Animated.timing(enter, {
+    const anim = Animated.timing(enter, {
       toValue: 1,
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
+      duration: motion.enterMs,
+      easing: motion.easingOut,
       useNativeDriver: NATIVE,
-    }).start();
-  }, [index, enter]);
+    });
+    anim.start(({ finished }) => {
+      if (cancelled || !finished || isLast) return;
+      dwellTimer = setTimeout(() => {
+        setIndex((i) => Math.min(i + 1, STEPS.length - 1));
+      }, motion.slideDwellMs);
+    });
+    return () => {
+      cancelled = true;
+      anim.stop();
+      if (dwellTimer) clearTimeout(dwellTimer);
+    };
+  }, [index, isLast, enter]);
 
-  useEffect(() => {
-    if (isLast) return;
-    const t = setTimeout(() => {
-      setIndex((i) => Math.min(i + 1, STEPS.length - 1));
-    }, step.dwellMs);
-    return () => clearTimeout(t);
-  }, [index, isLast, step.dwellMs]);
+  const abrirMomentoTeste = () => {
+    // push no stack do app (irmão do Plantio), sem depender de bubble
+    if (typeof navigation.push === 'function') {
+      navigation.push('MomentoSementeTeste');
+      return;
+    }
+    navigation.navigate('MomentoSementeTeste');
+  };
 
   const opacity = enter.interpolate({
-    inputRange: [0, 0.25, 1],
-    outputRange: [0, 0.55, 1],
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0.7, 1],
   });
   const translateY = enter.interpolate({
     inputRange: [0, 1],
-    outputRange: [36, 0],
+    outputRange: [motion.enterRise, 0],
   });
 
   return (
@@ -159,10 +167,17 @@ export default function Plantio({ navigation }: Props) {
           {isLast ? (
             <>
               <Button
-                title="Ver exemplo no WhatsApp"
-                onPress={() => navigation.navigate('WhatsAppDemo')}
+                title="Testar fluxo pago"
+                onPress={abrirMomentoTeste}
                 variant="dark"
                 uppercase
+              />
+              <Button
+                title="Ver exemplo no WhatsApp"
+                onPress={() => navigation.navigate('WhatsAppDemo')}
+                variant="soft"
+                uppercase
+                style={styles.secondBtn}
               />
               <Pressable onPress={() => navigation.goBack()} style={styles.softLink} hitSlop={8}>
                 <Text style={styles.softLinkText}>Voltar ao devocional</Text>
@@ -178,7 +193,7 @@ export default function Plantio({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: 'transparent' },
   topbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -277,7 +292,10 @@ const styles = StyleSheet.create({
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.casca20 },
   dotActive: { width: 22, backgroundColor: colors.accent },
-  ctaPlaceholder: { height: 88 },
+  ctaPlaceholder: { height: 120 },
+  secondBtn: {
+    marginTop: 12,
+  },
   softLink: {
     alignSelf: 'center',
     marginTop: 16,

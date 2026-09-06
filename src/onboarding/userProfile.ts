@@ -41,8 +41,27 @@ export async function getDisplayName(): Promise<string> {
   return profile?.name || 'Você';
 }
 
+/** True só se a pessoa escolheu um nome (não o fallback "Você"). */
+export async function hasDisplayName(): Promise<boolean> {
+  const override = await AsyncStorage.getItem(NAME_KEY);
+  return !!(override && override.trim());
+}
+
 export async function setDisplayName(name: string): Promise<void> {
-  await AsyncStorage.setItem(NAME_KEY, name.trim());
+  const v = name.trim();
+  if (v) await AsyncStorage.setItem(NAME_KEY, v);
+  else await AsyncStorage.removeItem(NAME_KEY);
+}
+
+const DEVOCIONAL_OPTIN_KEY = 'grao.devocional.optin.v1';
+
+export async function hasDevocionalOptIn(): Promise<boolean> {
+  return (await AsyncStorage.getItem(DEVOCIONAL_OPTIN_KEY)) === '1';
+}
+
+export async function setDevocionalOptIn(aceito = true): Promise<void> {
+  if (aceito) await AsyncStorage.setItem(DEVOCIONAL_OPTIN_KEY, '1');
+  else await AsyncStorage.removeItem(DEVOCIONAL_OPTIN_KEY);
 }
 
 export async function getMemberSince(): Promise<string> {

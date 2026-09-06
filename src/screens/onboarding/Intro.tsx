@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   StatusBar,
   Animated,
-  Easing,
   Platform,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -17,6 +16,7 @@ import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
 import { radius } from '../../theme/radius';
 import { space } from '../../theme/spacing';
+import { motion } from '../../theme/motion';
 import { webScreenFill } from '../../theme/webScreen';
 
 type Props = { navigation: StackNavigationProp<any> };
@@ -27,63 +27,59 @@ const SLIDES = [
   {
     title: 'Entre um culto\ne outro.',
     sub: 'A fé continua além da igreja. O Grão caminha com você todos os dias.',
-    dwellMs: 5500,
   },
   {
     title: 'Fale com Deus\nde onde estiver.',
     sub: 'No trabalho, no ônibus, na cozinha. Conte como está o seu coração e receba a Palavra certa para o seu dia.',
-    dwellMs: 7000,
   },
   {
     title: 'A Palavra na palma\nda sua mão.',
     sub: 'No lugar que você mais conhece: o seu WhatsApp. Simples assim.',
-    dwellMs: 5500,
   },
   {
     title: 'De grão em grão,\nmais perto de Deus.',
     sub: 'Uma semente por dia para você e para quem você ama. Compartilhe com sua família e seus irmãos na fé.',
-    dwellMs: 0,
   },
 ];
 
 export default function Intro({ navigation }: Props) {
   const [index, setIndex] = useState(0);
-  const enter = useRef(new Animated.Value(1)).current;
+  const enter = useRef(new Animated.Value(0)).current;
   const isLast = index === SLIDES.length - 1;
   const slide = SLIDES[index];
 
-  const playEnter = () => {
+  useEffect(() => {
+    let dwellTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
     enter.setValue(0);
-    Animated.timing(enter, {
+    const anim = Animated.timing(enter, {
       toValue: 1,
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
+      duration: motion.enterMs,
+      easing: motion.easingOut,
       useNativeDriver: NATIVE,
-    }).start();
-  };
-
-  useEffect(() => {
-    playEnter();
-  }, [index]);
-
-  // Avança sozinho, com tempo para ler. Para na última.
-  useEffect(() => {
-    if (isLast) return;
-    const t = setTimeout(() => {
-      setIndex((i) => Math.min(i + 1, SLIDES.length - 1));
-    }, slide.dwellMs);
-    return () => clearTimeout(t);
-  }, [index, isLast, slide.dwellMs]);
+    });
+    anim.start(({ finished }) => {
+      if (cancelled || !finished || isLast) return;
+      dwellTimer = setTimeout(() => {
+        setIndex((i) => Math.min(i + 1, SLIDES.length - 1));
+      }, motion.slideDwellMs);
+    });
+    return () => {
+      cancelled = true;
+      anim.stop();
+      if (dwellTimer) clearTimeout(dwellTimer);
+    };
+  }, [index, isLast, enter]);
 
   const goAuth = () => navigation.navigate('Auth');
 
   const opacity = enter.interpolate({
-    inputRange: [0, 0.25, 1],
-    outputRange: [0, 0.55, 1],
+    inputRange: [0, 0.2, 1],
+    outputRange: [0, 0.7, 1],
   });
   const translateY = enter.interpolate({
     inputRange: [0, 1],
-    outputRange: [36, 0],
+    outputRange: [motion.enterRise, 0],
   });
 
   return (

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sprout, CalendarDays, BookOpen, type LucideIcon } from 'lucide-react-native';
+import { Sprout, CalendarDays, BookOpen, type LucideIcon } from '../icons';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';

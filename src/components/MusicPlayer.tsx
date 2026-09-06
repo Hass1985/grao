@@ -11,7 +11,7 @@ import {
   StyleProp,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Play } from 'lucide-react-native';
+import { Play } from './icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Music } from '../data/seeds';
 import { colors } from '../theme/colors';

@@ -3,10 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Animated,
-  Easing,
   Platform,
   ImageBackground,
 } from 'react-native';
@@ -15,6 +13,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import GraoSymbol from '../../components/GraoSymbol';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
+import { motion } from '../../theme/motion';
 
 type Props = {
   navigation: StackNavigationProp<any>;
@@ -22,46 +21,54 @@ type Props = {
 
 const NATIVE = Platform.OS !== 'web';
 
-/** Splash: marca Grão sobre o campo do site. */
+/** Splash: marca Grão. Depois sempre vai para a apresentação (Intro). */
 export default function Welcome({ navigation }: Props) {
   const enter = useRef(new Animated.Value(0)).current;
+  const saiu = useRef(false);
 
   useEffect(() => {
     Animated.timing(enter, {
       toValue: 1,
-      duration: 700,
-      easing: Easing.out(Easing.cubic),
+      duration: motion.enterMs,
+      easing: motion.easingOut,
       useNativeDriver: NATIVE,
     }).start();
 
     const t = setTimeout(() => {
+      if (saiu.current) return;
+      saiu.current = true;
       navigation.replace('Intro');
-    }, 3000);
+    }, motion.splashMs);
     return () => clearTimeout(t);
   }, [enter, navigation]);
 
   const opacity = enter;
-  const translateY = enter.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+  const translateY = enter.interpolate({
+    inputRange: [0, 1],
+    outputRange: [motion.enterRise, 0],
+  });
 
   return (
     <View style={styles.root}>
       <ImageBackground
         source={require('../../../assets/campo-trigo.jpg')}
-        style={StyleSheet.absoluteFill}
+        style={styles.bg}
+        imageStyle={styles.bgImage}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['rgba(36,23,8,0.5)', 'rgba(28,18,6,0.82)']}
+          colors={['rgba(36,23,8,0.55)', 'rgba(28,18,6,0.78)', 'rgba(36,23,8,0.94)']}
+          locations={[0, 0.55, 1]}
           style={StyleSheet.absoluteFill}
         />
       </ImageBackground>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
-        <Animated.View style={[styles.stage, { opacity, transform: [{ translateY }] }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={styles.stage}>
+        <Animated.View style={[styles.brand, { opacity, transform: [{ translateY }] }]}>
           <GraoSymbol size={56} color={colors.ambarSoft} filled={false} />
           <Text style={styles.name}>Grão</Text>
         </Animated.View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -69,15 +76,21 @@ export default function Welcome({ navigation }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.cascaDeep,
   },
-  safe: {
-    flex: 1,
+  bg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bgImage: {
+    transform: [{ scale: 1.12 }],
   },
   stage: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brand: {
+    alignItems: 'center',
     gap: 14,
   },
   name: {

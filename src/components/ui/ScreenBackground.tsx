@@ -35,9 +35,9 @@ export default function ScreenBackground({ children, style, plain = false }: Pro
       >
         <LinearGradient
           colors={[
-            'rgba(48, 32, 14, 0.22)',
-            'rgba(40, 26, 10, 0.38)',
-            'rgba(32, 20, 8, 0.55)',
+            'rgba(36, 23, 8, 0.35)',
+            'rgba(36, 23, 8, 0.55)',
+            'rgba(36, 23, 8, 0.78)',
           ]}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
@@ -53,11 +53,11 @@ export default function ScreenBackground({ children, style, plain = false }: Pro
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.cascaDeep,
     overflow: 'hidden',
   },
   plain: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.cascaDeep,
   },
   image: {
     // Enquadra o campo como no site

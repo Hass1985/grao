@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleProp, ViewStyle, Platform } from 'react-native';
+import { Animated, StyleProp, ViewStyle, Platform } from 'react-native';
+import { motion } from '../../theme/motion';
 
 type Props = {
   children: React.ReactNode;
@@ -18,8 +19,8 @@ export default function Reveal({
   children,
   triggerKey = 'default',
   delay = 0,
-  duration = 720,
-  rise = 18,
+  duration = motion.enterMs,
+  rise = motion.enterRise,
   style,
 }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -30,7 +31,7 @@ export default function Reveal({
       toValue: 1,
       duration,
       delay,
-      easing: Easing.out(Easing.cubic),
+      easing: motion.easingOut,
       useNativeDriver: NATIVE,
     });
     anim.start();

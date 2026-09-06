@@ -7,7 +7,7 @@ import {
   ScrollView,
   StatusBar,
 } from 'react-native';
-import { Sprout, Circle } from 'lucide-react-native';
+import { Sprout, Circle } from '../components/icons';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';

@@ -157,19 +157,29 @@ app.post('/onboarding/turn', async (req, res) => {
  * precisa subir) e manda só o texto. Uma única chamada extrai o essencial do
  * questionário antigo E devolve uma resposta que cita o que a pessoa contou.
  *
- * body: { userId, name?, transcript, source: 'audio'|'text' }
+ * body: { userId, name?, transcript, source: 'audio'|'text', teste?: boolean }
  * resp: { message, channel, emotionalHint, needsCare, themes }
+ *
+ * `teste: true` é a demonstração do fluxo pago dentro do app. A resposta é a
+ * real (é isso que se quer mostrar), mas NADA fica gravado: sem turno, sem
+ * leitura, sem perfil e, principalmente, sem mexer no momento emocional. Sem
+ * essa separação, cada demonstração reescrevia o momento de quem demonstrou e
+ * a tela Hoje passava a responder ao teste, não à pessoa.
+ *
+ * A única coisa que continua sendo registrada é risco emocional: se alguém
+ * digita sofrimento grave, mesmo "testando", isso precisa aparecer no painel.
  */
 app.post('/onboarding/opening', async (req, res) => {
   try {
-    const { userId, name, transcript, source = 'audio' } = req.body as {
-      userId: string; name?: string; transcript: string; source?: string;
+    const { userId, name, transcript, source = 'audio', teste = false } = req.body as {
+      userId: string; name?: string; transcript: string; source?: string; teste?: boolean;
     };
     if (!userId || !transcript?.trim()) {
       return res.status(400).json({ error: 'userId e transcript são obrigatórios' });
     }
+    const grava = !teste;
     await ensureUser(userId);
-    await saveTurn(userId, 'user', transcript);
+    if (grava) await saveTurn(userId, 'user', transcript);
 
     // A Abertura é onde a pessoa mais se abre, e por áudio. É o ponto de maior
     // chance de alguém relatar sofrimento grave, e o único momento em que o
@@ -178,13 +188,13 @@ app.post('/onboarding/opening', async (req, res) => {
     const risco = avaliarRisco(transcript);
     if (risco.risco !== 'nenhum') {
       void logEvent(userId, 'risco_detectado', {
-        nivel: risco.risco, trecho: risco.trecho, origem: 'abertura',
+        nivel: risco.risco, trecho: risco.trecho, origem: 'abertura', teste,
       });
     }
     if (risco.risco === 'grave') {
       const cuidado = respostaDeCuidado(name);
-      await saveTurn(userId, 'assistant', '[resposta de cuidado]');
-      void logEvent(userId, 'onboarding_done', { mode: 'opening', source, needsCare: true });
+      if (grava) await saveTurn(userId, 'assistant', '[resposta de cuidado]');
+      void logEvent(userId, 'onboarding_done', { mode: 'opening', source, needsCare: true, teste });
       return res.json({
         message: cuidado,
         channel: 'visual',
@@ -205,12 +215,14 @@ app.post('/onboarding/opening', async (req, res) => {
       const fallback = care
         ? `${name ? name + ', o' : 'O'}brigado por confiar em mim o que você está vivendo. O que você sente é sério e você não precisa carregar isso sozinho — fica perto de quem te ama e, por favor, procure alguém de confiança: seu pastor, uma pessoa querida ou o CVV (188, ligação gratuita, 24h). Eu vou estar aqui todo dia, sem pressa. Sua primeira semente já está sendo preparada, com todo cuidado. 🌱`
         : `${name ? name + ', o' : 'O'}brigado por se abrir comigo. Guardei cada palavra — sua primeira semente já está sendo preparada. 🌱`;
-      await saveTurn(userId, 'assistant', fallback);
-      if (backup) {
-        await saveReading(userId, 'onboarding', backup).catch(() => {});
-        if (backup.family) await setMomentBySystem(userId, backup.family).catch(() => {});
+      if (grava) {
+        await saveTurn(userId, 'assistant', fallback);
+        if (backup) {
+          await saveReading(userId, 'onboarding', backup).catch(() => {});
+          if (backup.family) await setMomentBySystem(userId, backup.family).catch(() => {});
+        }
       }
-      void logEvent(userId, 'onboarding_done', { mode: 'opening', source, degraded: true, needsCare: care });
+      void logEvent(userId, 'onboarding_done', { mode: 'opening', source, degraded: true, needsCare: care, teste });
       return res.json({
         message: fallback,
         channel: 'visual',
@@ -224,7 +236,7 @@ app.post('/onboarding/opening', async (req, res) => {
     const channel = r.channel_hint && r.channel_confidence >= 50 ? r.channel_hint : 'visual';
     const scores = { visual: 0, auditivo: 0, sinestesico: 0 } as Record<string, number>;
     scores[channel] = Math.round(r.channel_confidence / 25); // 0-4, na escala dos scores
-    await upsertProfile(userId, {
+    if (grava) await upsertProfile(userId, {
       name: name ?? null,
       dominant_channel: channel,
       sensory_scores: scores,
@@ -244,14 +256,17 @@ app.post('/onboarding/opening', async (req, res) => {
     // Momento vindo de INFERÊNCIA (não de escolha consciente) → set_by='system',
     // para que o cérebro possa atualizá-lo livremente nos próximos dias.
     // Usar setMoment aqui marcaria como 'user' e travaria a leitura por 24h.
-    await setMomentBySystem(userId, r.family);
-    await saveReading(userId, 'onboarding', {
-      family: r.family, intensity: r.intensity, confidence: r.confidence,
-      channel_hint: r.channel_hint, needs_care: r.needs_care, summary: r.summary,
-    });
-    await saveTurn(userId, 'assistant', r.response);
+    if (grava) {
+      await setMomentBySystem(userId, r.family);
+      await saveReading(userId, 'onboarding', {
+        family: r.family, intensity: r.intensity, confidence: r.confidence,
+        channel_hint: r.channel_hint, needs_care: r.needs_care, summary: r.summary,
+      });
+      await saveTurn(userId, 'assistant', r.response);
+    }
     void logEvent(userId, 'onboarding_done', {
-      mode: 'opening', source, family: r.family, channel, needsCare: r.needs_care, themes: r.themes,
+      mode: 'opening', source, family: r.family, channel,
+      needsCare: r.needs_care, themes: r.themes, teste,
     });
 
     return res.json({
@@ -381,18 +396,29 @@ app.post('/profile/:userId/plan', async (req, res) => {
   }
   try {
     await ensureUser(req.params.userId);
-    // Trocar de plano no meio do teste não reinicia os 7 dias: trial_ends_at
-    // só é definido na primeira vez.
+    // ESCOLHER plano não é ASSINAR. Aqui só fica registrada a intenção.
+    //
+    // Antes esta rota gravava status 'trial' com sete dias à frente, e um
+    // toque bastava para virar assinante: o acesso pago abria, o motor
+    // emocional passava a rodar (com custo real de API por pessoa) e a tela
+    // Hoje trocava o devocional pela semente — sem volta, porque nada no app
+    // desfaz uma assinatura. Foi exatamente assim que a tela Hoje ficou presa
+    // no modelo pago durante os testes.
+    //
+    // Os sete dias de teste continuam existindo: eles começam quando a
+    // assinatura é criada de verdade no gateway (cobranca.ts), que é o único
+    // lugar com CPF, valor e data de cobrança. Acesso de cortesia é decisão
+    // deliberada, não efeito colateral de um clique.
     await pool.query(
-      `INSERT INTO subscriptions (user_id, plan, status, price_cents, trial_ends_at)
-            VALUES ($1, $2, 'trial', $3, now() + interval '7 days')
+      `INSERT INTO subscriptions (user_id, plan, status, price_cents)
+            VALUES ($1, $2, 'escolhida', $3)
        ON CONFLICT (user_id) DO UPDATE
               SET plan = excluded.plan,
                   price_cents = excluded.price_cents,
                   updated_at = now()`,
       [req.params.userId, plan, PRECOS[plan]]);
     void logEvent(req.params.userId, 'plan_selected', { plan, priceCents: PRECOS[plan] });
-    res.json({ ok: true, plan, trialDias: 7 });
+    res.json({ ok: true, plan });
   } catch (err: any) {
     console.error('[plan]', err?.message || err);
     res.status(500).json({ error: 'Falha ao registrar o plano.' });

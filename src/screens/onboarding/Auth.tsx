@@ -17,7 +17,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import type { Session } from '@supabase/supabase-js';
 import Svg, { Path } from 'react-native-svg';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff } from '../../components/icons';
 import Button from '../../components/ui/Button';
 import CircleBack from '../../components/ui/CircleBack';
 import ScreenBackground from '../../components/ui/ScreenBackground';
@@ -29,12 +29,12 @@ import { webScreenFill } from '../../theme/webScreen';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../auth/AuthContext';
 import { setUserId } from '../../onboarding/aiClient';
+import { marcarPosOAuth } from '../../onboarding/authFlow';
 
 WebBrowser.maybeCompleteAuthSession();
 
 type Props = {
   navigation: any;
-  onFinish: () => void;
 };
 
 type Mode = 'criar' | 'entrar';
@@ -104,8 +104,8 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-export default function Auth({ navigation, onFinish }: Props) {
-  const { configured, enterDemo, acceptSession } = useAuth();
+export default function Auth({ navigation }: Props) {
+  const { configured, enterDemo, acceptSession, isAuthenticated } = useAuth();
   const [mode, setMode] = useState<Mode>('criar');
   const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
@@ -118,6 +118,14 @@ export default function Auth({ navigation, onFinish }: Props) {
   // estiver configurado para exigir.
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [codigo, setCodigo] = useState('');
+
+  // Se a sessão já existe (ex.: voltou do Google e o gate ainda mostrou Auth),
+  // segue direto para o nome.
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigation.replace('ComoChamar');
+    }
+  }, [isAuthenticated, navigation]);
 
   // Um campo só para os dois. Boa parte do público mais velho não tem e-mail,
   // e obrigar a criar um seria barrar justamente quem o Grão quer alcançar.
@@ -133,7 +141,7 @@ export default function Auth({ navigation, onFinish }: Props) {
   const finishWithUser = async (session?: Session | null, userId?: string) => {
     if (session) await acceptSession(session);
     else if (userId) await setUserId(userId);
-    onFinish();
+    navigation.replace('ComoChamar');
   };
 
   const redirectTo = makeRedirectUri({
@@ -150,6 +158,9 @@ export default function Auth({ navigation, onFinish }: Props) {
     setError(null);
     setInfo(null);
     try {
+      // Ao voltar do Google o app remonta: este flag + a sessão fazem o gate
+      // abrir em ComoChamar, sem refazer a apresentação.
+      await marcarPosOAuth();
       const { data, error: err } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -188,9 +199,9 @@ export default function Auth({ navigation, onFinish }: Props) {
       }
     } catch (e: any) {
       setError(emPortugues(e?.message));
-    } finally {
       setBusy(false);
     }
+    // No web o redirect sai da página; não desliga busy no finally.
   };
 
   /**
@@ -267,7 +278,7 @@ export default function Auth({ navigation, onFinish }: Props) {
     setBusy(true);
     try {
       await enterDemo();
-      onFinish();
+      navigation.replace('ComoChamar');
     } finally {
       setBusy(false);
     }

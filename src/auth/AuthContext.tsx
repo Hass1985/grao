@@ -39,9 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let unsubscribe: (() => void) | undefined;
 
     (async () => {
-      const demoFlag = (await AsyncStorage.getItem(DEMO_KEY)) === '1';
+      // Modo demo não sobrevive ao reload. Sem isso, quem testou "continuar
+      // sem conta" pulava splash, apresentação e login e caía no Hoje.
+      // Conta real (Supabase) continua autenticada entre visitas.
+      await AsyncStorage.removeItem(DEMO_KEY);
       if (!alive) return;
-      setDemo(demoFlag);
+      setDemo(false);
 
       if (!supabase) {
         setReady(true);

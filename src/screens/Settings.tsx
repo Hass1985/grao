@@ -31,6 +31,7 @@ import {
   setDisplayName,
   getMemberSince,
   initialsFrom,
+  setDevocionalOptIn,
 } from '../onboarding/userProfile';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -57,7 +58,7 @@ import {
   Info,
   Heart,
   type LucideIcon,
-} from 'lucide-react-native';
+} from '../components/icons';
 
 type Props = { navigation: any };
 
@@ -423,7 +424,11 @@ export default function Settings({ navigation }: Props) {
           <Pressable
             style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.85 }]}
             onPress={() => {
-              void signOut();
+              void (async () => {
+                await setDevocionalOptIn(false);
+                await setDisplayName('');
+                await signOut();
+              })();
             }}
           >
             <Text style={styles.signOutText}>Sair da conta</Text>

@@ -75,17 +75,24 @@ export interface OpeningResponse {
   themes: string[];
 }
 
+/**
+ * `teste: true` é a demonstração do fluxo pago. A resposta vem do mesmo
+ * cérebro (é o que se quer mostrar), mas o servidor não grava nada: nem turno,
+ * nem leitura, nem momento emocional. Sem isso, cada demonstração reescrevia o
+ * momento de quem demonstrou, e a tela Hoje passava a responder ao teste.
+ */
 export async function postOpening(
   userId: string,
   name: string,
   transcript: string,
-  source: 'audio' | 'text'
+  source: 'audio' | 'text',
+  teste = false
 ): Promise<OpeningResponse> {
   if (!API_URL) throw new Error('API_URL não configurada');
   const res = await fetch(`${API_URL}/onboarding/opening`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, name, transcript, source }),
+    body: JSON.stringify({ userId, name, transcript, source, teste }),
   });
   if (!res.ok) throw new Error(`opening falhou: ${res.status}`);
   return (await res.json()) as OpeningResponse;

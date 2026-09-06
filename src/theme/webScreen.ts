@@ -1,4 +1,4 @@
-import { Platform, Dimensions, ViewStyle } from 'react-native';
+import { Platform, ViewStyle } from 'react-native';
 
 // No react-native-web, o card do React Navigation não limita a altura à viewport
 // e o flex-grow:1 do container faz o flexbox ignorar uma altura fixa — então
@@ -8,13 +8,15 @@ import { Platform, Dimensions, ViewStyle } from 'react-native';
 // No mobile nativo, retorna null (o comportamento padrão já funciona).
 export const webScreenFill: ViewStyle | null =
   Platform.OS === 'web'
-    ? {
-        height: Dimensions.get('window').height,
+    ? ({
+        height: '100%',
+        maxHeight: '100dvh',
+        minHeight: '100%',
         flexGrow: 0,
         flexShrink: 0,
         flexBasis: 'auto',
         overflow: 'hidden',
-      }
+      } as ViewStyle)
     : null;
 
 // flex:1 para a ScrollView/FlatList filha (para encolher e rolar por dentro).

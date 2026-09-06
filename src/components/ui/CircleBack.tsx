@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, ViewStyle, StyleProp } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft } from '../icons';
 import { colors } from '../../theme/colors';
 import { shadows } from '../../theme/shadows';
 

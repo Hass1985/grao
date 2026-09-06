@@ -57,7 +57,7 @@ export default function SeedCard({
     if (url) Linking.openURL(url);
   };
 
-  const isDevocional = seed.tipo === 'devocional' || seed.completa === false;
+  const isDevocional = seed.tipo !== 'semente';
   const music = seed.music;
   const showMusic = !isDevocional && embedMusic && !!music;
 
