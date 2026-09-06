@@ -139,6 +139,55 @@ export async function leiturasDoUsuario(userId: string): Promise<number> {
   return r?.n ?? 0;
 }
 
+export interface ResumoLeitura {
+  /** Dias confirmados desde sempre. */
+  total: number;
+  /** Dias seguidos até hoje (ou até ontem, se hoje ainda não leu). */
+  sequencia: number;
+  /** A maior sequência que a pessoa já fez. */
+  maiorSequencia: number;
+  ultimoLido: string | null;
+}
+
+/**
+ * Sequência e total de leituras.
+ *
+ * A sequência conta até ONTEM, não até hoje. Quem abre o app de manhã, antes
+ * de ler, veria "0 dias seguidos" se a régua fosse hoje — e perder a sequência
+ * por ainda não ter lido às 7h da manhã é uma cobrança que este produto não
+ * faz. O dia só quebra quando passa inteiro sem leitura.
+ *
+ * O cálculo é o clássico de ilhas: datas consecutivas subtraídas da sua
+ * posição na ordem caem todas no mesmo grupo, e o tamanho do grupo é o tamanho
+ * da sequência.
+ */
+export async function resumoDeLeitura(userId: string): Promise<ResumoLeitura> {
+  const { rows: [r] } = await pool.query(
+    `WITH fuso AS (
+       SELECT coalesce(
+         (SELECT timezone FROM users WHERE id = $1), 'America/Sao_Paulo') tz
+     ),
+     hoje AS (SELECT (now() AT TIME ZONE (SELECT tz FROM fuso))::date d),
+     dias AS (SELECT data FROM devotional_reads WHERE user_id = $1),
+     ilhas AS (
+       SELECT data,
+              data - (row_number() OVER (ORDER BY data))::int grupo
+         FROM dias
+     ),
+     blocos AS (
+       SELECT grupo, count(*)::int n, max(data) fim FROM ilhas GROUP BY grupo
+     )
+     SELECT (SELECT count(*)::int FROM dias) total,
+            coalesce((SELECT n FROM blocos
+                       WHERE fim >= (SELECT d FROM hoje) - 1
+                       ORDER BY fim DESC LIMIT 1), 0) sequencia,
+            coalesce((SELECT max(n) FROM blocos), 0) "maiorSequencia",
+            (SELECT max(data)::text FROM dias) "ultimoLido"`,
+    [userId]);
+
+  return r ?? { total: 0, sequencia: 0, maiorSequencia: 0, ultimoLido: null };
+}
+
 /**
  * O endereço que vai no fim de todo texto compartilhado.
  *

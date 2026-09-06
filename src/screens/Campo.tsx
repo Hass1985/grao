@@ -12,7 +12,7 @@ import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
-import { fetchHistory } from '../onboarding/seedDelivery';
+import { fetchHistory, resumoDeLeitura, ResumoLeitura } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
@@ -71,9 +71,12 @@ export default function Campo({ navigation }: { navigation: any }) {
     monthTitle.charAt(0).toUpperCase() + monthTitle.slice(1);
 
   const [sementes, setSementes] = useState<Seed[]>([...pastSeeds, todaySeed]);
+  const [resumo, setResumo] = useState<ResumoLeitura | null>(null);
   const carregar = useCallback(async () => {
     try {
-      setSementes(await fetchHistory());
+      const [historico, r] = await Promise.all([fetchHistory(), resumoDeLeitura()]);
+      setSementes(historico);
+      setResumo(r);
     } catch {
       /* mantém a reserva */
     }
@@ -167,6 +170,43 @@ export default function Campo({ navigation }: { navigation: any }) {
             onProfilePress={() => navigation.navigate('Settings')}
           />
 
+          {/* Sequência e total.
+              A sequência conta até ontem, então quem ainda não leu hoje de
+              manhã não vê o número zerado às 7h. E quando ela realmente zera, o
+              texto convida em vez de cobrar: um devocional que culpa quem
+              faltou empurra para longe justamente quem mais precisa voltar. */}
+          {ehDevocional && resumo ? (
+            <View style={styles.numeros}>
+              <View style={styles.numeroCard}>
+                <Text style={styles.numeroValor}>
+                  {resumo.sequencia > 0 ? resumo.sequencia : '—'}
+                </Text>
+                <Text style={styles.numeroRotulo}>
+                  {resumo.sequencia === 0
+                    ? 'Comece hoje'
+                    : resumo.sequencia === 1
+                      ? 'dia seguido'
+                      : 'dias seguidos'}
+                </Text>
+                {resumo.maiorSequencia > resumo.sequencia ? (
+                  <Text style={styles.numeroNota}>
+                    sua marca: {resumo.maiorSequencia}
+                  </Text>
+                ) : null}
+              </View>
+
+              <View style={styles.numeroCard}>
+                <Text style={styles.numeroValor}>{resumo.total}</Text>
+                <Text style={styles.numeroRotulo}>
+                  {resumo.total === 1 ? 'dia no total' : 'dias no total'}
+                </Text>
+                {resumo.total > 0 ? (
+                  <Text style={styles.numeroNota}>desde o começo</Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.calendarCard}>
             <View style={styles.monthRow}>
               <View style={styles.monthTitleBlock}>
@@ -224,6 +264,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.gutter,
   },
 
+  numeros: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  numeroCard: {
+    ...glassCard,
+    flex: 1,
+    borderRadius: 22,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    ...(shadows.sm as object),
+  },
+  numeroValor: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 30,
+    lineHeight: 34,
+    color: colors.accent,
+    letterSpacing: -0.5,
+  },
+  numeroRotulo: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    color: colors.palha,
+    marginTop: 2,
+  },
+  numeroNota: {
+    fontFamily: fonts.sans,
+    fontSize: 11,
+    color: colors.foregroundSubtle,
+    marginTop: 6,
+  },
   calendarCard: {
     ...glassCard,
     marginTop: 16,

@@ -26,7 +26,7 @@ import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import {
   devocionalDeHoje, devocionaisAte, textoCompartilhavel,
-  marcarDevocionalLido, leiturasDoUsuario,
+  marcarDevocionalLido, resumoDeLeitura,
 } from './devocional.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
@@ -619,6 +619,16 @@ app.get('/seed/experimentar/:userId/historico', async (req, res) => {
  * onde nada acontece e a Raiz lista todos os dias do ano como se a pessoa os
  * tivesse lido. Aqui só entra o que ela confirmou.
  */
+/** Sequência e total de leituras — os dois números do topo do Campo. */
+app.get('/devocional/:userId/resumo', async (req, res) => {
+  try {
+    return res.json(await resumoDeLeitura(req.params.userId));
+  } catch (err: any) {
+    console.error('[devocional/resumo]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler o resumo.' });
+  }
+});
+
 app.post('/devocional/:userId/lido', async (req, res) => {
   try {
     const { data } = req.body as { data?: string };
@@ -626,8 +636,11 @@ app.post('/devocional/:userId/lido', async (req, res) => {
     const r = await marcarDevocionalLido(req.params.userId, data ?? null);
     if (!r) return res.status(500).json({ error: 'não foi possível confirmar' });
     if (!r.jaEstava) void logEvent(req.params.userId, 'devocional_confirmado', { data: r.data });
-    const total = await leiturasDoUsuario(req.params.userId);
-    return res.json({ ok: true, data: r.data, jaEstava: r.jaEstava, totalLidos: total });
+    const resumo = await resumoDeLeitura(req.params.userId);
+    return res.json({
+      ok: true, data: r.data, jaEstava: r.jaEstava,
+      totalLidos: resumo.total, ...resumo,
+    });
   } catch (err: any) {
     console.error('[devocional/lido]', err?.message || err);
     return res.status(500).json({ error: 'Falha ao confirmar a leitura.' });

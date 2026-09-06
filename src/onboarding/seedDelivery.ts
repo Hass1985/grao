@@ -265,6 +265,26 @@ export async function confirmarLeitura(): Promise<{ totalLidos: number } | null>
   }
 }
 
+export interface ResumoLeitura {
+  total: number;
+  sequencia: number;
+  maiorSequencia: number;
+  ultimoLido: string | null;
+}
+
+/** Sequência e total de dias lidos — os dois números do topo do Campo. */
+export async function resumoDeLeitura(): Promise<ResumoLeitura | null> {
+  if (!API_URL) return null;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/devocional/${userId}/resumo`);
+    if (!res.ok) return null;
+    return (await res.json()) as ResumoLeitura;
+  } catch {
+    return null;
+  }
+}
+
 /** Histórico só da demonstração do plano pago — Campo e Raiz do modo teste. */
 export async function fetchHistoricoTeste(): Promise<Seed[]> {
   if (!API_URL) return [];
