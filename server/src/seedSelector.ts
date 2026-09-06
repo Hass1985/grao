@@ -174,13 +174,25 @@ export async function getOrSelectTodaySeed(
   return nova ? { seed: nova, jaExistia: false } : null;
 }
 
-export async function selectSeedForUser(userId: string): Promise<SelectedSeed | null> {
+/**
+ * `familiaAlvo` força a família emocional em vez de lê-la do momento guardado.
+ *
+ * É o que a demonstração do plano pago usa: a conversa de teste lê a família e
+ * a passa direto, sem gravar momento nenhum na pessoa. Todo o resto do motor
+ * continua igual — variedade, gesto, cooldown, ineditismo —, porque testar um
+ * caminho diferente do de produção não testa nada.
+ */
+export async function selectSeedForUser(
+  userId: string,
+  familiaAlvo?: string | null,
+): Promise<SelectedSeed | null> {
   const profile = await getProfile(userId);
-  const moment = await getMoment(userId);
+  const moment = familiaAlvo ? null : await getMoment(userId);
 
-  const alvo = moment || profile?.emotional_hint || 'esperança';
+  const alvo = familiaAlvo || moment || profile?.emotional_hint || 'esperança';
   const { family, arejou } = await familiaDaVez(userId, alvo);
-  const source: SelectedSeed['reason']['source'] = moment ? 'momento' : profile?.emotional_hint ? 'perfil' : 'padrão';
+  const source: SelectedSeed['reason']['source'] =
+    familiaAlvo || moment ? 'momento' : profile?.emotional_hint ? 'perfil' : 'padrão';
   const channel = profile?.dominant_channel || 'visual';
   const preferredType = CHANNEL_TO_TYPE[channel] || 'reflexão';
   if (arejou) console.log(`[seleção] ${userId}: ${alvo} dominou as últimas entregas, arejando com ${family}`);

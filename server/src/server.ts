@@ -493,6 +493,79 @@ app.get('/seed/today/:userId', async (req, res) => {
   });
 });
 
+// EXPERIMENTAR: a semente real do plano pago, para quem ainda não assina.
+//
+// Existe porque testar o plano pago com semente de mentira não testa nada. Aqui
+// roda o motor inteiro — família da conversa, variedade entre famílias, janela
+// de gesto, ineditismo — e a entrega fica REGISTRADA, como a de um assinante.
+// É o registro que faz valer a regra que já falhou uma vez (dez sementes de
+// ansiedade seguidas): sem gravar, o motor não sabe o que a pessoa já viu.
+//
+// Não confere assinatura de propósito, e por isso tem três cercas:
+//   1. GRAO_TESTE_PAGO=0 desliga a rota inteira. No dia do lançamento, quando o
+//      botão virar "Quero assinar o plano", é essa linha que se muda no Render;
+//   2. teto de MAX_TESTES_DIA por pessoa por dia. Uma pessoa demonstrando nunca
+//      chega perto; um script tentando baixar as 380 esbarra no primeiro dia;
+//   3. só para quem já existe no banco.
+//
+// A tela Hoje não muda: quem não assina continua vendo o devocional do dia.
+const MAX_TESTES_DIA = 5;
+
+app.post('/seed/experimentar/:userId', async (req, res) => {
+  if ((process.env.GRAO_TESTE_PAGO ?? '1') === '0') {
+    return res.status(404).json({ error: 'demonstração do plano pago desligada' });
+  }
+  const userId = req.params.userId;
+  const { family } = req.body as { family?: string };
+
+  const { rows: [existe] } = await pool.query(`SELECT id FROM users WHERE id = $1`, [userId]);
+  if (!existe) return res.status(404).json({ error: 'usuário não encontrado' });
+
+  const { rows: [uso] } = await pool.query(
+    `SELECT count(*)::int n FROM events e JOIN users u ON u.id = e.user_id
+      WHERE e.user_id = $1 AND e.type = 'semente_teste'
+        AND (e.created_at AT TIME ZONE u.timezone)::date
+          = (now() AT TIME ZONE u.timezone)::date`, [userId]);
+  if (uso.n >= MAX_TESTES_DIA) {
+    return res.status(429).json({
+      error: `limite de ${MAX_TESTES_DIA} sementes de teste por dia`,
+      restantes: 0,
+    });
+  }
+
+  // A família vem da conversa de teste. Sem ela, o motor decide como decidiria
+  // para essa pessoa em um dia normal. A validação é contra o banco, não contra
+  // uma lista escrita aqui: lista copiada é lista que envelhece sozinha.
+  const { rows: [conhecida] } = family
+    ? await pool.query(`SELECT 1 FROM seeds WHERE family = $1 LIMIT 1`, [family])
+    : { rows: [null] };
+  const alvo = conhecida ? family! : null;
+
+  // Já viu uma hoje E o momento é o mesmo → devolve a mesma, como o produto
+  // real faz. Mudou o momento → o motor escolhe outra, que é o que se quer ver.
+  const deHoje = await getTodaySeed(userId);
+  const seed = deHoje && (!alvo || deHoje.family === alvo)
+    ? deHoje
+    : await selectSeedForUser(userId, alvo);
+
+  if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
+
+  const novaEntrega = seed !== deHoje;
+  void logEvent(userId, 'semente_teste', {
+    seedId: seed.id, family: seed.family, pedida: alvo, novaEntrega,
+  });
+
+  return res.json({
+    tipo: 'semente', ...limitarSemente(seed, true),
+    compartilhavel: textoCompartilhavel({
+      title: '', body: seed.reflection,
+      verse: seed.passage, reference: seed.reference,
+    }),
+    teste: true,
+    restantesHoje: MAX_TESTES_DIA - uso.n - 1,
+  });
+});
+
 /** Situação da assinatura, para a tela saber o que oferecer. */
 app.get('/acesso/:userId', async (req, res) => {
   res.json(await acessoDoUsuario(req.params.userId));

@@ -190,22 +190,51 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 }
 
 /**
- * Semente completa da tela de DEMONSTRAÇÃO do plano pago.
+ * A semente REAL do plano pago, na tela de teste.
  *
- * Sai inteira do banco local, de propósito: não consulta o servidor, não
- * consome uma das 380 sementes, não registra leitura e não depende do paywall.
- * A demonstração precisa ser previsível e repetível — alguém vai mostrar isso
- * a outra pessoa — e nada do que acontece aqui pode aparecer depois na tela
- * Hoje de quem demonstrou.
+ * Pede ao motor a semente que a pessoa receberia se assinasse: mesma escolha,
+ * mesma regra de variedade, mesma curadoria, com oração, prática e louvor. É
+ * teste de verdade — semente de mentira não testa nada.
+ *
+ * A família vem da conversa de teste e vai no pedido; nada é gravado no
+ * momento emocional da pessoa, então a tela Hoje segue no devocional do dia.
+ *
+ * Se o servidor não responder, cai no banco local: uma demonstração não pode
+ * quebrar na frente de alguém por causa da rede.
  */
 export async function selectSementeTeste(
   familyOverride?: EmotionalFamily | null
-): Promise<SeedSelection> {
+): Promise<SeedSelection & { restantesHoje?: number }> {
   const ctx = await contextoEmocional();
-  // A família vem da conversa de teste quando existe. O contexto real só entra
-  // como fundo, e nunca é reescrito por aqui.
   const family = familyOverride ?? ctx.family;
   const source = familyOverride ? 'momento' : ctx.source;
+
+  if (API_URL) {
+    try {
+      const userId = await getUserId();
+      const res = await fetch(`${API_URL}/seed/experimentar/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ family }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const real = daApi(j);
+        if (real.prayer && real.practice) {
+          return {
+            seed: { ...real, tipo: 'semente', completa: true, bloqueado: null },
+            family: (j.family as EmotionalFamily) || family,
+            source,
+            channel: ctx.channel,
+            restantesHoje: j.restantesHoje,
+          };
+        }
+      }
+    } catch {
+      // Cai no banco local.
+    }
+  }
+
   return sementeLocalPaga(family, ctx.channel, source);
 }
 
