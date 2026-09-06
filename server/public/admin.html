@@ -5,76 +5,114 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Painel do Grão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Newsreader:wght@400;500;600&display=swap">
 <style>
 /* ===========================================================================
-   Painel do Grão — uma página, oito seções, um único fetch.
+   Painel do Grão — uma página, nove seções, um único fetch.
    A navegação é por hash (#pessoas), então recarregar mantém onde você estava.
+
+   A identidade é a do aplicativo: mesma paleta (casca, âmbar, palha), mesmas
+   duas famílias — Newsreader carrega significado, DM Sans carrega navegação.
+   O que muda é a calibragem. No app o vidro flutua sobre a foto do campo; aqui
+   não há foto, e translucidez sobre nada só rouba contraste de tabela densa.
+   As superfícies são opacas, com o mesmo marrom por baixo — a página parece o
+   Grão sem cobrar leitura difícil de quem abre isto todo dia.
    =========================================================================== */
 :root{
-  --papel:#F4F0E8; --carta:#FFFFFF; --fundo-fraco:#FAF7F1;
-  --tinta:#1C1813; --tinta-media:#6B6154; --tinta-fraca:#9C9081;
-  --linha:#E7DFD1; --linha-fraca:#F0EAE0;
-  --acento:#B4762A; --acento-claro:#F6EBD9; --acento-escuro:#8E5B1D;
-  --verde:#4E7A52; --verde-claro:#E6EFE6;
-  --alerta:#A8542B; --alerta-claro:#F8E9E1;
-  --teal:#3E6B6B; --barro:#9B5F3E;
-  --lateral:#1E1913; --lateral-tinta:#CFC5B4; --lateral-ativo:#2E271D;
-  --sombra:0 1px 2px rgba(28,24,19,.04), 0 8px 24px -18px rgba(28,24,19,.35);
-  --raio:10px;
+  /* Fundo e superfícies — os marrons do app, opacos */
+  --papel:#241708; --papel-fundo:#1C1105; --carta:#2E1F0E; --carta-alta:#3A2814;
+  --fundo-fraco:rgba(237,224,198,.05);
+
+  /* Texto — a palha do app, em três pesos de presença */
+  --tinta:#FBF6EC; --tinta-media:rgba(251,246,236,.80); --tinta-fraca:rgba(251,246,236,.52);
+
+  /* Linhas — a peneira, discreta */
+  --linha:rgba(237,224,198,.16); --linha-fraca:rgba(237,224,198,.09);
+
+  /* Âmbar: o acento do produto.
+     No escuro os papéis se invertem — o "claro" vira o fundo translúcido do
+     chip e a tinta dele precisa ser MAIS clara que o âmbar cheio, senão o
+     texto some dentro do próprio selo. */
+  --acento:#C07826; --acento-claro:rgba(192,120,38,.22);
+  --acento-tinta:#E4A863; --acento-forte:#D89A55;
+
+  /* Semânticas: separadas do acento de propósito. Verde é "aconteceu",
+     alerta é "olhe para isto" — nenhum dos dois é a cor da marca. */
+  --verde:#86BE92; --verde-claro:rgba(134,190,146,.16);
+  --alerta:#E7A183; --alerta-claro:rgba(231,161,131,.16);
+  --teal:#77ADAD; --barro:#CE9068;
+
+  --lateral:#1C1105; --lateral-tinta:rgba(251,246,236,.62); --lateral-ativo:#33220E;
+  --sombra:0 1px 2px rgba(0,0,0,.30), 0 14px 32px -22px rgba(0,0,0,.75);
+  --raio:16px;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0;background:var(--papel);color:var(--tinta);
-  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  font:15px/1.55 var(--sans);
   -webkit-font-smoothing:antialiased;
+}
+/* Um calor no alto da página, como a luz do campo no app. Só isso: gradiente
+   atrás de tabela é ruído. */
+body::before{
+  content:"";position:fixed;inset:0 0 auto;height:340px;pointer-events:none;z-index:0;
+  background:radial-gradient(120% 100% at 50% 0,rgba(192,120,38,.16),transparent 70%);
 }
 .num{font-variant-numeric:tabular-nums}
 .oculto{display:none !important}
 
 /* ---------- porta de entrada ---------- */
-#porta{max-width:360px;margin:0 auto;padding:16vh 24px;text-align:center}
-#porta .marca-grande{display:flex;justify-content:center;margin-bottom:20px}
-#porta h1{font-size:24px;margin:0 0 6px;letter-spacing:-.02em}
-#porta p{color:var(--tinta-media);font-size:14px;margin:0 0 20px}
-#porta input{width:100%;padding:11px 14px;font:inherit;border:1px solid var(--linha);
-  border-radius:8px;background:var(--carta);margin-bottom:10px}
+#porta{max-width:380px;margin:0 auto;padding:15vh 24px;text-align:center;position:relative;z-index:1}
+#porta .marca-grande{display:flex;justify-content:center;margin-bottom:22px}
+#porta h1{font-family:var(--serif);font-weight:500;font-size:30px;margin:0 0 8px;letter-spacing:-.02em}
+#porta p{color:var(--tinta-media);font-size:14px;margin:0 0 22px}
+#porta input{width:100%;padding:12px 14px;font:inherit;border:1px solid var(--linha);
+  border-radius:12px;background:var(--carta);color:var(--tinta);margin-bottom:10px}
+#porta input::placeholder{color:var(--tinta-fraca)}
 #porta input:focus{outline:2px solid var(--acento);outline-offset:1px;border-color:transparent}
 #erro{color:var(--alerta);font-size:13px;min-height:20px;margin-top:12px}
 
 /* ---------- esqueleto ---------- */
-.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh;position:relative;z-index:1}
 
 /* ---------- lateral ---------- */
 .lateral{
   background:var(--lateral);color:var(--lateral-tinta);
+  border-right:1px solid var(--linha-fraca);
   display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
 }
 .marca{display:flex;align-items:center;gap:10px;padding:22px 20px 18px}
-.marca .nome{color:#F2ECE1;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1}
+.marca .nome{font-family:var(--serif);color:var(--tinta);font-size:20px;font-weight:500;
+  letter-spacing:-.01em;line-height:1}
 .marca .sub{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
-  color:#8B8071;font-weight:600;margin-top:4px}
+  color:var(--tinta-fraca);font-weight:600;margin-top:5px}
 .lateral nav{padding:6px 12px;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
 .lateral a{
-  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
   color:var(--lateral-tinta);text-decoration:none;font-size:14px;line-height:1.2;
   transition:background .12s,color .12s;
 }
-.lateral a svg{flex:none;opacity:.72}
-.lateral a:hover{background:#26201A;color:#F2ECE1}
+.lateral a svg{flex:none;opacity:.66}
+.lateral a:hover{background:rgba(237,224,198,.06);color:var(--tinta)}
 /* O item ativo precisa se distinguir do hover: só a diferença de fundo entre
-   #26201A e #2E271D é imperceptível, e a pessoa perde de vista onde está. */
-.lateral a.ativo{background:var(--lateral-ativo);color:#FFF;font-weight:500;position:relative}
+   os dois é imperceptível, e a pessoa perde de vista onde está. */
+.lateral a.ativo{background:var(--lateral-ativo);color:var(--tinta);font-weight:500;position:relative}
 .lateral a.ativo::before{content:"";position:absolute;left:0;top:7px;bottom:7px;
   width:3px;border-radius:0 3px 3px 0;background:var(--acento)}
-.lateral a.ativo svg{opacity:1;color:var(--acento)}
+.lateral a.ativo svg{opacity:1;color:var(--acento-forte)}
 .lateral a .pino{margin-left:auto;font-size:11px;padding:1px 7px;border-radius:99px;
-  background:var(--alerta);color:#fff;font-variant-numeric:tabular-nums}
-.rodape-lateral{margin-top:auto;padding:14px 20px 18px;border-top:1px solid #2C251B;
-  font-size:11px;color:#7C7263;display:flex;flex-direction:column;gap:8px}
-.rodape-lateral button{background:none;border:1px solid #38301F;color:#9C9081;
-  border-radius:6px;padding:5px 10px;font:inherit;font-size:11px;cursor:pointer;align-self:flex-start}
-.rodape-lateral button:hover{color:#E8E0D2;border-color:#584B33}
+  background:var(--alerta);color:var(--papel-fundo);font-weight:600;font-variant-numeric:tabular-nums}
+.rodape-lateral{margin-top:auto;padding:14px 20px 18px;border-top:1px solid var(--linha-fraca);
+  font-size:11px;color:var(--tinta-fraca);display:flex;flex-direction:column;gap:8px}
+.rodape-lateral button{background:none;border:1px solid var(--linha);color:var(--tinta-fraca);
+  border-radius:99px;padding:5px 12px;font:inherit;font-size:11px;cursor:pointer;align-self:flex-start}
+.rodape-lateral button:hover{color:var(--tinta);border-color:var(--linha)}
 
 /* ---------- topo ---------- */
 main{min-width:0;display:flex;flex-direction:column}
@@ -83,21 +121,23 @@ main{min-width:0;display:flex;flex-direction:column}
    seção. Aqui título e ações ficam sempre lado a lado, e a descrição ocupa a
    linha inteira embaixo. */
 .topo{
-  position:sticky;top:0;z-index:5;background:rgba(244,240,232,.92);
-  backdrop-filter:blur(8px);border-bottom:1px solid var(--linha);
-  padding:20px 32px;display:grid;grid-template-columns:1fr auto;
-  align-items:center;column-gap:20px;row-gap:4px;
+  position:sticky;top:0;z-index:5;background:rgba(36,23,8,.88);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--linha-fraca);
+  padding:22px 32px;display:grid;grid-template-columns:1fr auto;
+  align-items:center;column-gap:20px;row-gap:6px;
 }
-.topo h1{font-size:22px;margin:0;letter-spacing:-.02em;line-height:1.2;min-width:0}
+.topo h1{font-family:var(--serif);font-weight:500;font-size:26px;margin:0;
+  letter-spacing:-.02em;line-height:1.2;min-width:0}
 .topo .desc{color:var(--tinta-media);font-size:13px;margin:0;grid-column:1/-1;max-width:78ch}
 .acoes{display:flex;align-items:center;gap:8px}
 select,.botao{
   font:inherit;font-size:13px;background:var(--carta);color:var(--tinta);
-  border:1px solid var(--linha);border-radius:7px;padding:7px 10px;cursor:pointer;
+  border:1px solid var(--linha);border-radius:10px;padding:8px 12px;cursor:pointer;
 }
-select:hover,.botao:hover{border-color:var(--tinta-fraca)}
-.botao.forte{background:var(--acento);border-color:var(--acento);color:#fff}
-.botao.forte:hover{background:var(--acento-escuro);border-color:var(--acento-escuro)}
+select:hover,.botao:hover{border-color:var(--acento);color:var(--tinta)}
+.botao.forte{background:var(--acento);border-color:var(--acento);color:#fff;font-weight:500}
+.botao.forte:hover{background:var(--acento-forte);border-color:var(--acento-forte);color:var(--papel-fundo)}
 .carimbo{font-size:11px;color:var(--tinta-fraca);white-space:nowrap}
 .conteudo{padding:26px 32px 72px;flex:1}
 
@@ -110,19 +150,20 @@ select:hover,.botao:hover{border-color:var(--tinta-fraca)}
 @media(max-width:1080px){.g4{grid-template-columns:repeat(2,1fr)}
   .g3,.g2,.g-2-1{grid-template-columns:1fr}}
 
-.cartao{background:var(--carta);border:1px solid var(--linha);border-radius:var(--raio);
+.cartao{background:var(--carta);border:1px solid var(--linha-fraca);border-radius:var(--raio);
   padding:18px 20px;box-shadow:var(--sombra)}
-.cartao h3{font-size:13px;font-weight:600;margin:0 0 2px;letter-spacing:-.005em}
-.cartao .nota{font-size:12px;color:var(--tinta-fraca);margin:0 0 14px}
+.cartao h3{font-size:13px;font-weight:600;margin:0 0 2px;letter-spacing:-.005em;color:var(--tinta)}
+.cartao .nota{font-size:12px;color:var(--tinta-fraca);margin:0 0 14px;line-height:1.5}
 .cartao h3+.tabela,.cartao h3+.lista,.cartao h3+svg{margin-top:14px}
 
-.kpi .rotulo{font-size:12px;color:var(--tinta-media);margin:0 0 6px}
-.kpi .valor{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1}
-.kpi .apoio{font-size:12px;color:var(--tinta-fraca);margin:6px 0 0}
+.kpi .rotulo{font-size:12px;color:var(--tinta-media);margin:0 0 8px}
+.kpi .valor{font-family:var(--serif);font-size:36px;font-weight:500;letter-spacing:-.03em;
+  line-height:1;color:var(--tinta);font-variant-numeric:tabular-nums}
+.kpi .apoio{font-size:12px;color:var(--tinta-fraca);margin:8px 0 0}
 .kpi .apoio b{color:var(--tinta-media);font-weight:500}
 
-.secao-titulo{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--tinta-fraca);margin:30px 0 12px}
+.secao-titulo{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--acento-tinta);margin:34px 0 12px}
 .secao-titulo:first-child{margin-top:0}
 
 /* ---------- listas com barra ---------- */
@@ -130,7 +171,7 @@ select:hover,.botao:hover{border-color:var(--tinta-fraca)}
 .item .cima{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:5px}
 .item .rot{font-size:13px}
 .item .val{font-size:13px;color:var(--tinta-media);font-variant-numeric:tabular-nums;flex:none}
-.trilho{height:7px;background:var(--linha-fraca);border-radius:99px;overflow:hidden}
+.trilho{height:7px;background:rgba(237,224,198,.10);border-radius:99px;overflow:hidden}
 .trilho i{display:block;height:100%;background:var(--acento);border-radius:99px}
 .trilho i.verde{background:var(--verde)}
 
@@ -138,37 +179,37 @@ select:hover,.botao:hover{border-color:var(--tinta-fraca)}
 .degrau{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--linha-fraca)}
 .degrau:last-child{border-bottom:0}
 .degrau .ordem{width:22px;height:22px;border-radius:99px;background:var(--acento-claro);
-  color:var(--acento-escuro);font-size:11px;font-weight:600;display:grid;place-items:center;flex:none}
+  color:var(--acento-tinta);font-size:11px;font-weight:600;display:grid;place-items:center;flex:none}
 .degrau .corpo{flex:1;min-width:0}
 .degrau .rot{font-size:13px;margin-bottom:5px;display:flex;justify-content:space-between;gap:10px}
 .degrau .queda{color:var(--alerta);font-size:11px;font-weight:500;white-space:nowrap}
 .degrau .direita{text-align:right;flex:none;width:74px}
-.degrau .n{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.degrau .n{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
 .degrau .pct{font-size:11px;color:var(--tinta-fraca)}
 
 /* ---------- tabelas ---------- */
 .rolagem{overflow-x:auto;margin:0 -20px;padding:0 20px}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--tinta-fraca);font-weight:600;padding:0 12px 9px 0;white-space:nowrap}
-td{padding:9px 12px 9px 0;border-top:1px solid var(--linha-fraca);vertical-align:top}
+th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tinta-fraca);font-weight:600;padding:0 12px 10px 0;white-space:nowrap}
+td{padding:10px 12px 10px 0;border-top:1px solid var(--linha-fraca);vertical-align:top}
 tbody tr:hover{background:var(--fundo-fraco)}
 td.dir,th.dir{text-align:right;padding-right:0}
 .mono{font-variant-numeric:tabular-nums}
 .fraco{color:var(--tinta-fraca)}
-.forte{font-weight:500}
+.forte{font-weight:500;color:var(--tinta)}
 
-.selo{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;
-  background:var(--acento-claro);color:var(--acento-escuro);white-space:nowrap}
+.selo{display:inline-block;font-size:11px;padding:2px 9px;border-radius:99px;
+  background:var(--acento-claro);color:var(--acento-tinta);white-space:nowrap}
 .selo.ok{background:var(--verde-claro);color:var(--verde)}
 .selo.ruim{background:var(--alerta-claro);color:var(--alerta)}
-.selo.neutro{background:var(--linha-fraca);color:var(--tinta-media)}
+.selo.neutro{background:rgba(237,224,198,.10);color:var(--tinta-media)}
 
 /* ---------- avisos ---------- */
-.aviso{display:flex;gap:12px;border:1px solid var(--linha);border-left:3px solid var(--acento);
-  background:var(--carta);border-radius:0 var(--raio) var(--raio) 0;padding:13px 16px;font-size:13px}
+.aviso{display:flex;gap:12px;border:1px solid var(--linha-fraca);border-left:3px solid var(--acento);
+  background:var(--carta);border-radius:0 var(--raio) var(--raio) 0;padding:14px 18px;font-size:13px}
 .aviso.grave{border-left-color:var(--alerta)}
-.aviso b{display:block;margin-bottom:2px}
+.aviso b{display:block;margin-bottom:3px;color:var(--tinta)}
 .aviso p{margin:0;color:var(--tinta-media)}
 
 /* ---------- gráficos ---------- */
@@ -177,11 +218,13 @@ svg.gr{width:100%;height:auto;display:block;overflow:visible}
 .legenda span{display:flex;align-items:center;gap:6px}
 .legenda i{width:9px;height:9px;border-radius:2px;display:inline-block}
 
-.vazio{color:var(--tinta-fraca);font-size:13px;padding:6px 0;margin:0}
+.vazio{color:var(--tinta-fraca);font-size:13px;padding:6px 0;margin:0;line-height:1.55}
 
 /* ---------- busca ---------- */
-.busca{width:100%;max-width:280px;padding:7px 11px;font:inherit;font-size:13px;
-  border:1px solid var(--linha);border-radius:7px;background:var(--carta)}
+.busca{width:100%;max-width:280px;padding:8px 12px;font:inherit;font-size:13px;
+  border:1px solid var(--linha);border-radius:10px;background:var(--carta);color:var(--tinta)}
+.busca::placeholder{color:var(--tinta-fraca)}
+.busca:focus{outline:2px solid var(--acento);outline-offset:1px;border-color:transparent}
 
 /* ---------- linha do tempo ---------- */
 .tempo{display:flex;flex-direction:column}
@@ -199,7 +242,7 @@ svg.gr{width:100%;height:auto;display:block;overflow:visible}
   .topo{grid-template-columns:1fr}
   .acoes{flex-wrap:wrap}
   .app{grid-template-columns:1fr}
-  .lateral{position:static;height:auto}
+  .lateral{position:static;height:auto;border-right:0;border-bottom:1px solid var(--linha-fraca)}
   .lateral nav{flex-direction:row;overflow-x:auto;padding:0 12px 12px}
   .lateral a{white-space:nowrap}
   .lateral a .pino{margin-left:6px}
@@ -214,8 +257,8 @@ svg.gr{width:100%;height:auto;display:block;overflow:visible}
 <div id="porta">
   <div class="marca-grande">
     <svg width="46" height="46" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-      <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#B4762A" stroke-width="1.5"/>
-      <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#B4762A" stroke-width="1.5"/>
+      <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#C07826" stroke-width="1.5"/>
+      <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#C07826" stroke-width="1.5"/>
     </svg>
   </div>
   <h1>Painel do Grão</h1>
@@ -230,8 +273,8 @@ svg.gr{width:100%;height:auto;display:block;overflow:visible}
   <aside class="lateral">
     <div class="marca">
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-        <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#B4762A" stroke-width="1.5"/>
-        <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#B4762A" stroke-width="1.5"/>
+        <ellipse cx="13" cy="13" rx="14.95" ry="9.75" stroke="#C07826" stroke-width="1.5"/>
+        <line x1="13" y1="3.25" x2="13" y2="22.75" stroke="#C07826" stroke-width="1.5"/>
       </svg>
       <div><span class="nome">Grão</span><span class="sub">Painel</span></div>
     </div>
