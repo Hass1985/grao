@@ -124,6 +124,8 @@ export default function MomentoSementeTeste({ navigation }: Props) {
   // Família lida na conversa de teste. Vive só nesta tela e é entregue à
   // seguinte pela navegação, sem passar por AsyncStorage nem pelo servidor.
   const [familiaDoTeste, setFamiliaDoTeste] = useState<EmotionalFamily | null>(null);
+  /** O que ela contou. Segue para a curadoria pela navegação, sem ser gravado. */
+  const [relatoDoTeste, setRelatoDoTeste] = useState<string | null>(null);
 
   const recRef = useRef<any>(null);
   const finalRef = useRef('');
@@ -317,6 +319,7 @@ export default function MomentoSementeTeste({ navigation }: Props) {
     // aqui e viaja para a próxima tela pela navegação. Antes gravava, e a
     // demonstração passava a mandar na tela Hoje da pessoa que demonstrou.
     setFamiliaDoTeste(family);
+    setRelatoDoTeste(transcript);
 
     setTimeout(() => {
       setResponseMsg(message);
@@ -492,7 +495,10 @@ export default function MomentoSementeTeste({ navigation }: Props) {
                 <Button
                   title="Ver minha semente"
                   onPress={() =>
-                    navigation.replace('HojeSementeTeste', { family: familiaDoTeste })
+                    navigation.replace('HojeSementeTeste', {
+                      family: familiaDoTeste,
+                      relato: relatoDoTeste,
+                    })
                   }
                   variant="dark"
                   uppercase

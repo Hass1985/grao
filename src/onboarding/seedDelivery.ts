@@ -206,7 +206,8 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
  * quebrar na frente de alguém por causa da rede.
  */
 export async function selectSementeTeste(
-  familyOverride?: EmotionalFamily | null
+  familyOverride?: EmotionalFamily | null,
+  relato?: string | null
 ): Promise<SeedSelection & { restantesHoje?: number }> {
   const ctx = await contextoEmocional();
   const family = familyOverride ?? ctx.family;
@@ -215,10 +216,13 @@ export async function selectSementeTeste(
   if (API_URL) {
     try {
       const userId = await getUserId();
+      // O relato vai no pedido, não no cadastro: é o que a curadoria lê para
+      // escolher, e some depois disso. Sem ele, a demonstração testaria a fila
+      // do acervo em vez do motor — e é o motor que está em teste.
       const res = await fetch(`${API_URL}/seed/experimentar/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ family }),
+        body: JSON.stringify({ family, relato: relato ?? null }),
       });
       if (res.ok) {
         const j = await res.json();

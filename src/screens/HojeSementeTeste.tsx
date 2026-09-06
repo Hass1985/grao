@@ -47,6 +47,8 @@ export default function HojeSementeTeste({
   // A família lida na conversa de teste chega pela navegação, não pelo momento
   // guardado: o teste não escreve no estado real de quem está demonstrando.
   const familiaDoTeste = route?.params?.family ?? null;
+  /** O relato da conversa de teste, para a curadoria ler. Não é gravado. */
+  const relatoDoTeste = route?.params?.relato ?? null;
   /** Aberta pelo atalho "ver de novo", sem passar pela conversa. */
   const soLeitura = !!route?.params?.reler;
   const [opened, setOpened] = useState(soLeitura);
@@ -68,12 +70,12 @@ export default function HojeSementeTeste({
       return;
     }
     try {
-      const { seed: next } = await selectSementeTeste(familiaDoTeste);
+      const { seed: next } = await selectSementeTeste(familiaDoTeste, relatoDoTeste);
       setSeed(next);
     } catch {
       /* mantém a semente já carregada */
     }
-  }, [familiaDoTeste, soLeitura]);
+  }, [familiaDoTeste, relatoDoTeste, soLeitura]);
 
   useEffect(() => {
     void loadSeed();

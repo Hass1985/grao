@@ -196,6 +196,7 @@ export async function getOrSelectTodaySeed(
 export async function selectSeedForUser(
   userId: string,
   familiaAlvo?: string | null,
+  relatoDireto?: string | null,
 ): Promise<SelectedSeed | null> {
   const profile = await getProfile(userId);
   const moment = familiaAlvo ? null : await getMoment(userId);
@@ -270,7 +271,7 @@ export async function selectSeedForUser(
   // "culpa" muitas vezes está falando de culpa E solidão, e a semente que
   // fala pode estar do outro lado dessa fronteira. O peso continua na
   // primária: ela vem antes na ordenação.
-  const relato = await relatoDaPessoa(userId);
+  const relato = await relatoDaPessoa(userId, relatoDireto);
   const familia2 =
     relato.familiaSecundaria && relato.familiaSecundaria !== family
       ? relato.familiaSecundaria

@@ -97,7 +97,23 @@ export interface RelatoDaPessoa {
  * abertura, depois o texto bruto da abertura. As últimas mensagens dela entram
  * como contexto porque quem escreve pelo WhatsApp vai mudando de assunto.
  */
-export async function relatoDaPessoa(userId: string): Promise<RelatoDaPessoa> {
+export async function relatoDaPessoa(
+  userId: string,
+  textoDireto?: string | null,
+): Promise<RelatoDaPessoa> {
+  // Relato entregue no próprio pedido: é o caminho da demonstração do plano
+  // pago, que não grava nada da pessoa. Sem isto a curadoria não teria o que
+  // ler justamente no teste — e o teste passaria a avaliar a fila do acervo em
+  // vez do motor. O texto é usado e descartado; nada dele fica no cadastro.
+  if (textoDireto && textoDireto.trim().length >= MINIMO_DE_RELATO) {
+    return {
+      texto: textoDireto.trim().slice(0, 1200),
+      temas: [],
+      intensidade: null,
+      familiaSecundaria: null,
+    };
+  }
+
   const { rows: [p] } = await pool.query(
     `SELECT p.initial_request,
             p.raw->'themes' temas,

@@ -525,7 +525,11 @@ app.post('/seed/experimentar/:userId', async (req, res) => {
     return res.status(404).json({ error: 'demonstração do plano pago desligada' });
   }
   const userId = req.params.userId;
-  const { family } = req.body as { family?: string };
+  // `relato` é o que a pessoa contou na conversa de teste. Vem no pedido
+  // porque o modo teste não grava nada dela — sem ele a curadoria ficaria sem
+  // o que ler justamente na demonstração, e o teste avaliaria a fila do
+  // acervo em vez do motor. É usado na escolha e descartado.
+  const { family, relato } = req.body as { family?: string; relato?: string };
 
   const { rows: [existe] } = await pool.query(`SELECT id FROM users WHERE id = $1`, [userId]);
   if (!existe) return res.status(404).json({ error: 'usuário não encontrado' });
@@ -555,7 +559,7 @@ app.post('/seed/experimentar/:userId', async (req, res) => {
   const deHoje = await getTodaySeed(userId);
   const seed = deHoje && (!alvo || deHoje.family === alvo)
     ? deHoje
-    : await selectSeedForUser(userId, alvo);
+    : await selectSeedForUser(userId, alvo, typeof relato === 'string' ? relato : null);
 
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
 
