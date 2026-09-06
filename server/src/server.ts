@@ -554,12 +554,18 @@ app.post('/seed/experimentar/:userId', async (req, res) => {
     : { rows: [null] };
   const alvo = conhecida ? family! : null;
 
-  // Já viu uma hoje E o momento é o mesmo → devolve a mesma, como o produto
-  // real faz. Mudou o momento → o motor escolhe outra, que é o que se quer ver.
+  // Conversa nova → escolha nova, mesmo dentro da mesma família. Contar outra
+  // coisa e receber a semente de antes faria a demonstração parecer quebrada
+  // justamente quando alguém testa duas histórias parecidas — e é comparar
+  // essas duas que mostra se a curadoria está lendo o relato ou só o rótulo.
+  //
+  // Sem relato novo, vale a semente do dia: é o comportamento do produto real,
+  // e é o que a tela de reler usa.
+  const relatoNovo = typeof relato === 'string' && relato.trim().length > 0 ? relato : null;
   const deHoje = await getTodaySeed(userId);
-  const seed = deHoje && (!alvo || deHoje.family === alvo)
+  const seed = !relatoNovo && deHoje && (!alvo || deHoje.family === alvo)
     ? deHoje
-    : await selectSeedForUser(userId, alvo, typeof relato === 'string' ? relato : null);
+    : await selectSeedForUser(userId, alvo, relatoNovo);
 
   if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
 
