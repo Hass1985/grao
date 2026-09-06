@@ -576,6 +576,27 @@ app.post('/seed/experimentar/:userId', async (req, res) => {
 });
 
 /**
+ * A semente de hoje da demonstração, para reler quantas vezes quiser.
+ *
+ * Só LÊ: não escolhe semente nova, não gasta do teto diário e não registra
+ * entrega. Existe porque a semente sumia depois de vista uma vez — para
+ * revê-la era preciso refazer a conversa inteira, e uma semente que não se
+ * pode reler não é uma semente, é um aviso que passou.
+ */
+app.get('/seed/experimentar/:userId/hoje', async (req, res) => {
+  const seed = await getTodaySeed(req.params.userId);
+  if (!seed) return res.status(404).json({ error: 'nenhuma semente de teste hoje' });
+  return res.json({
+    tipo: 'semente', ...limitarSemente(seed, true),
+    compartilhavel: textoCompartilhavel({
+      title: '', body: seed.reflection,
+      verse: seed.passage, reference: seed.reference,
+    }),
+    teste: true,
+  });
+});
+
+/**
  * Histórico das sementes da demonstração — o Campo e a Raiz do fluxo de teste.
  *
  * Separado do histórico de verdade de propósito. Quem é gratuito tem o

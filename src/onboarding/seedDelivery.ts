@@ -285,6 +285,25 @@ export async function resumoDeLeitura(): Promise<ResumoLeitura | null> {
   }
 }
 
+/**
+ * A semente de hoje da demonstração, só para reler.
+ *
+ * Não pede semente nova nem gasta do teto diário: é a mesma que já foi
+ * entregue. Devolve null quando ainda não houve nenhuma hoje.
+ */
+export async function sementeTesteDeHoje(): Promise<Seed | null> {
+  if (!API_URL) return null;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/seed/experimentar/${userId}/hoje`);
+    if (!res.ok) return null;
+    const real = daApi(await res.json());
+    return { ...real, tipo: 'semente', completa: true, bloqueado: null };
+  } catch {
+    return null;
+  }
+}
+
 /** Histórico só da demonstração do plano pago — Campo e Raiz do modo teste. */
 export async function fetchHistoricoTeste(): Promise<Seed[]> {
   if (!API_URL) return [];

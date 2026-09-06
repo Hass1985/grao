@@ -19,7 +19,7 @@ import ScreenBackground from '../components/ui/ScreenBackground';
 import CircleBack from '../components/ui/CircleBack';
 import Button from '../components/ui/Button';
 import { pastSeeds, Seed } from '../data/seeds';
-import { selectSementeTeste } from '../onboarding/seedDelivery';
+import { selectSementeTeste, sementeTesteDeHoje } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
@@ -46,23 +46,33 @@ export default function HojeSementeTeste({
   // A família lida na conversa de teste chega pela navegação, não pelo momento
   // guardado: o teste não escreve no estado real de quem está demonstrando.
   const familiaDoTeste = route?.params?.family ?? null;
-  const [opened, setOpened] = useState(false);
+  /** Aberta pelo atalho "ver de novo", sem passar pela conversa. */
+  const soLeitura = !!route?.params?.reler;
+  const [opened, setOpened] = useState(soLeitura);
+  const [semSemente, setSemSemente] = useState(false);
   const [seed, setSeed] = useState<Seed>({
     ...seedInicial,
     tipo: 'semente',
     completa: true,
     bloqueado: null,
   });
-  const reveal = useRef(new Animated.Value(0)).current;
+  const reveal = useRef(new Animated.Value(soLeitura ? 1 : 0)).current;
 
   const loadSeed = React.useCallback(async () => {
+    // Reler não escolhe semente nova nem gasta do teto: é a mesma do dia.
+    if (soLeitura) {
+      const deHoje = await sementeTesteDeHoje();
+      if (deHoje) setSeed(deHoje);
+      else setSemSemente(true);
+      return;
+    }
     try {
       const { seed: next } = await selectSementeTeste(familiaDoTeste);
       setSeed(next);
     } catch {
       /* mantém a semente já carregada */
     }
-  }, [familiaDoTeste]);
+  }, [familiaDoTeste, soLeitura]);
 
   useEffect(() => {
     void loadSeed();
@@ -118,7 +128,23 @@ export default function HojeSementeTeste({
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {!opened ? (
+          {semSemente ? (
+            <View style={styles.hero}>
+              <Text style={styles.dateLine}>{dateLine}</Text>
+              <Text style={styles.heroTitle}>Sua semente de hoje{'\n'}ainda não foi preparada.</Text>
+              <Text style={styles.vazioTexto}>
+                Conte o seu momento e o Grão escolhe a semente do dia. Depois
+                ela fica aqui, para você reler quantas vezes quiser.
+              </Text>
+              <Button
+                title="Contar meu momento"
+                onPress={() => navigation.replace('MomentoSementeTeste')}
+                variant="dark"
+                uppercase
+                style={styles.vazioBtn}
+              />
+            </View>
+          ) : !opened ? (
             <View style={styles.hero}>
               <Text style={styles.dateLine}>{dateLine}</Text>
               <Text style={styles.heroTitle}>Deus, o que temos para hoje?</Text>
@@ -222,6 +248,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
+  vazioTexto: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    lineHeight: 25,
+    color: colors.foregroundMuted,
+    marginBottom: 24,
+  },
+  vazioBtn: { marginTop: 4 },
   dateLine: {
     fontFamily: fonts.sans,
     fontSize: 12,

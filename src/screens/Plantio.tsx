@@ -172,6 +172,18 @@ export default function Plantio({ navigation }: Props) {
                 variant="dark"
                 uppercase
               />
+              {/* A semente do dia precisa ter endereço fixo. Sem isto, revê-la
+                  exigia refazer a conversa inteira, e ela some depois de vista
+                  uma vez. */}
+              <Button
+                title="Ver minha semente de hoje"
+                onPress={() =>
+                  navigation.navigate('HojeSementeTeste', { reler: true })
+                }
+                variant="soft"
+                uppercase
+                style={styles.secondBtn}
+              />
               <Button
                 title="Ver exemplo no WhatsApp"
                 onPress={() => navigation.navigate('WhatsAppDemo')}

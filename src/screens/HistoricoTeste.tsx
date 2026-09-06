@@ -187,6 +187,14 @@ export default function HistoricoTeste({ navigation }: { navigation: any }) {
                   ? '1 semente entregue na demonstração'
                   : `${sementes.length} sementes entregues na demonstração`}
               </Text>
+
+              <Pressable
+                onPress={() => navigation.navigate('HojeSementeTeste', { reler: true })}
+                style={styles.atalho}
+                hitSlop={8}
+              >
+                <Text style={styles.atalhoTexto}>Abrir a semente de hoje</Text>
+              </Pressable>
             </View>
           ) : (
             sementes.map((s, i) => (
@@ -350,6 +358,14 @@ const styles = StyleSheet.create({
     color: colors.foregroundSubtle,
     textAlign: 'center',
     marginTop: 16,
+  },
+  atalho: { alignItems: 'center', paddingVertical: 14, marginTop: 4 },
+  atalhoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.ambarSoft,
   },
 
   entrada: { marginBottom: 4 },
