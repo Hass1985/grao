@@ -80,7 +80,10 @@ function emPortugues(msg: string | undefined): string {
  * semente, outra vendo o app vazio.
  */
 function normalizarTelefone(bruto: string): string | null {
-  const digitos = (bruto ?? '').replace(/\D/g, '');
+  // O zero da operadora sai primeiro: "011 98765-4321" tem 12 dígitos, escapa
+  // da regra do DDI e viraria +011987654321 — conta com telefone inválido, e a
+  // mesma pessoa digitando certo depois viraria uma segunda conta.
+  const digitos = (bruto ?? '').replace(/\D/g, '').replace(/^0+/, '');
   if (digitos.length < 10 || digitos.length > 15) return null;
   return `+${digitos.length <= 11 ? `55${digitos}` : digitos}`;
 }

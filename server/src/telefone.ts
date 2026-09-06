@@ -12,7 +12,11 @@
 
 /** Telefone em E.164 (+5511999999999). Devolve null se não der para normalizar. */
 export function normalizePhone(raw: string): string | null {
-  const digits = (raw ?? '').replace(/\D/g, '');
+  // O zero da operadora, que muita gente digita antes do DDD ("011 98765…"),
+  // sai antes de qualquer coisa. Sem isto o número tinha 12 dígitos, escapava
+  // da regra do DDI e virava +011987654321: uma conta com telefone inválido,
+  // e a MESMA pessoa digitando certo no dia seguinte viraria outra conta.
+  const digits = (raw ?? '').replace(/\D/g, '').replace(/^0+/, '');
   if (digits.length < 10 || digits.length > 15) return null;
   // Número brasileiro sem DDI: o BSP às vezes entrega assim.
   const comDDI = digits.length <= 11 ? `55${digits}` : digits;
