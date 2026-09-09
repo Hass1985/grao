@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sprout, CalendarDays, BookOpen, type LucideIcon } from '../icons';
+import {
+  Sprout, CalendarDays, BookOpen, BookMarked, Store, type LucideIcon,
+} from '../icons';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
@@ -16,6 +18,11 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   Hoje: Sprout,
   Campo: CalendarDays,
   Raiz: BookOpen,
+  // Bíblia e Raiz são as duas telas de leitura, e precisam se distinguir de
+  // relance: a Raiz guarda o que a pessoa já viveu (livro aberto), a Bíblia é
+  // o texto para consultar (livro com marcador).
+  Biblia: BookMarked,
+  Loja: Store,
 };
 
 export default function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -91,15 +98,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 6,
-    gap: 4,
+    gap: 2,
     ...(shadows.float as object),
   },
   item: {
-    minWidth: 72,
+    // Cinco abas em vez de três. Com os 72pt de antes, a barra passava de 380
+    // e estourava a largura de um iPhone comum — a última aba ficava cortada
+    // pela borda da tela.
+    minWidth: 58,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',

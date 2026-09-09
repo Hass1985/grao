@@ -10,6 +10,7 @@
 // precisar de um ícone novo, acrescente a linha dele aqui: o nome do arquivo é
 // o nome do ícone em minúsculas com hífen (Music2 → music-2).
 
+export { default as BookMarked } from 'lucide-react-native/dist/esm/icons/book-marked';
 export { default as BookOpen } from 'lucide-react-native/dist/esm/icons/book-open';
 export { default as CalendarDays } from 'lucide-react-native/dist/esm/icons/calendar-days';
 export { default as Camera } from 'lucide-react-native/dist/esm/icons/camera';
@@ -33,6 +34,7 @@ export { default as Shield } from 'lucide-react-native/dist/esm/icons/shield';
 export { default as Smartphone } from 'lucide-react-native/dist/esm/icons/smartphone';
 export { default as Sprout } from 'lucide-react-native/dist/esm/icons/sprout';
 export { default as Star } from 'lucide-react-native/dist/esm/icons/star';
+export { default as Store } from 'lucide-react-native/dist/esm/icons/store';
 export { default as Trash2 } from 'lucide-react-native/dist/esm/icons/trash-2';
 
 // Tipo apenas: some na compilação, não entra no pacote.

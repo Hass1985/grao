@@ -11,6 +11,8 @@ import ConfirmarDevocional from '../screens/onboarding/ConfirmarDevocional';
 
 import Hoje from '../screens/Hoje';
 import Campo from '../screens/Campo';
+import Biblia from '../screens/Biblia';
+import Loja from '../screens/Loja';
 import Raiz from '../screens/Raiz';
 import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
@@ -80,6 +82,8 @@ function MainNavigator() {
       <Tab.Screen name="Hoje" component={Hoje} />
       <Tab.Screen name="Campo" component={Campo} />
       <Tab.Screen name="Raiz" component={Raiz} />
+      <Tab.Screen name="Biblia" component={Biblia} options={{ title: 'Bíblia' }} />
+      <Tab.Screen name="Loja" component={Loja} />
     </Tab.Navigator>
   );
 }

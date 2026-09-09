@@ -28,6 +28,10 @@ import {
   devocionalDeHoje, devocionaisAte, textoCompartilhavel,
   marcarDevocionalLido, resumoDeLeitura,
 } from './devocional.js';
+import {
+  creditar, creditarLeitura, resumoDeGraos, extratoDeGraos, GANHO, NIVEIS,
+} from './graos.js';
+import { registerBibliaRoutes } from './biblia.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
@@ -674,10 +678,32 @@ app.post('/seed/:seedId/feedback', async (req, res) => {
               SET util = excluded.util, criado_em = now()`,
       [userId, req.params.seedId, util]);
     void logEvent(userId, 'semente_avaliada', { seedId: req.params.seedId, util });
-    return res.json({ ok: true });
+    // Vale pouco de propósito: responder é um favor que pedimos, não um gesto
+    // dela com Deus. Pagar bem por isso compraria resposta, não opinião.
+    const ganhou = await creditar(userId, GANHO.avaliacao, 'avaliacao', req.params.seedId);
+    return res.json({ ok: true, graosGanhos: ganhou });
   } catch (err: any) {
     console.error('[seed/feedback]', err?.message || err);
     return res.status(500).json({ error: 'Falha ao registrar.' });
+  }
+});
+
+/**
+ * Grãos, nível e extrato — o que a tela Campo mostra no topo.
+ *
+ * É também o lugar que credita os bônus de marco, e credita de forma
+ * idempotente: se um crédito falhou por rede, a próxima abertura repõe.
+ */
+app.get('/graos/:userId', async (req, res) => {
+  try {
+    const [resumo, extrato] = await Promise.all([
+      resumoDeGraos(req.params.userId),
+      extratoDeGraos(req.params.userId),
+    ]);
+    return res.json({ ...resumo, niveis: NIVEIS, extrato });
+  } catch (err: any) {
+    console.error('[graos]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler os grãos.' });
   }
 });
 
@@ -699,9 +725,14 @@ app.post('/devocional/:userId/lido', async (req, res) => {
     if (!r) return res.status(500).json({ error: 'não foi possível confirmar' });
     if (!r.jaEstava) void logEvent(req.params.userId, 'devocional_confirmado', { data: r.data });
     const resumo = await resumoDeLeitura(req.params.userId);
+    // A sequência já contava a partir de ontem; se ela é maior que 1, este dia
+    // emendou no anterior e vale o bônus.
+    const ganhou = await creditarLeitura(req.params.userId, r.data, resumo.sequencia > 1);
+    const graos = await resumoDeGraos(req.params.userId);
     return res.json({
       ok: true, data: r.data, jaEstava: r.jaEstava,
       totalLidos: resumo.total, ...resumo,
+      graosGanhos: ganhou, graos,
     });
   } catch (err: any) {
     console.error('[devocional/lido]', err?.message || err);
@@ -806,6 +837,9 @@ registerCobrancaRoutes(app);
 
 // Contas (Google, Apple, Facebook, e-mail/senha) via Supabase Auth.
 registerAuthRoutes(app);
+
+// A Bíblia para consulta, na Bíblia Livre (domínio público).
+registerBibliaRoutes(app);
 
 const port = Number(process.env.PORT) || 8787;
 app.listen(port, () => {

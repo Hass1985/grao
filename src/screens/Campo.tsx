@@ -13,6 +13,7 @@ import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
 import { fetchHistory, resumoDeLeitura, ResumoLeitura } from '../onboarding/seedDelivery';
+import { meusGraos, type ResumoGraos } from '../onboarding/graos';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
@@ -72,11 +73,15 @@ export default function Campo({ navigation }: { navigation: any }) {
 
   const [sementes, setSementes] = useState<Seed[]>([...pastSeeds, todaySeed]);
   const [resumo, setResumo] = useState<ResumoLeitura | null>(null);
+  const [graos, setGraos] = useState<ResumoGraos | null>(null);
   const carregar = useCallback(async () => {
     try {
-      const [historico, r] = await Promise.all([fetchHistory(), resumoDeLeitura()]);
+      const [historico, r, g] = await Promise.all([
+        fetchHistory(), resumoDeLeitura(), meusGraos(),
+      ]);
       setSementes(historico);
       setResumo(r);
+      setGraos(g);
     } catch {
       /* mantém a reserva */
     }
@@ -169,6 +174,48 @@ export default function Campo({ navigation }: { navigation: any }) {
             onLogoPress={() => navigation.navigate('Settings')}
             onProfilePress={() => navigation.navigate('Settings')}
           />
+
+          {/* Os grãos e o nível.
+              Duas coisas diferentes de propósito: o grão é o retorno de cada
+              gesto, o nível é o arco longo. O nível conta DIAS, não grãos,
+              porque "um ano" significa alguma coisa e "2.000 pontos" não. */}
+          {graos ? (
+            <View style={styles.graosCard}>
+              <View style={styles.graosLinha}>
+                <View>
+                  <Text style={styles.graosRotulo}>Seus grãos</Text>
+                  <Text style={styles.graosValor}>{graos.saldo}</Text>
+                </View>
+                <View style={styles.nivelBloco}>
+                  <Text style={styles.graosRotulo}>Nível</Text>
+                  <Text style={styles.nivelNome}>
+                    {graos.nivel ? graos.nivel.nome : 'Primeiro dia'}
+                  </Text>
+                </View>
+              </View>
+
+              {graos.proximo ? (
+                <>
+                  <View style={styles.trilho}>
+                    <View
+                      style={[
+                        styles.trilhoCheio,
+                        { width: `${Math.min(100, Math.round((graos.acumulado / graos.proximo.dias) * 100))}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.graosApoio}>
+                    Faltam {graos.faltam} {graos.faltam === 1 ? 'dia' : 'dias'} para {graos.proximo.nome}
+                    {graos.sequencia > 1 ? ' · dia seguido conta em dobro' : ''}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.graosApoio}>
+                  Você chegou ao último nível. Obrigado por caminhar até aqui.
+                </Text>
+              )}
+            </View>
+          ) : null}
 
           {/* Sequência e total.
               A sequência conta até ontem, então quem ainda não leu hoje de
@@ -264,6 +311,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.gutter,
   },
 
+  graosCard: {
+    ...glassCard,
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 16,
+    ...(shadows.sm as object),
+  },
+  graosLinha: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  nivelBloco: { alignItems: 'flex-end' },
+  graosRotulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 10,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase',
+    color: colors.ambarSoft,
+    marginBottom: 6,
+  },
+  graosValor: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 38,
+    lineHeight: 40,
+    color: colors.palha,
+    letterSpacing: -0.8,
+  },
+  nivelNome: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 24,
+    lineHeight: 30,
+    color: colors.accent,
+    letterSpacing: -0.3,
+  },
+  trilho: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: colors.casca20,
+    overflow: 'hidden',
+    marginTop: 18,
+  },
+  trilhoCheio: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+  },
+  graosApoio: {
+    fontFamily: fonts.sans,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.foregroundSubtle,
+    marginTop: 10,
+  },
   numeros: {
     flexDirection: 'row',
     gap: 10,
