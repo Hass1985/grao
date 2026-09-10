@@ -16,6 +16,7 @@ import {
 import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
+import OuvirTexto from '../components/OuvirTexto';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import EmotionPicker from '../components/EmotionPicker';
@@ -229,6 +230,23 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 <Text style={styles.sectionEyebrow}>Devocional diário</Text>
               </View>
 
+              {/* Ouvir vale mais aqui do que na Bíblia: é o público que não
+                  tem e-mail e cansa a vista que mais pediu isso. A ordem é a
+                  da leitura — versículo, referência, reflexão — e as partes
+                  pagas só entram quando existem. */}
+              <OuvirTexto
+                trechos={[
+                  seed.title || '',
+                  seed.passage || '',
+                  seed.reference || '',
+                  seed.reflection || '',
+                  ...(seed.prayer ? ['Oração.', seed.prayer] : []),
+                  ...(seed.practice ? ['Prática.', seed.practice] : []),
+                ]}
+                rotulo={isSemente ? 'Ouvir a semente' : 'Ouvir o devocional'}
+                style={styles.ouvir}
+              />
+
               <SeedCard
                 seed={seed}
                 featured={true}
@@ -434,6 +452,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
+  ouvir: { marginBottom: 16 },
   leituraWrap: {
     marginTop: 22,
   },

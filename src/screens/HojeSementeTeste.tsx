@@ -15,6 +15,7 @@ import {
 import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
+import OuvirTexto from '../components/OuvirTexto';
 import MusicPlayer from '../components/MusicPlayer';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import CircleBack from '../components/ui/CircleBack';
@@ -175,6 +176,18 @@ export default function HojeSementeTeste({
                 <Text style={styles.sectionEyebrow}>Semente personalizada</Text>
               </View>
 
+              <OuvirTexto
+                trechos={[
+                  seed.passage || '',
+                  seed.reference || '',
+                  seed.reflection || '',
+                  ...(seed.prayer ? ['Oração.', seed.prayer] : []),
+                  ...(seed.practice ? ['Prática.', seed.practice] : []),
+                ]}
+                rotulo="Ouvir a semente"
+                style={styles.ouvir}
+              />
+
               <SeedCard seed={seed} featured={true} />
 
               {seed.music ? (
@@ -261,6 +274,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   vazioBtn: { marginTop: 4 },
+  ouvir: { marginBottom: 16 },
   dateLine: {
     fontFamily: fonts.sans,
     fontSize: 12,

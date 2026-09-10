@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { ChevronLeft, ChevronRight } from '../components/icons';
+import OuvirTexto from '../components/OuvirTexto';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
@@ -130,6 +131,19 @@ export default function Biblia({ navigation }: { navigation: any }) {
             <ActivityIndicator color={colors.accent} style={styles.carregando} />
           ) : aberto ? (
             <View style={styles.capitulo}>
+              {/* Sem os números: lido cru, sairia "um O Senhor é meu pastor,
+                  dois Ele me faz deitar". Cada versículo vira um trecho, e a
+                  pausa entre eles é o que dá respiração à leitura. */}
+              <OuvirTexto
+                trechos={[
+                  `${aberto.livro}, capítulo ${aberto.capitulo}.`,
+                  ...aberto.versiculos.map((v) => v.texto),
+                ]}
+                rotulo="Ouvir o capítulo"
+                velocidade={0.92}
+                style={styles.ouvir}
+              />
+
               {aberto.versiculos.map((v) => (
                 <Text key={v.numero} style={styles.versiculo}>
                   <Text style={styles.numero}>{v.numero} </Text>
@@ -281,6 +295,7 @@ const styles = StyleSheet.create({
   },
 
   capitulo: { marginTop: 4 },
+  ouvir: { marginBottom: 20 },
   versiculo: {
     fontFamily: fonts.serif, fontSize: 18, lineHeight: 30,
     color: colors.palha, marginBottom: 14,
