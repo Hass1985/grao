@@ -791,7 +791,32 @@ app.post('/resposta/:userId', async (req, res) => {
   }
 });
 
-/** A resposta de um dia, para reabrir junto com a semente daquele dia. */
+/**
+ * A resposta de HOJE, com o dia resolvido no fuso da pessoa.
+ *
+ * Existe separada da rota com data porque o app não sabe qual é "hoje" para o
+ * servidor. Quem escreve às 21h no Brasil está no dia seguinte em UTC: o app
+ * pedia a data de amanhã, não achava nada, e a pessoa via o campo vazio como
+ * se nunca tivesse escrito — justamente no horário de maior leitura.
+ */
+app.get('/resposta/:userId', async (req, res) => {
+  try {
+    const { rows: [r] } = await pool.query(
+      `WITH fuso AS (
+         SELECT coalesce((SELECT timezone FROM users WHERE id = $1), 'America/Sao_Paulo') tz
+       )
+       SELECT texto FROM respostas
+        WHERE user_id = $1
+          AND data = (now() AT TIME ZONE (SELECT tz FROM fuso))::date`,
+      [req.params.userId]);
+    return res.json({ texto: r?.texto ?? null });
+  } catch (err: any) {
+    console.error('[resposta/hoje]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler a resposta.' });
+  }
+});
+
+/** A resposta de um dia específico, para reabrir junto com aquele dia. */
 app.get('/resposta/:userId/:data', async (req, res) => {
   try {
     const { rows: [r] } = await pool.query(

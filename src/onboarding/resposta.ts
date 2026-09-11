@@ -33,13 +33,21 @@ export async function responderHoje(texto: string): Promise<RespostaGuardada | n
   }
 }
 
-/** A resposta de um dia. Sem data, é hoje no fuso de quem lê. */
+/**
+ * A resposta de um dia. Sem data, é hoje — e quem decide qual é "hoje" é o
+ * servidor, no fuso da pessoa.
+ *
+ * O app não pode calcular isso: `toISOString` devolve a data em UTC, e quem
+ * escreve às 21h no Brasil já está no dia seguinte lá. O campo apareceria
+ * vazio como se a pessoa nunca tivesse escrito, justo no horário de maior
+ * leitura.
+ */
 export async function respostaDoDia(data?: string): Promise<string | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const dia = data ?? new Date().toISOString().slice(0, 10);
-    const res = await fetch(`${API_URL}/resposta/${userId}/${dia}`);
+    const res = await fetch(
+      data ? `${API_URL}/resposta/${userId}/${data}` : `${API_URL}/resposta/${userId}`);
     if (!res.ok) return null;
     const j = await res.json();
     return j.texto ?? null;
