@@ -181,7 +181,7 @@ export default function Plantio({ navigation }: Props) {
               <Pressable
                 key={i}
                 onPress={() => irPara(i)}
-                hitSlop={10}
+                hitSlop={12}
                 accessibilityRole="button"
                 accessibilityLabel={`Ir para o passo ${i + 1} de ${STEPS.length}`}
                 accessibilityState={{ selected: i === index }}
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 22,
   },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.casca20 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(251, 246, 236, 0.38)' },
   dotActive: { width: 22, backgroundColor: colors.accent },
   ctaPlaceholder: { height: 120 },
   secondBtn: {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Pressable } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { Seed } from '../data/seeds';
 import { colors } from '../theme/colors';
@@ -129,65 +128,10 @@ export default function SeedCard({
             </View>
           ) : null}
 
-          {isDevocional ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Faça parte da comunidade</Text>
-              <View style={styles.locked}>
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={[
-                    'rgba(251, 246, 236, 0.2)',
-                    'rgba(251, 246, 236, 0.12)',
-                    'rgba(251, 246, 236, 0.16)',
-                  ]}
-                  locations={[0, 0.5, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.lockedShine}
-                />
-                <LinearGradient
-                  pointerEvents="none"
-                  colors={[
-                    'rgba(251, 246, 236, 0.22)',
-                    'transparent',
-                    'transparent',
-                    'rgba(251, 246, 236, 0.1)',
-                  ]}
-                  locations={[0, 0.08, 0.92, 1]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.lockedEdge}
-                />
-                <Text style={styles.lockedLead}>
-                  A semente personalizada traz:
-                </Text>
-                <View style={styles.lockedList}>
-                  {[
-                    'Oração guiada para o seu momento',
-                    'Prática concreta para viver a Palavra',
-                    'Louvor escolhido para o seu dia',
-                    'Tudo no WhatsApp, todo dia, no horário certo',
-                  ].map((item) => (
-                    <View key={item} style={styles.lockedRow}>
-                      <Text style={styles.lockedBullet}>·</Text>
-                      <Text style={styles.lockedItem}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-                {onSaibaMais ? (
-                  <TouchableOpacity
-                    onPress={onSaibaMais}
-                    style={styles.saibaMais}
-                    accessibilityRole="button"
-                    accessibilityLabel="Clique e saiba mais sobre o Plantio"
-                    hitSlop={8}
-                  >
-                    <Text style={styles.saibaMaisText}>Clique e saiba mais</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
+          {/* O convite para o Plantio saiu daqui: ele caía entre o texto do dia
+              e as ações da pessoa, e para chegar em "Confirmar leitura" era
+              preciso rolar por cima de uma oferta. Agora vive em
+              ConviteDoPlantio, depois das ações, na tela Hoje. */}
         </Reveal>
       )}
 
@@ -356,58 +300,6 @@ const styles = StyleSheet.create({
           shadowRadius: 16,
           elevation: 3,
         }),
-  },
-  lockedShine: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-  },
-  lockedEdge: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-  },
-  lockedLead: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.palha,
-  },
-  lockedList: {
-    gap: 8,
-  },
-  lockedRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  lockedBullet: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 22,
-    color: 'rgba(247, 240, 226, 0.55)',
-  },
-  lockedItem: {
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.palha,
-  },
-  saibaMais: {
-    alignSelf: 'center',
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(192, 120, 38, 0.22)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(216, 154, 85, 0.45)',
-  },
-  saibaMaisText: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 13,
-    color: colors.ambarSoft,
-    letterSpacing: 0.3,
-    textAlign: 'center',
   },
   musicBlock: {
     marginTop: 24,

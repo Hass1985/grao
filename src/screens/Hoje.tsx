@@ -17,6 +17,7 @@ import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
+import ConviteDoPlantio from '../components/ConviteDoPlantio';
 import OuvirTexto from '../components/OuvirTexto';
 import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
@@ -272,7 +273,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
               <SeedCard
                 seed={seed}
                 featured={true}
-                onSaibaMais={() => navigation.navigate('Plantio')}
                 onLerCapitulo={abrirCapitulo}
               />
 
@@ -324,6 +324,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
               {/* Responder é o que alimenta a memória. Sem obrigação e sem
                   contador: quem não escreve não perde nada. */}
               <Responder />
+
+              {/* O convite vem por último. Quem acabou de ler e responder está
+                  mais disposto a ouvir sobre o que vem depois; quem ainda nem
+                  leu está sendo interrompido por uma oferta. */}
+              {isFree ? (
+                <ConviteDoPlantio onSaibaMais={() => navigation.navigate('Plantio')} />
+              ) : null}
 
               {isSemente ? (
                 <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
