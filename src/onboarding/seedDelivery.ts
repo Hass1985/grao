@@ -79,6 +79,8 @@ export interface SeedSelection {
   seed: Seed;
   /** Devocional do dia já confirmado como lido (só no plano gratuito). */
   lido?: boolean;
+  /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
+  ligacao?: string | null;
   family: EmotionalFamily;
   source: 'momento' | 'perfil' | 'padrão';
   channel: Channel;
@@ -157,6 +159,7 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
               ? 'sinestesico'
               : channel) as Channel,
           lido: !!j.lido,
+          ligacao: j.ligacao ?? null,
         };
       }
     } catch {

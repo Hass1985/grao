@@ -32,6 +32,7 @@ import {
   creditar, creditarLeitura, resumoDeGraos, extratoDeGraos, GANHO, NIVEIS,
 } from './graos.js';
 import { registerBibliaRoutes } from './biblia.js';
+import { guardarMemorias, linhaDeLigacao, registrarUso } from './memoria.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
@@ -432,6 +433,32 @@ app.post('/profile/:userId/plan', async (req, res) => {
   }
 });
 
+/**
+ * A memória, dita em voz alta.
+ *
+ * O motor guarda fatos da vida da pessoa desde o começo — com evidência
+ * literal, prazo de validade por categoria e trava contra invenção — e até
+ * aqui isso só aparecia no WhatsApp. Dentro do app, a pessoa nunca via que
+ * tinha sido lembrada, e é justamente esse o momento que nenhum concorrente
+ * consegue imitar: ele exige um motor emocional que leva meses para existir.
+ *
+ * Não é uma chamada por dia: `memoriaParaRetomar` respeita um descanso entre
+ * retomadas, e devolve nulo na maioria das vezes — lembrar todo dia deixaria
+ * de ser cuidado e viraria vigilância. Quando a linha sai, registramos o uso
+ * para aquela memória descansar de novo.
+ */
+async function lembrarEmVozAlta(userId: string, familia: string): Promise<string | null> {
+  try {
+    const l = await linhaDeLigacao(userId, familia);
+    if (!l) return null;
+    void registrarUso(l.memoriaId);
+    void logEvent(userId, 'memoria_retomada', { memoriaId: l.memoriaId });
+    return l.texto;
+  } catch {
+    return null;
+  }
+}
+
 // Semente do dia, escolhida pelo perfil + momento + canal.
 //
 // O corte do plano gratuito acontece AQUI, não na tela: devolver a semente
@@ -489,6 +516,7 @@ app.get('/seed/today/:userId', async (req, res) => {
         title: '', body: jaEntregue.reflection,
         verse: jaEntregue.passage, reference: jaEntregue.reference,
       }),
+      ligacao: await lembrarEmVozAlta(req.params.userId, jaEntregue.family),
       acesso,
     });
   }
@@ -502,6 +530,7 @@ app.get('/seed/today/:userId', async (req, res) => {
       title: '', body: seed.reflection,
       verse: seed.passage, reference: seed.reference,
     }),
+    ligacao: await lembrarEmVozAlta(req.params.userId, seed.family),
     acesso,
   });
 });
@@ -685,6 +714,93 @@ app.post('/seed/:seedId/feedback', async (req, res) => {
   } catch (err: any) {
     console.error('[seed/feedback]', err?.message || err);
     return res.status(500).json({ error: 'Falha ao registrar.' });
+  }
+});
+
+/**
+ * A resposta da pessoa à semente do dia.
+ *
+ * O cérebro só entra para quem assina, e a decisão é do SERVIDOR, não do app:
+ * é a mesma regra do paywall. Quem é gratuito escreve e o texto fica guardado
+ * para ela reler — um diário. Quem assina tem a resposta LIDA, e é dela que
+ * saem as memórias que o Grão retoma dias depois. Sem isso, a memória só teria
+ * o que foi dito na abertura, e o motor envelheceria junto com aquele retrato.
+ */
+app.post('/resposta/:userId', async (req, res) => {
+  try {
+    const { texto } = req.body as { texto?: string };
+    const userId = req.params.userId;
+    const limpo = String(texto ?? '').trim().slice(0, 2000);
+    if (!limpo) return res.status(400).json({ error: 'texto é obrigatório' });
+
+    await ensureUser(userId);
+    const { rows: [r] } = await pool.query(
+      `WITH fuso AS (
+         SELECT coalesce((SELECT timezone FROM users WHERE id = $1), 'America/Sao_Paulo') tz
+       )
+       INSERT INTO respostas (user_id, data, texto)
+       VALUES ($1, (now() AT TIME ZONE (SELECT tz FROM fuso))::date, $2)
+       ON CONFLICT (user_id, data) DO UPDATE
+              SET texto = excluded.texto, criado_em = now()
+       RETURNING data::text`, [userId, limpo]);
+
+    const data = r?.data as string;
+    void logEvent(userId, 'resposta_escrita', { data, chars: limpo.length });
+    const ganhou = await creditar(userId, GANHO.resposta, 'resposta', data);
+
+    // Segurança emocional antes de qualquer coisa, como em todo canal: o
+    // detector roda sem depender da IA e a resposta de cuidado não muda.
+    const risco = avaliarRisco(limpo);
+    if (risco.risco !== 'nenhum') {
+      void logEvent(userId, 'risco_detectado', {
+        nivel: risco.risco, trecho: risco.trecho, origem: 'resposta',
+      });
+    }
+    if (risco.risco === 'grave') {
+      return res.json({
+        ok: true, data, graosGanhos: ganhou,
+        cuidado: respostaDeCuidado(null),
+      });
+    }
+
+    const acesso = await acessoDoUsuario(userId);
+    let lembrou = 0;
+    if (acesso.completo) {
+      await saveTurn(userId, 'user', limpo);
+      const [recentes, perfil] = await Promise.all([
+        getRecentUserMessages(userId, 4),
+        getProfile(userId),
+      ]);
+      const leitura = await readMessage(limpo, {
+        recentMessages: recentes.slice(0, -1),
+        profileHint: perfil?.emotional_hint ?? null,
+      });
+      if (leitura) {
+        await saveReading(userId, 'resposta', leitura);
+        if (leitura.confidence >= CONFIDENCE_TO_UPDATE) {
+          await setMomentBySystem(userId, leitura.family);
+        }
+        lembrou = await guardarMemorias(userId, limpo, leitura.memorias ?? []);
+      }
+    }
+
+    return res.json({ ok: true, data, graosGanhos: ganhou, lembrou });
+  } catch (err: any) {
+    console.error('[resposta]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao guardar a resposta.' });
+  }
+});
+
+/** A resposta de um dia, para reabrir junto com a semente daquele dia. */
+app.get('/resposta/:userId/:data', async (req, res) => {
+  try {
+    const { rows: [r] } = await pool.query(
+      `SELECT texto FROM respostas WHERE user_id = $1 AND data = $2::date`,
+      [req.params.userId, req.params.data]);
+    return res.json({ texto: r?.texto ?? null });
+  } catch (err: any) {
+    console.error('[resposta/dia]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler a resposta.' });
   }
 });
 

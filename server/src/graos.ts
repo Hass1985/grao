@@ -23,6 +23,7 @@ export const GANHO = {
   sequencia: 5,     // bônus por emendar no dia anterior
   semente: 10,      // plantar a semente (assinante)
   avaliacao: 2,     // dizer se a semente falou — barato porque é pedido nosso
+  resposta: 8,      // escrever o que a semente mexeu: é o gesto que alimenta a memória
   indicacao: 50,    // alguém entrou pelo seu convite e ficou
 } as const;
 

@@ -12,6 +12,7 @@ import {
 import { Sprout, Circle } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import OuvirTexto from '../components/OuvirTexto';
+import Responder from '../components/Responder';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
@@ -361,6 +362,7 @@ export default function Campo({ navigation }: { navigation: any }) {
                       rotulo="Ouvir"
                       style={styles.folhaOuvir}
                     />
+                    <Responder data={aberta.date} somenteLeitura />
                     <SeedCard
                       seed={aberta}
                       featured

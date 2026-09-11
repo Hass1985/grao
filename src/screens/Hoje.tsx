@@ -16,6 +16,7 @@ import {
 import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
+import Responder from '../components/Responder';
 import OuvirTexto from '../components/OuvirTexto';
 import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
@@ -58,6 +59,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
   const [lido, setLido] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
+  const [ligacao, setLigacao] = useState<string | null>(null);
   const reveal = useRef(new Animated.Value(0)).current;
   /** Momento vigente quando a semente na tela foi carregada. */
   const momentoCarregado = useRef<EmotionalFamily | null>(null);
@@ -66,9 +69,10 @@ export default function Hoje({ navigation }: { navigation: any }) {
 
   const loadSeed = React.useCallback(async () => {
     try {
-      const { seed: next, lido: jaLido } = await selectTodaySeed();
+      const { seed: next, lido: jaLido, ligacao: lembranca } = await selectTodaySeed();
       setSeed(next);
       setLido(!!jaLido);
+      setLigacao(lembranca ?? null);
       momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
@@ -238,6 +242,16 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 <Text style={styles.sectionEyebrow}>Devocional diário</Text>
               </View>
 
+              {/* O Grão lembrando em voz alta. Vem do motor de memória, que
+                  guarda fatos com evidência literal desde o primeiro dia e até
+                  agora só falava no WhatsApp. É o momento que a pessoa conta
+                  para alguém — "como assim ele lembrou?". */}
+              {ligacao ? (
+                <View style={styles.lembranca}>
+                  <Text style={styles.lembrancaTexto}>{ligacao}</Text>
+                </View>
+              ) : null}
+
               {/* Ouvir vale mais aqui do que na Bíblia: é o público que não
                   tem e-mail e cansa a vista que mais pediu isso. A ordem é a
                   da leitura — versículo, referência, reflexão — e as partes
@@ -306,6 +320,10 @@ export default function Hoje({ navigation }: { navigation: any }) {
               {/* Só na semente: no devocional o gesto é confirmar a leitura, e
                   duas perguntas no mesmo lugar viram formulário. */}
               {isSemente ? <AvaliarSemente seedId={seed.id} /> : null}
+
+              {/* Responder é o que alimenta a memória. Sem obrigação e sem
+                  contador: quem não escreve não perde nada. */}
+              <Responder />
 
               {isSemente ? (
                 <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
@@ -462,6 +480,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   ouvir: { marginBottom: 16 },
+  lembranca: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+    paddingLeft: 16,
+    paddingVertical: 4,
+    marginBottom: 20,
+  },
+  lembrancaTexto: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 17,
+    lineHeight: 26,
+    color: colors.foregroundMuted,
+  },
   leituraWrap: {
     marginTop: 22,
   },
