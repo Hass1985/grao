@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Pressable } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
@@ -19,6 +19,8 @@ interface SeedCardProps {
   embedMusic?: boolean;
   /** Abre o fluxo explicativo do Plantio (free). */
   onSaibaMais?: () => void;
+  /** Abre o capítulo inteiro na Bíblia, a partir da referência do versículo. */
+  onLerCapitulo?: () => void;
 }
 
 const typeLabel: Record<string, string> = {
@@ -52,6 +54,7 @@ export default function SeedCard({
   featured = false,
   embedMusic = false,
   onSaibaMais,
+  onLerCapitulo,
 }: SeedCardProps) {
   const open = (url?: string) => {
     if (url) Linking.openURL(url);
@@ -89,7 +92,17 @@ export default function SeedCard({
 
       <Reveal triggerKey={seed.id} delay={60}>
         <Text style={styles.passage}>{seed.passage}</Text>
-        <Text style={styles.reference}>{seed.reference}</Text>
+        {/* A referência vira porta para o capítulo inteiro. O versículo sozinho
+            é recorte; quem quer entender o que veio antes e depois precisa de
+            um caminho, e o texto completo já está aqui dentro do app. */}
+        {onLerCapitulo ? (
+          <Pressable onPress={onLerCapitulo} hitSlop={8} style={styles.refLinha}>
+            <Text style={[styles.reference, styles.referenceLink]}>{seed.reference}</Text>
+            <Text style={styles.refAcao}>ler o capítulo</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.reference}>{seed.reference}</Text>
+        )}
       </Reveal>
 
       {!compact && (
@@ -283,6 +296,15 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     letterSpacing: -0.35,
     marginBottom: 12,
+  },
+  refLinha: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 },
+  referenceLink: { textDecorationLine: 'underline', textDecorationColor: colors.ambar08 },
+  refAcao: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 10,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: colors.ambarSoft,
   },
   reference: {
     fontFamily: fonts.sansSemi,

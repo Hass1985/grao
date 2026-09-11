@@ -6,8 +6,12 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
+  Pressable,
+  Modal,
 } from 'react-native';
 import { Sprout, Circle } from '../components/icons';
+import SeedCard from '../components/SeedCard';
+import OuvirTexto from '../components/OuvirTexto';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
@@ -74,6 +78,8 @@ export default function Campo({ navigation }: { navigation: any }) {
   const [sementes, setSementes] = useState<Seed[]>([...pastSeeds, todaySeed]);
   const [resumo, setResumo] = useState<ResumoLeitura | null>(null);
   const [graos, setGraos] = useState<ResumoGraos | null>(null);
+  /** Dia que a pessoa tocou no calendário, aberto por cima. */
+  const [aberta, setAberta] = useState<Seed | null>(null);
   const carregar = useCallback(async () => {
     try {
       const [historico, r, g] = await Promise.all([
@@ -132,8 +138,19 @@ export default function Campo({ navigation }: { navigation: any }) {
     const isOpen = kind === 'open';
     const isFuture = kind === 'future';
 
+    // O dia com conteúdo vira porta. Um calendário que marca o dia e não deixa
+    // reabrir o que foi lido é um placar, não um histórico.
+    const doDia = seedMap[dateStr];
+
     return (
-      <View key={dateStr} style={styles.cellSlot}>
+      <Pressable
+        key={dateStr}
+        style={styles.cellSlot}
+        onPress={doDia ? () => setAberta(doDia) : undefined}
+        disabled={!doDia}
+        accessibilityRole={doDia ? 'button' : undefined}
+        accessibilityLabel={doDia ? `Abrir o dia ${day}` : undefined}
+      >
         <View
           style={[
             styles.cell,
@@ -156,7 +173,7 @@ export default function Campo({ navigation }: { navigation: any }) {
           </Text>
           <StatusIcon kind={kind} size={isPlanted ? 17 : 15} />
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -300,6 +317,72 @@ export default function Campo({ navigation }: { navigation: any }) {
             </View>
           </View>
         </ScrollView>
+
+        <Modal
+          visible={!!aberta}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setAberta(null)}
+        >
+          <ScreenBackground>
+            <SafeAreaView style={styles.safe}>
+              <View style={styles.folhaTopo}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.folhaData}>
+                    {aberta
+                      ? new Date(aberta.date + 'T12:00:00').toLocaleDateString('pt-BR', {
+                          weekday: 'long', day: 'numeric', month: 'long',
+                        })
+                      : ''}
+                  </Text>
+                  <Text style={styles.folhaTitulo}>
+                    {aberta?.title || aberta?.reference || 'Aquele dia'}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setAberta(null)} hitSlop={12}>
+                  <Text style={styles.folhaFechar}>Fechar</Text>
+                </Pressable>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={styles.folhaScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {aberta ? (
+                  <>
+                    <OuvirTexto
+                      trechos={[
+                        aberta.passage || '',
+                        aberta.reference || '',
+                        aberta.reflection || '',
+                        ...(aberta.prayer ? ['Oração.', aberta.prayer] : []),
+                        ...(aberta.practice ? ['Prática.', aberta.practice] : []),
+                      ]}
+                      rotulo="Ouvir"
+                      style={styles.folhaOuvir}
+                    />
+                    <SeedCard
+                      seed={aberta}
+                      featured
+                      embedMusic
+                      onLerCapitulo={(() => {
+                        const r = partesDaReferencia(aberta.reference);
+                        return r
+                          ? () => {
+                              setAberta(null);
+                              navigation.navigate('Biblia', {
+                                livro: r.livro, capitulo: r.capitulo,
+                              });
+                            }
+                          : undefined;
+                      })()}
+                    />
+                  </>
+                ) : null}
+              </ScrollView>
+            </SafeAreaView>
+          </ScreenBackground>
+        </Modal>
       </SafeAreaView>
     </ScreenBackground>
   );
@@ -365,6 +448,23 @@ const styles = StyleSheet.create({
     color: colors.foregroundSubtle,
     marginTop: 10,
   },
+  folhaTopo: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: space.gutter, paddingTop: 20, paddingBottom: 10, gap: 12,
+  },
+  folhaData: {
+    fontFamily: fonts.sansMedium, fontSize: 12, textTransform: 'uppercase',
+    letterSpacing: 0.8, color: colors.foregroundSubtle, marginBottom: 6,
+  },
+  folhaTitulo: {
+    fontFamily: fonts.serifMedium, fontSize: 26, lineHeight: 32,
+    color: colors.palha, letterSpacing: -0.4,
+  },
+  folhaFechar: {
+    fontFamily: fonts.sansMedium, fontSize: 14, color: colors.foregroundMuted, marginTop: 6,
+  },
+  folhaScroll: { paddingHorizontal: space.gutter, paddingBottom: 40 },
+  folhaOuvir: { marginBottom: 16 },
   numeros: {
     flexDirection: 'row',
     gap: 10,

@@ -36,7 +36,7 @@ import { glassCard } from '../theme/glass';
  * pesaria o download inicial de todo mundo para servir a consulta de alguns, e
  * a correção de um versículo levaria uma publicação nova para chegar.
  */
-export default function Biblia({ navigation }: { navigation: any }) {
+export default function Biblia({ navigation, route }: { navigation: any; route?: any }) {
   const [livros, setLivros] = useState<LivroBiblia[]>([]);
   const [aberto, setAberto] = useState<CapituloBiblia | null>(null);
   const [escolhendoCapitulo, setEscolhendoCapitulo] = useState<LivroBiblia | null>(null);
@@ -60,6 +60,21 @@ export default function Biblia({ navigation }: { navigation: any }) {
       setCarregando(false);
     }
   }, []);
+
+  // Chegou vindo da referência de uma semente: abre direto o capítulo dela.
+  //
+  // A dependência é a string `pedido`, não o objeto de params: params é um
+  // objeto novo a cada render, e o efeito reabriria o capítulo toda vez que a
+  // tela ganhasse foco — quem tivesse navegado para outro capítulo perderia o
+  // lugar sozinho.
+  const pedido = route?.params?.livro
+    ? `${route.params.livro}|${route.params.capitulo}`
+    : null;
+  useEffect(() => {
+    if (!pedido) return;
+    const [livro, cap] = pedido.split('|');
+    void abrir(livro, Number(cap));
+  }, [pedido, abrir]);
 
   const procurar = useCallback(async () => {
     const termo = busca.trim();

@@ -28,6 +28,28 @@ export interface AchadoBiblia {
   texto: string;
 }
 
+/**
+ * Quebra "1 Coríntios 13:4-7" em livro e capítulo.
+ *
+ * O nome do livro pode ter número na frente (1 Reis, 2 Samuel) e espaço no
+ * meio, então a âncora é o ÚLTIMO número antes dos dois-pontos — tentar achar
+ * o livro por lista de nomes quebraria em qualquer grafia diferente.
+ *
+ * Aceita também referência sem versículo ("Salmos 23"), que é como algumas
+ * âncoras do devocional aparecem.
+ */
+export function partesDaReferencia(
+  referencia: string | null | undefined,
+): { livro: string; capitulo: number } | null {
+  const r = String(referencia ?? '').trim();
+  if (!r) return null;
+  const m = /^(.+?)\s+(\d+)\s*(?::|$)/.exec(r);
+  if (!m) return null;
+  const capitulo = Number(m[2]);
+  if (!m[1] || !Number.isInteger(capitulo) || capitulo < 1) return null;
+  return { livro: m[1].trim(), capitulo };
+}
+
 export async function livrosDaBiblia(): Promise<LivroBiblia[]> {
   if (!API_URL) return [];
   try {

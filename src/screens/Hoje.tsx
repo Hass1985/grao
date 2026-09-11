@@ -17,6 +17,7 @@ import { BookOpen, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import OuvirTexto from '../components/OuvirTexto';
+import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import EmotionPicker from '../components/EmotionPicker';
@@ -132,6 +133,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
       setConfirmando(false);
     }
   };
+
+  // O versículo é um recorte; o capítulo é o contexto. Como a Bíblia já está
+  // dentro do app, a referência vira porta em vez de enfeite.
+  const referencia = partesDaReferencia(seed.reference);
+  const abrirCapitulo = referencia
+    ? () => navigation.navigate('Biblia', { livro: referencia.livro, capitulo: referencia.capitulo })
+    : undefined;
 
   const share = async () => {
     const message = seed.compartilhavel?.trim();
@@ -251,6 +259,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 seed={seed}
                 featured={true}
                 onSaibaMais={() => navigation.navigate('Plantio')}
+                onLerCapitulo={abrirCapitulo}
               />
 
               {isSemente && seed.music ? (
