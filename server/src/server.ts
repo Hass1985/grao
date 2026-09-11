@@ -42,7 +42,7 @@ const app = express();
 
 // CORS: em produção, restrinja com CORS_ORIGINS (lista separada por vírgula).
 // Sem a variável, libera geral (útil no Trial e no desenvolvimento).
-const origins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
+const origins = process.env.CORS_ORIGINS?.split(',').map((s: string) => s.trim()).filter(Boolean);
 app.use(cors(origins?.length ? { origin: origins } : undefined));
 // O corpo CRU precisa sobreviver ao parser: a assinatura HMAC que a Meta
 // envia é calculada sobre os bytes originais. Re-serializar o JSON muda

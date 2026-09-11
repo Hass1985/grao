@@ -16,7 +16,11 @@ export const webScreenFill: ViewStyle | null =
         flexShrink: 0,
         flexBasis: 'auto',
         overflow: 'hidden',
-      } as ViewStyle)
+        // `100dvh` não existe no tipo do React Native (é unidade de CSS), mas é
+        // justamente o que resolve a barra do navegador no celular. O desvio
+        // passa por `unknown` de propósito: assim é UMA exceção declarada aqui,
+        // e não um `tsc` que vive reclamando e por isso ninguém roda.
+      } as unknown as ViewStyle)
     : null;
 
 // flex:1 para a ScrollView/FlatList filha (para encolher e rolar por dentro).

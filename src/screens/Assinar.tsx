@@ -228,7 +228,7 @@ export default function Assinar({ navigation }: Props) {
                     value={cpf}
                     onChangeText={(t) => { setCpf(mascararCpf(t)); setErro(null); }}
                     placeholder="000.000.000-00"
-                    placeholderTextColor={colors.foregroundMuted}
+                    placeholderTextColor={colors.foregroundSubtle}
                     keyboardType="number-pad"
                     style={styles.entrada}
                     maxLength={14}
@@ -245,7 +245,7 @@ export default function Assinar({ navigation }: Props) {
                     value={email}
                     onChangeText={setEmail}
                     placeholder="opcional"
-                    placeholderTextColor={colors.foregroundMuted}
+                    placeholderTextColor={colors.foregroundSubtle}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     style={styles.entrada}

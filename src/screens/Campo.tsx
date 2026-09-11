@@ -19,6 +19,7 @@ import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
 import { fetchHistory, resumoDeLeitura, ResumoLeitura } from '../onboarding/seedDelivery';
 import { meusGraos, type ResumoGraos } from '../onboarding/graos';
+import { partesDaReferencia } from '../onboarding/biblia';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radius } from '../theme/radius';
