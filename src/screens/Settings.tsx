@@ -13,6 +13,7 @@ import {
   Alert,
   Platform,
   Pressable,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -42,6 +43,10 @@ import { glassCard } from '../theme/glass';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 import { useAuth } from '../auth/AuthContext';
 import {
+  minhaAssinatura, minhasPreferencias, salvarHorario, excluirMinhaConta,
+  emReais, porExtenso, type SituacaoAssinatura,
+} from '../onboarding/assinatura';
+import {
   ChevronRight,
   Camera,
   Sprout,
@@ -49,11 +54,9 @@ import {
   MessageCircle,
   Clock,
   Music2,
-  Lock,
   Shield,
   Trash2,
   Mail,
-  Star,
   BookOpen,
   Info,
   Heart,
@@ -124,6 +127,8 @@ function Row({
 
 export default function Settings({ navigation }: Props) {
   const { signOut } = useAuth();
+  /** Situação real da assinatura e do horário. Nada aqui é escrito no código. */
+  const [assinatura, setAssinatura] = useState<SituacaoAssinatura | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState('Você');
   const [memberSince, setMemberSince] = useState('');
@@ -133,24 +138,30 @@ export default function Settings({ navigation }: Props) {
   const [selectedTime, setSelectedTime] = useState('07:00');
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [music, setMusic] = useState(true);
-  const [privateProfile, setPrivateProfile] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
 
   useFocusEffect(
     useCallback(() => {
+      let vivo = true;
       (async () => {
-        const [a, n, m, mom] = await Promise.all([
+        const [a, n, m, mom, ass, pref] = await Promise.all([
           getAvatarUri(),
           getDisplayName(),
           getMemberSince(),
           getMoment(),
+          minhaAssinatura(),
+          minhasPreferencias(),
         ]);
+        if (!vivo) return;
         setAvatar(a);
         setName(n);
         setMemberSince(m);
         setMomentState(mom as EmotionalFamily | null);
+        setAssinatura(ass);
+        if (pref?.horario) setSelectedTime(pref.horario);
       })();
+      return () => { vivo = false; };
     }, [])
   );
 
@@ -208,7 +219,17 @@ export default function Settings({ navigation }: Props) {
       'Isso apaga em definitivo seu perfil, suas conversas e seu histórico. Não dá pra desfazer.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          // O confirmar não apagava um byte: a tela prometia exclusão
+          // definitiva e não fazia nada. Além de quebrar a confiança, é
+          // promessa sobre dado pessoal que a LGPD leva a sério.
+          onPress: async () => {
+            await excluirMinhaConta();
+            await signOut();
+          },
+        },
       ]
     );
   };
@@ -307,19 +328,43 @@ export default function Settings({ navigation }: Props) {
             )}
           </Section>
 
+          {/* O que aparece aqui vem do servidor, não do código.
+              Antes dizia "Plantio · R$ 19,90/mês · renovação automática" para
+              TODO MUNDO, inclusive para quem nunca pagou nada, e os dois toques
+              não faziam nada. Anunciar uma cobrança que não existe derruba a
+              confiança de uma vez — e num produto de fé a confiança é o
+              produto. */}
           <Section title="Meu plano">
-            <Row
-              icon={Sprout}
-              label="Plantio"
-              value="R$ 19,90/mês · renovação automática"
-              onPress={() => {}}
-            />
-            <Row
-              icon={CreditCard}
-              label="Gerenciar assinatura"
-              onPress={() => {}}
-              last
-            />
+            {assinatura?.completo ? (
+              <Row
+                icon={Sprout}
+                label={assinatura.nomeDoPlano ?? 'Plano ativo'}
+                value={[
+                  assinatura.situacao === 'trial' ? 'Em teste'
+                    : assinatura.situacao === 'cortesia' ? 'Cortesia'
+                    : emReais(assinatura.valorCentavos),
+                  assinatura.proximaCobranca
+                    ? `próxima cobrança em ${porExtenso(assinatura.proximaCobranca)}`
+                    : assinatura.terminaEm ? `até ${porExtenso(assinatura.terminaEm)}` : '',
+                ].filter(Boolean).join(' · ')}
+                last
+              />
+            ) : (
+              <>
+                <Row
+                  icon={Sprout}
+                  label="Gratuito"
+                  value="Devocional diário, todos os dias, para sempre"
+                />
+                <Row
+                  icon={CreditCard}
+                  label="Conhecer o Plantio"
+                  value="Semente escolhida para o seu momento"
+                  onPress={() => navigation.navigate('Plantio')}
+                  last
+                />
+              </>
+            )}
           </Section>
 
           <Section title="Notificações">
@@ -344,7 +389,13 @@ export default function Settings({ navigation }: Props) {
                   <Button
                     title="Pronto"
                     size="sm"
-                    onPress={() => setShowNotifOptions(false)}
+                    onPress={() => {
+                      setShowNotifOptions(false);
+                      // Antes o seletor não saía da tela: a pessoa escolhia
+                      // outro horário, fechava, e a semente continuava
+                      // chegando na hora antiga.
+                      void salvarHorario(selectedTime);
+                    }}
                     style={{ marginTop: 12 }}
                   />
                 </View>
@@ -376,20 +427,11 @@ export default function Settings({ navigation }: Props) {
             />
           </Section>
 
+          {/* "Perfil privado" saiu: não existe nada social no Grão — sem
+              feed, sem perfil público, sem comentário. A chave não tinha o que
+              tornar privado, e oferecer controle sobre exposição que não existe
+              sugere que existe. */}
           <Section title="Privacidade">
-            <Row
-              icon={Lock}
-              label="Perfil privado"
-              right={
-                <Switch
-                  value={privateProfile}
-                  onValueChange={setPrivateProfile}
-                  trackColor={switchTrack}
-                  thumbColor={colors.white}
-                  ios_backgroundColor={colors.casca12}
-                />
-              }
-            />
             <Row
               icon={Shield}
               label="Privacidade e dados"
@@ -409,9 +451,11 @@ export default function Settings({ navigation }: Props) {
               icon={Mail}
               label="Fale com a gente"
               value="ola@graoapp.com.br"
-              onPress={() => {}}
+              onPress={() => Linking.openURL('mailto:ola@graoapp.com.br')}
             />
-            <Row icon={Star} label="Avaliar o Grão" onPress={() => {}} />
+            {/* "Avaliar o Grão" saiu: não existe loja de aplicativos para
+                onde mandar a pessoa, e o toque não fazia nada. Volta no dia
+                em que o app estiver publicada numa. */}
             <Row
               icon={BookOpen}
               label="Créditos"

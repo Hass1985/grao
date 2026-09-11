@@ -7,8 +7,14 @@ import { Easing } from 'react-native';
 export const motion = {
   /** Splash Welcome → Intro */
   splashMs: 2200,
-  /** Tempo de leitura em slides automáticos (Intro, Plantio) */
-  slideDwellMs: 4000,
+  /**
+   * Tempo de leitura em slides automáticos (Intro, Plantio).
+   *
+   * Cinco segundos contados DEPOIS da animação de entrada — quem lê devagar
+   * precisa do tempo inteiro com o texto já parado na tela, não somando com o
+   * tempo em que ele ainda estava subindo.
+   */
+  slideDwellMs: 5000,
   /** Fade/sobe ao trocar slide interno */
   enterMs: 480,
   enterRise: 22,

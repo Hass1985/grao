@@ -186,9 +186,13 @@ export default function WhatsAppDemo({ navigation }: { navigation: any }) {
   const goBack = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
-    } else {
-      navigation.navigate('WhatsApp');
+      return;
     }
+    // Sem pilha para voltar, o destino é o Hoje. Antes apontava para
+    // 'WhatsApp', uma tela do onboarding antigo que não está registrada na
+    // navegação: o botão de voltar não fazia nada e a pessoa ficava presa na
+    // demonstração.
+    navigation.navigate('Main', { screen: 'Hoje' });
   };
 
   return (

@@ -76,6 +76,8 @@ function StepIcon({ name }: { name: (typeof STEPS)[number]['icon'] }) {
 
 export default function Plantio({ navigation }: Props) {
   const [index, setIndex] = useState(0);
+  /** Quem tocou assume o comando: a apresentação para de andar sozinha. */
+  const [manual, setManual] = useState(false);
   const enter = useRef(new Animated.Value(0)).current;
   const isLast = index === STEPS.length - 1;
   const step = STEPS[index];
@@ -91,7 +93,7 @@ export default function Plantio({ navigation }: Props) {
       useNativeDriver: NATIVE,
     });
     anim.start(({ finished }) => {
-      if (cancelled || !finished || isLast) return;
+      if (cancelled || !finished || isLast || manual) return;
       dwellTimer = setTimeout(() => {
         setIndex((i) => Math.min(i + 1, STEPS.length - 1));
       }, motion.slideDwellMs);
@@ -101,7 +103,12 @@ export default function Plantio({ navigation }: Props) {
       anim.stop();
       if (dwellTimer) clearTimeout(dwellTimer);
     };
-  }, [index, isLast, enter]);
+  }, [index, isLast, manual, enter]);
+
+  const irPara = (i: number) => {
+    setManual(true);
+    setIndex(Math.max(0, Math.min(i, STEPS.length - 1)));
+  };
 
   const abrirMomentoTeste = () => {
     // push no stack do app (irmão do Plantio), sem depender de bubble
@@ -126,19 +133,30 @@ export default function Plantio({ navigation }: Props) {
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
+        {/* A barra de progresso saiu daqui: os pontos do rodapé já dizem em
+            que passo a pessoa está, e dois indicadores do mesmo estado na
+            mesma tela fazem procurar diferença onde não existe. */}
         <View style={styles.topbar}>
           <CircleBack onPress={() => navigation.goBack()} />
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((index + 1) / STEPS.length) * 100}%` },
-              ]}
-            />
-          </View>
         </View>
 
         <View style={styles.stage}>
+          <View style={styles.toques} pointerEvents="box-none">
+            <Pressable
+              style={styles.toque}
+              onPress={() => irPara(index - 1)}
+              disabled={index === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Passo anterior"
+            />
+            <Pressable
+              style={styles.toque}
+              onPress={() => irPara(index + 1)}
+              disabled={isLast}
+              accessibilityRole="button"
+              accessibilityLabel="Próximo passo"
+            />
+          </View>
           <Animated.View
             style={[
               styles.card,
@@ -160,7 +178,16 @@ export default function Plantio({ navigation }: Props) {
         <View style={styles.footer}>
           <View style={styles.dots}>
             {STEPS.map((_, i) => (
-              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+              <Pressable
+                key={i}
+                onPress={() => irPara(i)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para o passo ${i + 1} de ${STEPS.length}`}
+                accessibilityState={{ selected: i === index }}
+              >
+                <View style={[styles.dot, i === index && styles.dotActive]} />
+              </Pressable>
             ))}
           </View>
 
@@ -214,18 +241,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  progressTrack: {
-    flex: 1,
-    height: 3,
-    borderRadius: radius.pill,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
+  toques: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
-  },
+  toque: { flex: 1 },
   stage: {
     flex: 1,
     justifyContent: 'center',

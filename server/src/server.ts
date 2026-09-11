@@ -951,6 +951,50 @@ app.get('/seeds/history/:userId', async (req, res) => {
   }
 });
 
+/**
+ * Trocar o horário da entrega.
+ *
+ * Só existia dentro do opt-in do WhatsApp, que exige telefone: quem já tinha
+ * ligado o canal e quisesse mudar o horário nos ajustes mexia num seletor que
+ * não saía da tela. Para um assinante, o horário É o produto — é a hora em que
+ * a semente chega.
+ */
+app.patch('/profile/:userId/horario', async (req, res) => {
+  try {
+    const { horario, timezone } = req.body as { horario?: string; timezone?: string };
+    if (!horario || !/^\d{2}:\d{2}$/.test(horario)) {
+      return res.status(400).json({ error: 'horario deve ser HH:MM' });
+    }
+    const { rowCount } = await pool.query(
+      `UPDATE users SET delivery_time = $2::time,
+                        timezone = coalesce($3, timezone)
+        WHERE id = $1`, [req.params.userId, horario, timezone ?? null]);
+    if (!rowCount) return res.status(404).json({ error: 'usuário não encontrado' });
+    void logEvent(req.params.userId, 'horario_alterado', { horario });
+    return res.json({ ok: true, horario });
+  } catch (err: any) {
+    console.error('[horario]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao salvar o horário.' });
+  }
+});
+
+/** O horário e as preferências que a tela de ajustes precisa mostrar. */
+app.get('/profile/:userId/preferencias', async (req, res) => {
+  try {
+    const { rows: [u] } = await pool.query(
+      `SELECT to_char(delivery_time, 'HH24:MI') horario,
+              (wa_opt_in_at IS NOT NULL AND phone_e164 IS NOT NULL) "whatsappLigado"
+         FROM users WHERE id = $1`, [req.params.userId]);
+    return res.json({
+      horario: u?.horario ?? null,
+      whatsappLigado: !!u?.whatsappLigado,
+    });
+  } catch (err: any) {
+    console.error('[preferencias]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler as preferências.' });
+  }
+});
+
 // LGPD: exclusão total dos dados do usuário.
 app.delete('/user/:userId', async (req, res) => {
   await deleteUserData(req.params.userId);

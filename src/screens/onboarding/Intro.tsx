@@ -8,13 +8,13 @@ import {
   StatusBar,
   Animated,
   Platform,
+  Pressable,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Button from '../../components/ui/Button';
 import ScreenBackground from '../../components/ui/ScreenBackground';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
-import { radius } from '../../theme/radius';
 import { space } from '../../theme/spacing';
 import { motion } from '../../theme/motion';
 import { webScreenFill } from '../../theme/webScreen';
@@ -44,6 +44,14 @@ const SLIDES = [
 
 export default function Intro({ navigation }: Props) {
   const [index, setIndex] = useState(0);
+  /**
+   * Quem tocou assumiu o comando.
+   *
+   * Um carrossel que continua andando sozinho depois que a pessoa voltou uma
+   * tela briga com ela: ela toca para reler, e a apresentação arrasta de novo
+   * para a frente. A partir do primeiro toque, só ela decide.
+   */
+  const [manual, setManual] = useState(false);
   const enter = useRef(new Animated.Value(0)).current;
   const isLast = index === SLIDES.length - 1;
   const slide = SLIDES[index];
@@ -59,7 +67,7 @@ export default function Intro({ navigation }: Props) {
       useNativeDriver: NATIVE,
     });
     anim.start(({ finished }) => {
-      if (cancelled || !finished || isLast) return;
+      if (cancelled || !finished || isLast || manual) return;
       dwellTimer = setTimeout(() => {
         setIndex((i) => Math.min(i + 1, SLIDES.length - 1));
       }, motion.slideDwellMs);
@@ -69,7 +77,12 @@ export default function Intro({ navigation }: Props) {
       anim.stop();
       if (dwellTimer) clearTimeout(dwellTimer);
     };
-  }, [index, isLast, enter]);
+  }, [index, isLast, manual, enter]);
+
+  const irPara = (i: number) => {
+    setManual(true);
+    setIndex(Math.max(0, Math.min(i, SLIDES.length - 1)));
+  };
 
   const goAuth = () => navigation.navigate('Auth');
 
@@ -87,16 +100,11 @@ export default function Intro({ navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
+        {/* A barra de progresso do topo saiu: os pontos embaixo já contam a
+            mesma coisa, e dois indicadores do mesmo estado na mesma tela fazem
+            a pessoa procurar a diferença entre eles. */}
         <View style={styles.topbar}>
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${((index + 1) / SLIDES.length) * 100}%` },
-              ]}
-            />
-          </View>
-          <TouchableOpacity onPress={goAuth} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={goAuth} hitSlop={{ top: 12, bottom: 12, left: 16, right: 12 }}>
             <Text style={styles.skip}>Pular</Text>
           </TouchableOpacity>
         </View>
@@ -114,12 +122,41 @@ export default function Intro({ navigation }: Props) {
             <Text style={styles.title}>{slide.title}</Text>
             <Text style={styles.sub}>{slide.sub}</Text>
           </Animated.View>
+
+          {/* Metade esquerda volta, metade direita avança — o gesto que todo
+              mundo já conhece de story. Fica por cima do texto e por baixo dos
+              pontos e do botão, para não roubar o toque de nenhum dos dois. */}
+          <View style={styles.toques} pointerEvents="box-none">
+            <Pressable
+              style={styles.toque}
+              onPress={() => irPara(index - 1)}
+              disabled={index === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Tela anterior"
+            />
+            <Pressable
+              style={styles.toque}
+              onPress={() => irPara(index + 1)}
+              disabled={isLast}
+              accessibilityRole="button"
+              accessibilityLabel="Próxima tela"
+            />
+          </View>
         </View>
 
         <View style={styles.footer}>
           <View style={styles.dots}>
             {SLIDES.map((_, i) => (
-              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+              <Pressable
+                key={i}
+                onPress={() => irPara(i)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para a tela ${i + 1} de ${SLIDES.length}`}
+                accessibilityState={{ selected: i === index }}
+              >
+                <View style={[styles.dot, i === index && styles.dotActive]} />
+              </Pressable>
             ))}
           </View>
           {isLast ? (
@@ -137,29 +174,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' },
   topbar: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 16,
     paddingHorizontal: space.gutter,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 8,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 3,
-    borderRadius: radius.pill,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.pill,
-    backgroundColor: colors.accent,
   },
   skip: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
   },
+  toques: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+  },
+  toque: { flex: 1 },
   stage: {
     flex: 1,
     alignItems: 'center',

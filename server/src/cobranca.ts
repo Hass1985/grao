@@ -20,6 +20,7 @@ import {
   cobrancasDeAmanha, webhookAutentico, aplicarEvento, PLANOS, type Plano,
 } from './asaas.js';
 import { sendText } from './meta.js';
+import { acessoDoUsuario } from './acesso.js';
 
 const reais = (centavos: number) =>
   (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -126,6 +127,40 @@ export async function cancelarPara(userId: string, por = 'usuario'): Promise<str
 }
 
 export function registerCobrancaRoutes(app: Express) {
+  /**
+   * A situação real da assinatura, para a tela de ajustes.
+   *
+   * Existe porque a tela mostrava "Plantio · R$ 19,90/mês · renovação
+   * automática" fixo no código, para TODO MUNDO — inclusive para quem nunca
+   * pagou nada. Dizer a alguém que ela tem uma cobrança recorrente que não
+   * existe é o tipo de erro que destrói confiança de uma vez, e num produto de
+   * fé a confiança é o produto.
+   */
+  app.get('/assinatura/:userId', async (req: Request, res: Response) => {
+    try {
+      const acesso = await acessoDoUsuario(req.params.userId);
+      const { rows: [s] } = await pool.query(
+        `SELECT plan, status, price_cents "valorCentavos",
+                trial_ends_at "terminaEm", next_charge_at "proximaCobranca",
+                (provider_ref IS NOT NULL) "peloGateway"
+           FROM subscriptions WHERE user_id = $1`, [req.params.userId]);
+
+      return res.json({
+        completo: acesso.completo,
+        situacao: acesso.situacao,
+        plano: s?.plan ?? null,
+        nomeDoPlano: s?.plan ? PLANOS[s.plan as Plano]?.nome ?? null : null,
+        valorCentavos: s?.valorCentavos ?? null,
+        terminaEm: s?.terminaEm ?? null,
+        proximaCobranca: s?.proximaCobranca ?? null,
+        peloGateway: !!s?.peloGateway,
+      });
+    } catch (err: any) {
+      console.error('[assinatura/situacao]', err?.message || err);
+      return res.status(500).json({ error: 'Falha ao ler a assinatura.' });
+    }
+  });
+
   /**
    * Assinar. Chamado pelo app depois da escolha do plano.
    *
