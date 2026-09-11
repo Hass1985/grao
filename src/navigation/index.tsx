@@ -19,6 +19,7 @@ import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
 import WhatsAppDemo from '../screens/WhatsAppDemo';
 import Plantio from '../screens/Plantio';
+import Assinar from '../screens/Assinar';
 import MomentoSementeTeste from '../screens/MomentoSementeTeste';
 import HojeSementeTeste from '../screens/HojeSementeTeste';
 import HistoricoTeste from '../screens/HistoricoTeste';
@@ -97,6 +98,7 @@ function AppNavigator() {
       <AppStack.Screen name="Credits" component={Credits} />
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
       <AppStack.Screen name="Plantio" component={Plantio} />
+      <AppStack.Screen name="Assinar" component={Assinar} />
       <AppStack.Screen name="MomentoSementeTeste" component={MomentoSementeTeste} />
       <AppStack.Screen name="HojeSementeTeste" component={HojeSementeTeste} />
       <AppStack.Screen name="HistoricoTeste" component={HistoricoTeste} />

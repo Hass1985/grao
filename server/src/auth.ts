@@ -26,6 +26,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { pool, logEvent } from './db.js';
 import { normalizePhone } from './telefone.js';
 import { TEM_ACESSO_SQL } from './acesso.js';
+import { aplicarCortesias } from './cortesia.js';
 
 const URL_PROJETO = () => (process.env.SUPABASE_URL ?? '').replace(/\/+$/, '');
 const SEGREDO_LEGADO = () => process.env.SUPABASE_JWT_SECRET ?? '';
@@ -250,12 +251,33 @@ export function registerAuthRoutes(app: Express) {
         }
       }
 
+      // A lista de cortesias é conferida AQUI, e não no cadastro, porque este é
+      // o único ponto em que sabemos ao mesmo tempo quem a pessoa é e qual
+      // cadastro sobrou depois das fusões. Quem está na lista entra com acesso
+      // completo por qualquer porta: Google hoje, telefone amanhã.
+      //
+      // O e-mail do token pode vir vazio (conta feita por telefone), e o do
+      // cadastro pode ter vindo de outra sessão. Vale a união dos dois.
+      const { rows: [dono] } = await pool.query(
+        `SELECT email, phone_e164 FROM users WHERE id = $1`, [idFinal]);
+      const cortesia = await aplicarCortesias(idFinal, {
+        email: conta.email ?? dono?.email ?? null,
+        telefone: conta.telefone ?? dono?.phone_e164 ?? null,
+      }).catch((e: any) => {
+        // Cortesia não pode derrubar o login. Quem falhar aqui entra como
+        // gratuito e o time libera pelo script; o contrário deixaria a pessoa
+        // do lado de fora do app por causa de um mimo.
+        console.error('[cortesia]', e?.message || e);
+        return null;
+      });
+
       void logEvent(idFinal, 'conta_vinculada', {
         provedor: conta.provedor, fundiu, porTelefone: !!conta.telefone,
       });
       return res.json({
         ok: true, userId: idFinal, merged: fundiu,
         email: conta.email, telefone: conta.telefone,
+        cortesia: cortesia?.aplicada ?? false,
       });
     } catch (err: any) {
       console.error('[auth/vincular]', err?.message || err);

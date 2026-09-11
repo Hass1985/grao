@@ -32,6 +32,20 @@ export function asaasConfigurado(): boolean {
   return !!CHAVE();
 }
 
+/**
+ * Qual ambiente está ligado — o nome, nunca a chave.
+ *
+ * O app mostra isto na tela de pagamento. Um testador precisa saber, ANTES de
+ * digitar o CPF, se aquele botão cobra de verdade; e quem publica precisa ver
+ * de fora que a produção não ficou em sandbox por esquecimento. O que sai
+ * daqui é a palavra "sandbox" ou "producao", e nada mais: um painel que mostra
+ * segredo vira vazamento.
+ */
+export function ambienteDoAsaas(): 'sandbox' | 'producao' | 'desligado' {
+  if (!CHAVE()) return 'desligado';
+  return CHAVE().includes('_hmlg_') ? 'sandbox' : 'producao';
+}
+
 export const PLANOS = {
   plantio: { valor: 19.9, ciclo: 'MONTHLY' as const, nome: 'Grão · Plantio (mensal)' },
   anual: { valor: 199.0, ciclo: 'YEARLY' as const, nome: 'Grão · Anual' },
@@ -98,7 +112,10 @@ export async function criarCliente(dados: {
  */
 export async function criarAssinatura(dados: {
   customerId: string; plano: Plano; userId: string; diasDeTeste?: number;
-}): Promise<{ ok: boolean; subscriptionId?: string; primeiraCobranca?: string; erro?: string }> {
+}): Promise<{
+  ok: boolean; subscriptionId?: string; primeiraCobranca?: string;
+  cobrancaSeguinte?: string; erro?: string;
+}> {
   const p = PLANOS[dados.plano];
   const dias = dados.diasDeTeste ?? 7;
   const vencimento = new Date(Date.now() + dias * 86_400_000).toISOString().slice(0, 10);
@@ -112,8 +129,24 @@ export async function criarAssinatura(dados: {
     description: p.nome,
     externalReference: dados.userId,
   });
+
+  // A primeira cobrança é o VENCIMENTO QUE MANDAMOS, e não o `nextDueDate` que
+  // volta na resposta. Ao criar a assinatura o Asaas já emite o primeiro Pix
+  // com a data pedida e avança o `nextDueDate` para o ciclo SEGUINTE — pedimos
+  // 18/09 e ele devolve 18/10.
+  //
+  // Confundir os dois custava caro nos dois sentidos: o trial passava a valer
+  // 37 dias em vez de 7, e o aviso de 24h era agendado para a véspera da
+  // segunda cobrança. Ou seja, o primeiro Pix — o único que a pessoa recebe de
+  // fato — chegaria sem nenhum aviso. É exatamente a reclamação que este
+  // arquivo inteiro existe para não repetir.
   return r.ok
-    ? { ok: true, subscriptionId: r.dados!.id, primeiraCobranca: r.dados!.nextDueDate }
+    ? {
+        ok: true,
+        subscriptionId: r.dados!.id,
+        primeiraCobranca: vencimento,
+        cobrancaSeguinte: r.dados!.nextDueDate,
+      }
     : { ok: false, erro: r.erro };
 }
 

@@ -14,6 +14,7 @@ export { default as BookMarked } from 'lucide-react-native/dist/esm/icons/book-m
 export { default as BookOpen } from 'lucide-react-native/dist/esm/icons/book-open';
 export { default as CalendarDays } from 'lucide-react-native/dist/esm/icons/calendar-days';
 export { default as Camera } from 'lucide-react-native/dist/esm/icons/camera';
+export { default as Check } from 'lucide-react-native/dist/esm/icons/check';
 export { default as ChevronLeft } from 'lucide-react-native/dist/esm/icons/chevron-left';
 export { default as ChevronRight } from 'lucide-react-native/dist/esm/icons/chevron-right';
 export { default as Circle } from 'lucide-react-native/dist/esm/icons/circle';

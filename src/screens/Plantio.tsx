@@ -110,13 +110,23 @@ export default function Plantio({ navigation }: Props) {
     setIndex(Math.max(0, Math.min(i, STEPS.length - 1)));
   };
 
-  const abrirMomentoTeste = () => {
-    // push no stack do app (irmão do Plantio), sem depender de bubble
+  /**
+   * O fim da explicação leva ao começo do teste.
+   *
+   * Antes este botão abria uma simulação: a pessoa via uma semente paga de
+   * mentira e voltava para o mesmo lugar de onde saiu, sem nada ter mudado.
+   * Servia para mostrar o produto a quem ainda não existia como cliente — e
+   * era exatamente o que sobrava de andaime depois que o produto ficou pronto.
+   *
+   * Agora leva à tela de pagamento com 7 dias grátis: o mesmo toque, no mesmo
+   * lugar, mas o que acontece depois dele é real.
+   */
+  const abrirAssinatura = () => {
     if (typeof navigation.push === 'function') {
-      navigation.push('MomentoSementeTeste');
+      navigation.push('Assinar');
       return;
     }
-    navigation.navigate('MomentoSementeTeste');
+    navigation.navigate('Assinar');
   };
 
   const opacity = enter.interpolate({
@@ -194,23 +204,14 @@ export default function Plantio({ navigation }: Props) {
           {isLast ? (
             <>
               <Button
-                title="Testar fluxo pago"
-                onPress={abrirMomentoTeste}
+                title="Testar trial de 7 dias"
+                onPress={abrirAssinatura}
                 variant="dark"
                 uppercase
               />
-              {/* A semente do dia precisa ter endereço fixo. Sem isto, revê-la
-                  exigia refazer a conversa inteira, e ela some depois de vista
-                  uma vez. */}
-              <Button
-                title="Ver minha semente de hoje"
-                onPress={() =>
-                  navigation.navigate('HojeSementeTeste', { reler: true })
-                }
-                variant="soft"
-                uppercase
-                style={styles.secondBtn}
-              />
+              {/* O atalho para a semente de teste saiu daqui junto com o fluxo
+                  simulado: ele levava a uma tela que só existe enquanto o
+                  produto pago é encenado. */}
               <Button
                 title="Ver exemplo no WhatsApp"
                 onPress={() => navigation.navigate('WhatsAppDemo')}

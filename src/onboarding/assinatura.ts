@@ -31,6 +31,105 @@ export async function minhaAssinatura(): Promise<SituacaoAssinatura | null> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Começar a assinatura: os 7 dias grátis e, depois deles, o Pix.
+// ---------------------------------------------------------------------------
+
+export interface PlanoOferecido {
+  id: 'plantio' | 'anual';
+  nome: string;
+  valorCentavos: number;
+  ciclo: string;
+}
+
+export interface ConfigCobranca {
+  ativa: boolean;
+  ambiente: 'sandbox' | 'producao' | 'desligado';
+  diasGratis: number;
+  planos: PlanoOferecido[];
+}
+
+/**
+ * Preços e ambiente vêm do servidor, nunca do app.
+ *
+ * Preço escrito na tela é preço que um dia diverge do que o gateway cobra, e a
+ * divergência aparece na fatura de alguém. E o ambiente é o que permite a tela
+ * avisar, em sandbox, que aquele botão não cobra de verdade.
+ */
+export async function configuracaoDeCobranca(): Promise<ConfigCobranca | null> {
+  if (!API_URL) return null;
+  try {
+    const res = await fetch(`${API_URL}/assinatura/config`);
+    if (!res.ok) return null;
+    return (await res.json()) as ConfigCobranca;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cria a assinatura com 7 dias grátis.
+ *
+ * Devolve o erro em texto em vez de engolir: aqui o que falha é quase sempre o
+ * CPF, e "não deu certo" deixa a pessoa sem saber o que corrigir. A mensagem
+ * do gateway ("O CPF/CNPJ informado é inválido") é a informação que resolve.
+ */
+export async function assinar(dados: {
+  plano: 'plantio' | 'anual';
+  cpf: string;
+  email?: string;
+}): Promise<{ ok: true; primeiraCobranca: string } | { ok: false; erro: string }> {
+  if (!API_URL) return { ok: false, erro: 'Sem conexão com o servidor agora.' };
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/assinatura/${userId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plano: dados.plano, cpf: dados.cpf, email: dados.email }),
+    });
+    const corpo = await res.json().catch(() => ({} as any));
+    if (!res.ok) {
+      return {
+        ok: false,
+        erro: res.status === 503
+          ? 'A cobrança ainda não está ligada. Avise a gente que liberamos o seu acesso.'
+          : (corpo?.error ?? 'Não foi possível começar agora. Tente de novo.'),
+      };
+    }
+    return { ok: true, primeiraCobranca: corpo.primeiraCobranca };
+  } catch {
+    return { ok: false, erro: 'Sem conexão agora. Confira a internet e tente de novo.' };
+  }
+}
+
+/** "123.456.789-09" enquanto a pessoa digita. */
+export function mascararCpf(bruto: string): string {
+  const d = (bruto ?? '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+/**
+ * O dígito verificador, conferido aqui.
+ *
+ * O Asaas recusa CPF inválido, mas a recusa chega depois de uma ida ao
+ * gateway, como erro em vermelho num formulário já enviado. Conferir na tela
+ * transforma isso em "confira o número" antes de qualquer coisa acontecer.
+ */
+export function cpfValido(bruto: string): boolean {
+  const d = (bruto ?? '').replace(/\D/g, '');
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const digito = (ate: number) => {
+    let soma = 0;
+    for (let i = 0; i < ate; i++) soma += Number(d[i]) * (ate + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return digito(9) === Number(d[9]) && digito(10) === Number(d[10]);
+}
+
 export function emReais(centavos: number | null): string {
   if (centavos == null) return '';
   return (centavos / 100).toLocaleString('pt-BR', {

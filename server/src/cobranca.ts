@@ -16,7 +16,7 @@
 import type { Express, Request, Response } from 'express';
 import { pool, logEvent } from './db.js';
 import {
-  asaasConfigurado, criarCliente, criarAssinatura, cancelarAssinatura,
+  asaasConfigurado, ambienteDoAsaas, criarCliente, criarAssinatura, cancelarAssinatura,
   cobrancasDeAmanha, webhookAutentico, aplicarEvento, PLANOS, type Plano,
 } from './asaas.js';
 import { sendText } from './meta.js';
@@ -127,6 +127,35 @@ export async function cancelarPara(userId: string, por = 'usuario'): Promise<str
 }
 
 export function registerCobrancaRoutes(app: Express) {
+  /**
+   * O que a tela de pagamento precisa saber antes de existir.
+   *
+   * Os preços moram no servidor, do lado de onde a cobrança é criada. Preço
+   * escrito na tela é preço que um dia diverge do que o gateway cobra — e a
+   * divergência só aparece na fatura de alguém.
+   *
+   * O `ambiente` vem junto de propósito: enquanto a chave for de sandbox a
+   * tela avisa, em cima do botão, que nada será cobrado. Testador que acha que
+   * pagou e não pagou, ou que acha que não pagou e pagou, são os dois piores
+   * finais possíveis para uma semana de teste.
+   *
+   * Vem ANTES de `/assinatura/:userId` porque o Express casa na ordem: depois,
+   * "config" seria lido como um userId.
+   */
+  app.get('/assinatura/config', (_req: Request, res: Response) => {
+    return res.json({
+      ativa: asaasConfigurado(),
+      ambiente: ambienteDoAsaas(),
+      diasGratis: 7,
+      planos: (Object.keys(PLANOS) as Plano[]).map((id) => ({
+        id,
+        nome: id === 'anual' ? 'Anual' : 'Plantio',
+        valorCentavos: Math.round(PLANOS[id].valor * 100),
+        ciclo: PLANOS[id].ciclo === 'YEARLY' ? 'ano' : 'mês',
+      })),
+    });
+  });
+
   /**
    * A situação real da assinatura, para a tela de ajustes.
    *
