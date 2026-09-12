@@ -12,6 +12,7 @@ import {
   Platform,
   Animated,
   Easing,
+  ActivityIndicator,
 } from 'react-native';
 import { BookOpen, Mic, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
@@ -31,6 +32,7 @@ import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
 import {
   selectTodaySeed, setMoment, getMoment, confirmarLeitura, reescolherSementeDeHoje,
 } from '../onboarding/seedDelivery';
+import { minhaAssinatura } from '../onboarding/assinatura';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
@@ -56,6 +58,17 @@ function weekDates() {
 export default function Hoje({ navigation }: { navigation: any }) {
   const [opened, setOpened] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  /**
+   * Tem o plano pago? `null` enquanto não se sabe.
+   *
+   * Vem do servidor, e não do formato da semente. Antes a tela deduzia o plano
+   * pelo conteúdo que recebia (`seed.tipo !== 'semente'`), o que funcionava
+   * enquanto Hoje servia os dois produtos. Agora ela é outra tela para cada
+   * plano, e deduzir significaria buscar o devocional inteiro só para
+   * descobrir que a pessoa não assina — e mostrar a página de venda depois de
+   * um piscar de conteúdo que não é dela.
+   */
+  const [pago, setPago] = useState<boolean | null>(null);
   const [seed, setSeed] = useState<Seed>(todaySeed);
   const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
   const [lido, setLido] = useState(false);
@@ -65,6 +78,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const reveal = useRef(new Animated.Value(0)).current;
   /** Momento vigente quando a semente na tela foi carregada. */
   const momentoCarregado = useRef<EmotionalFamily | null>(null);
+  /** Já buscamos a semente ao menos uma vez nesta sessão de tela. */
+  const seedCarregada = useRef(false);
   const days = weekDates();
   const todayIdx = new Date().getDay();
 
@@ -80,20 +95,25 @@ export default function Hoje({ navigation }: { navigation: any }) {
     }
   }, []);
 
-  useEffect(() => {
-    loadSeed();
-  }, [loadSeed]);
-
-  // A tela vive dentro das abas e não desmonta ao trocar de aba. Quem mudava o
-  // sentimento nos Ajustes voltava para o Hoje e via o conteúdo velho, como se
-  // a escolha não tivesse valido. Recarrega ao voltar o foco, e só quando o
-  // momento realmente mudou — trocar de aba não custa uma ida à rede.
+  // O plano é conferido a cada foco, e não uma vez só: é nesta tela que a
+  // pessoa volta depois de assinar, e ela precisa encontrar a semente no lugar
+  // onde, um minuto antes, havia uma página de venda.
   useFocusEffect(
     React.useCallback(() => {
       let vivo = true;
       (async () => {
+        const a = await minhaAssinatura();
+        if (!vivo) return;
+        const completo = !!a?.completo;
+        setPago(completo);
+        if (!completo) return;
+
+        // Assinante: recarrega a semente só quando o momento mudou de verdade.
+        // Trocar de aba não custa uma ida à rede.
         const agora = await getMoment();
-        if (!vivo || agora === momentoCarregado.current) return;
+        if (!vivo) return;
+        if (seedCarregada.current && agora === momentoCarregado.current) return;
+        seedCarregada.current = true;
         setOpened(false);
         reveal.setValue(0);
         await loadSeed();
@@ -168,8 +188,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
     .toUpperCase()
     .replace('.', '');
 
-  const isFree = seed.tipo !== 'semente';
-  const isSemente = !isFree;
+  const isSemente = pago === true;
+  const isFree = pago === false;
   const contentOp = reveal;
   const contentTy = reveal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
 
@@ -194,6 +214,19 @@ export default function Hoje({ navigation }: { navigation: any }) {
             onProfilePress={() => navigation.navigate('Settings')}
           />
 
+          {/* Enquanto não se sabe o plano, nada. Um piscar de página de venda
+              na cara de quem assina é pior do que meio segundo de silêncio. */}
+          {pago === null ? (
+            <View style={styles.esperando}>
+              <ActivityIndicator color={colors.ambarSoft} />
+            </View>
+          ) : isFree ? (
+            <ConviteDoPlantio
+              onAssinar={() => navigation.navigate('Assinar')}
+              onLerDevocional={() => navigation.navigate('Raiz')}
+            />
+          ) : (
+          <>
           <View style={styles.weekWrap}>
             <View style={styles.week}>
               {days.map((d, i) => {
@@ -285,29 +318,9 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 <MusicPlayer music={seed.music} inline style={styles.player} />
               ) : null}
 
-              {/* No gratuito, é este gesto que constrói o histórico: marca o
-                  dia no Campo e guarda a página na Raiz. Sem ele as duas telas
-                  seriam um calendário onde nada acontece. */}
-              {isFree ? (
-                <View style={styles.leituraWrap}>
-                  {lido ? (
-                    <View style={styles.leituraFeita}>
-                      <Sprout size={16} color={colors.accent} strokeWidth={2.2} />
-                      <Text style={styles.leituraFeitaText}>
-                        Leitura de hoje confirmada
-                      </Text>
-                    </View>
-                  ) : (
-                    <Button
-                      title="Confirmar leitura"
-                      onPress={confirmarLeituraDeHoje}
-                      variant="dark"
-                      uppercase
-                      disabled={confirmando}
-                    />
-                  )}
-                </View>
-              ) : null}
+              {/* "Confirmar leitura" saiu daqui junto com o devocional: é o
+                  gesto que marca o dia no Campo, e agora mora na Raiz, ao pé
+                  da página que ele confirma. */}
 
               {seed.compartilhavel ? (
                 <TouchableOpacity
@@ -329,13 +342,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
               {/* Responder é o que alimenta a memória. Sem obrigação e sem
                   contador: quem não escreve não perde nada. */}
               <Responder />
-
-              {/* O convite vem por último. Quem acabou de ler e responder está
-                  mais disposto a ouvir sobre o que vem depois; quem ainda nem
-                  leu está sendo interrompido por uma oferta. */}
-              {isFree ? (
-                <ConviteDoPlantio onSaibaMais={() => navigation.navigate('Plantio')} />
-              ) : null}
 
               {/* A porta do produto pago, que faltava.
                   Quem assina recebe a semente escolhida para o SEU momento, e
@@ -363,6 +369,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 </TouchableOpacity>
               ) : null}
             </Animated.View>
+          )}
+          </>
           )}
         </ScrollView>
 
@@ -392,6 +400,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
 }
 
 const styles = StyleSheet.create({
+  esperando: { paddingVertical: 60, alignItems: 'center' },
   safe: { flex: 1 },
   scroll: { paddingHorizontal: space.gutter },
   weekWrap: {

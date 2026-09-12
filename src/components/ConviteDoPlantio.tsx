@@ -1,30 +1,128 @@
-import React from 'react';
+// A tela Hoje de quem ainda não assina.
+//
+// Antes era um bloco pequeno no pé do devocional, e o caminho até o teste
+// passava por cinco telas de apresentação: a pessoa tinha que querer muito
+// para chegar na oferta, e quase ninguém quer tanto assim. Cinco toques entre
+// a curiosidade e a decisão é atrito, não construção de desejo.
+//
+// Agora é a própria tela: o que o Plantio é, como funciona, o que entra, e o
+// botão no fim — depois do conteúdo, nunca antes dele. Quem chegou ao fim da
+// página leu os argumentos; quem não chegou não seria convencido por um botão
+// no topo.
+//
+// E o devocional gratuito não desaparece: a primeira linha diz onde ele está.
+// Uma tela que só vende, para quem veio ler, é uma porta na cara.
+
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BookOpen, Check, Mic, MessageCircle, Sprout } from './icons';
+import Button from './ui/Button';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
+import { configuracaoDeCobranca, emReais } from '../onboarding/assinatura';
 
-/**
- * O convite para o Plantio, para quem ainda é gratuito.
- *
- * Morava DENTRO do cartão do devocional, e por isso caía entre o texto do dia e
- * as ações da pessoa: para chegar em "Confirmar leitura" — o gesto que constrói
- * o Campo, a Raiz e os grãos dela — era preciso rolar por cima de uma oferta.
- *
- * Fora do cartão, a ordem vira a natural: ela lê, faz o que é dela, e só então
- * aparece o convite. Quem acabou de viver o devocional é quem está mais
- * disposto a ouvir sobre o que vem depois; quem ainda nem leu está sendo
- * interrompido.
- */
-export default function ConviteDoPlantio({ onSaibaMais }: { onSaibaMais?: () => void }) {
+const PASSOS = [
+  {
+    icone: 'mic' as const,
+    titulo: 'Você conta o seu momento',
+    texto: 'Em áudio ou por escrito. Como está o seu coração hoje, sem filtro e sem pressa.',
+  },
+  {
+    icone: 'sprout' as const,
+    titulo: 'O Grão escuta e escolhe',
+    texto: 'A partir do que você contou, a Palavra certa para o seu dia — não o mesmo texto de todo mundo.',
+  },
+  {
+    icone: 'book' as const,
+    titulo: 'A semente chega inteira',
+    texto: 'Reflexão, oração guiada, uma prática para viver a Palavra e um louvor escolhido para o seu dia.',
+  },
+  {
+    icone: 'whats' as const,
+    titulo: 'E também no WhatsApp',
+    texto: 'No horário que você escolher, onde você já está. Sem precisar lembrar de abrir o app.',
+  },
+];
+
+const INCLUI = [
+  'Uma semente escolhida para o seu momento, todo dia',
+  'Oração guiada e prática para viver a Palavra',
+  'Louvor escolhido para o seu dia',
+  'A semente também no WhatsApp, no seu horário',
+  'Bíblia completa, com leitura em áudio',
+  'Seu Campo e sua Raiz guardados para sempre',
+];
+
+function PassoIcone({ nome }: { nome: (typeof PASSOS)[number]['icone'] }) {
+  const cor = colors.ambarSoft;
+  if (nome === 'mic') return <Mic size={20} color={cor} strokeWidth={1.9} />;
+  if (nome === 'sprout') return <Sprout size={20} color={cor} strokeWidth={1.9} />;
+  if (nome === 'whats') return <MessageCircle size={20} color={cor} strokeWidth={1.9} />;
+  return <BookOpen size={20} color={cor} strokeWidth={1.9} />;
+}
+
+export default function ConviteDoPlantio({
+  onAssinar,
+  onLerDevocional,
+}: {
+  onAssinar: () => void;
+  onLerDevocional?: () => void;
+}) {
+  const [preco, setPreco] = useState<string | null>(null);
+
+  // O preço vem do servidor, do lado de onde a cobrança é criada. Preço escrito
+  // na tela é preço que um dia diverge do que o gateway cobra.
+  useEffect(() => {
+    let vivo = true;
+    configuracaoDeCobranca().then((c) => {
+      if (!vivo || !c) return;
+      const p = c.planos.find((x) => x.id === 'plantio');
+      if (p) setPreco(`${emReais(p.valorCentavos)} por ${p.ciclo}`);
+    });
+    return () => { vivo = false; };
+  }, []);
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.titulo}>Faça parte da comunidade</Text>
+      {/* Onde está o que ela já tem. Primeiro, e em uma linha só. */}
+      {onLerDevocional ? (
+        <TouchableOpacity onPress={onLerDevocional} style={styles.atalho} hitSlop={6}>
+          <BookOpen size={15} color={colors.palha} strokeWidth={2} />
+          <Text style={styles.atalhoTexto}>
+            Seu devocional de hoje está na <Text style={styles.atalhoForte}>Raiz</Text>
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
+      <View style={styles.hero}>
+        <Text style={styles.eyebrow}>Plantio</Text>
+        <Text style={styles.titulo}>Uma Palavra{'\n'}escolhida para você.</Text>
+        <Text style={styles.subtitulo}>
+          O devocional é o mesmo para todo mundo, e é seu de graça, para sempre. A
+          semente é diferente: ela nasce do que você está vivendo hoje.
+        </Text>
+      </View>
+
+      <View style={styles.passos}>
+        {PASSOS.map((p) => (
+          <View key={p.titulo} style={styles.passo}>
+            <View style={styles.passoIcone}>
+              <PassoIcone nome={p.icone} />
+            </View>
+            <View style={styles.passoTexto}>
+              <Text style={styles.passoTitulo}>{p.titulo}</Text>
+              <Text style={styles.passoCorpo}>{p.texto}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
       <View style={styles.caixa}>
         <LinearGradient
           pointerEvents="none"
           colors={[
-            'rgba(251, 246, 236, 0.2)',
+            'rgba(251, 246, 236, 0.20)',
             'rgba(251, 246, 236, 0.12)',
             'rgba(251, 246, 236, 0.16)',
           ]}
@@ -33,53 +131,109 @@ export default function ConviteDoPlantio({ onSaibaMais }: { onSaibaMais?: () => 
           end={{ x: 0.5, y: 1 }}
           style={styles.brilho}
         />
-        <Text style={styles.chamada}>A semente personalizada traz:</Text>
+        <Text style={styles.incluiTitulo}>O que entra</Text>
         <View style={styles.lista}>
-          {[
-            'Oração guiada para o seu momento',
-            'Prática concreta para viver a Palavra',
-            'Louvor escolhido para o seu dia',
-            'Tudo no WhatsApp, todo dia, no horário certo',
-          ].map((item) => (
+          {INCLUI.map((item) => (
             <View key={item} style={styles.linha}>
-              <Text style={styles.marcador}>·</Text>
+              <Check size={15} color={colors.ambarSoft} strokeWidth={2.4} />
               <Text style={styles.item}>{item}</Text>
             </View>
           ))}
         </View>
-        {onSaibaMais ? (
-          <TouchableOpacity
-            onPress={onSaibaMais}
-            style={styles.saibaMais}
-            accessibilityRole="button"
-            accessibilityLabel="Saiba mais sobre o Plantio"
-            hitSlop={8}
-          >
-            <Text style={styles.saibaMaisTexto}>Clique e saiba mais</Text>
-          </TouchableOpacity>
-        ) : null}
+      </View>
+
+      {/* O botão vem depois do conteúdo, e o preço vem antes do botão: quem
+          aperta já sabe quanto custa e quando começa a custar. */}
+      <View style={styles.fecho}>
+        <Text style={styles.precoLinha}>
+          {preco
+            ? `7 dias grátis. Depois, ${preco} — e você cancela quando quiser.`
+            : '7 dias grátis. Você cancela quando quiser.'}
+        </Text>
+        <Button
+          title="Teste grátis por 7 dias"
+          onPress={onAssinar}
+          variant="dark"
+          uppercase
+        />
+        <Text style={styles.rodape}>
+          Hoje você não paga nada. A gente avisa um dia antes da primeira cobrança,
+          com o valor escrito. Cancelar não tira o devocional diário.
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 30 },
-  titulo: {
+  wrap: { marginTop: 6 },
+  atalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    alignSelf: 'flex-start',
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(72, 48, 24, 0.34)',
+    marginBottom: 26,
+  },
+  atalhoTexto: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    color: colors.foregroundMuted,
+  },
+  atalhoForte: { fontFamily: fonts.sansSemi, color: colors.palha },
+  hero: { gap: 12, marginBottom: 30 },
+  eyebrow: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
     color: colors.ambarSoft,
-    marginBottom: 12,
+  },
+  titulo: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 32,
+    lineHeight: 38,
+    color: colors.palha,
+    letterSpacing: -0.7,
+  },
+  subtitulo: {
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    lineHeight: 25,
+    color: colors.foregroundMuted,
+  },
+  passos: { gap: 22, marginBottom: 30 },
+  passo: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  passoIcone: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(192, 120, 38, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passoTexto: { flex: 1, gap: 4, paddingTop: 2 },
+  passoTitulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.base,
+    color: colors.palha,
+  },
+  passoCorpo: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    lineHeight: 22,
+    color: colors.foregroundMuted,
   },
   caixa: {
     overflow: 'hidden',
     backgroundColor: 'rgba(72, 48, 24, 0.28)',
-    borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    gap: 10,
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    gap: 12,
     ...(Platform.OS === 'web'
       ? ({
           backdropFilter: 'blur(22px)',
@@ -95,19 +249,15 @@ const styles = StyleSheet.create({
         }),
   },
   brilho: { ...StyleSheet.absoluteFillObject },
-  chamada: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.palha,
-  },
-  lista: { gap: 8 },
-  linha: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  marcador: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
+  incluiTitulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
     color: colors.ambarSoft,
-    lineHeight: 22,
   },
+  lista: { gap: 10 },
+  linha: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   item: {
     flex: 1,
     fontFamily: fonts.sans,
@@ -115,18 +265,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.foregroundMuted,
   },
-  saibaMais: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: 'rgba(192, 120, 38, 0.28)',
-  },
-  saibaMaisTexto: {
-    fontFamily: fonts.sansSemi,
-    fontSize: fontSizes.xs,
-    letterSpacing: 0.6,
+  fecho: { marginTop: 28, gap: 14 },
+  precoLinha: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.sm,
+    lineHeight: 22,
     color: colors.palha,
+    textAlign: 'center',
+  },
+  rodape: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.foregroundMuted,
+    textAlign: 'center',
   },
 });

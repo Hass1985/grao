@@ -7,7 +7,6 @@ import Welcome from '../screens/onboarding/Welcome';
 import Intro from '../screens/onboarding/Intro';
 import Auth from '../screens/onboarding/Auth';
 import ComoChamar from '../screens/onboarding/ComoChamar';
-import ConfirmarDevocional from '../screens/onboarding/ConfirmarDevocional';
 
 import Hoje from '../screens/Hoje';
 import Campo from '../screens/Campo';
@@ -131,9 +130,11 @@ function OnboardingNavigator({
       <Stack.Screen name="Welcome" component={Welcome} />
       <Stack.Screen name="Intro" component={Intro} />
       <Stack.Screen name="Auth" component={Auth} />
-      <Stack.Screen name="ComoChamar" component={ComoChamar} />
-      <Stack.Screen name="ConfirmarDevocional">
-        {() => <ConfirmarDevocional onFinish={onFinish} />}
+      {/* Depois do nome, o app. A tela que pedia para confirmar o devocional
+          diário saiu do caminho: era uma pergunta cuja resposta já estava dada
+          por quem acabou de criar conta num app de devocional. */}
+      <Stack.Screen name="ComoChamar">
+        {(props) => <ComoChamar {...props} onFinish={onFinish} />}
       </Stack.Screen>
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="Credits" component={Credits} />

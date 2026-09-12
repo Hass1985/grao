@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import Button from '../../components/ui/Button';
 import ScreenBackground from '../../components/ui/ScreenBackground';
-import { setDisplayName, getDisplayName } from '../../onboarding/userProfile';
+import { setDisplayName, getDisplayName, setDevocionalOptIn } from '../../onboarding/userProfile';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { space } from '../../theme/spacing';
@@ -19,10 +19,11 @@ import { webScreenFill } from '../../theme/webScreen';
 
 type Props = {
   navigation: any;
+  onFinish: () => void;
 };
 
 /** Pós-login: confirma a conta e pergunta como a pessoa gosta de ser chamada. */
-export default function ComoChamar({ navigation }: Props) {
+export default function ComoChamar({ navigation, onFinish }: Props) {
   const [nome, setNome] = useState('');
   const [busy, setBusy] = useState(false);
   const ok = nome.trim().length >= 2;
@@ -40,7 +41,15 @@ export default function ComoChamar({ navigation }: Props) {
     setBusy(true);
     try {
       await setDisplayName(nome.trim());
-      navigation.replace('ConfirmarDevocional');
+      // O opt-in do devocional vem junto com o nome.
+      //
+      // Havia uma tela inteira só para confirmar que a pessoa queria receber o
+      // devocional diário — uma pergunta cuja resposta já estava dada: ela
+      // acabou de criar uma conta num app de devocional. Pedir confirmação do
+      // óbvio é atrito disfarçado de cuidado, e era a última coisa entre o
+      // cadastro e o produto.
+      await setDevocionalOptIn(true);
+      onFinish();
     } finally {
       setBusy(false);
     }

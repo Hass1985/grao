@@ -196,6 +196,28 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 }
 
 /**
+ * A página do devocional anual de hoje, que agora mora na Raiz.
+ *
+ * Rota própria porque `/seed/today` decide pelo acesso: para quem assina, ela
+ * devolve a semente, e o devocional ficaria inalcançável. Ele não é o consolo
+ * de quem não paga — é outro material, e vale para os dois planos.
+ */
+export async function devocionalDeHoje(): Promise<
+  { seed: Seed; lido: boolean } | null
+> {
+  if (!API_URL) return null;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/devocional/${userId}/hoje`);
+    if (!res.ok) return null;
+    const j = await res.json();
+    return { seed: daApi(j), lido: !!j.lido };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Contei um momento novo — escolhe outra semente para hoje.
  *
  * A semente do dia é travada na primeira entrega, de propósito: abrir o app não

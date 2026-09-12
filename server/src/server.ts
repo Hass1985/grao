@@ -904,6 +904,50 @@ app.get('/graos/:userId', async (req, res) => {
 });
 
 /** Sequência e total de leituras — os dois números do topo do Campo. */
+/**
+ * A página do devocional anual de hoje — para QUALQUER pessoa.
+ *
+ * `/seed/today` decide pelo acesso: gratuito recebe o devocional, assinante
+ * recebe a semente. Isso está certo para a tela Hoje, mas deixava o devocional
+ * inalcançável para quem assina — e ele não é um prêmio de consolação, é outro
+ * material: 365 páginas fixas, iguais para todo mundo, que agora moram na Raiz
+ * e valem para os dois planos.
+ *
+ * Sem esta rota, a Raiz de um assinante nasceria vazia.
+ */
+app.get('/devocional/:userId/hoje', async (req, res) => {
+  try {
+    const dia = await devocionalDeHoje(req.params.userId);
+    if (!dia) return res.status(404).json({ error: 'devocional do dia não encontrado' });
+
+    await ensureUser(req.params.userId).catch(() => {});
+    void logEvent(req.params.userId, 'devocional_lido', { data: dia.data });
+
+    const { rows: [leitura] } = await pool.query(
+      `SELECT 1 FROM devotional_reads WHERE user_id = $1 AND data = $2::date`,
+      [req.params.userId, dia.data]);
+
+    return res.json({
+      ...dia,
+      compartilhavel: textoCompartilhavel(dia),
+      id: `d-${dia.data}`,
+      date: dia.data,
+      // O versículo LITERAL, não a paráfrase: é o que a tela mostra entre
+      // aspas ao lado de uma referência.
+      passage: dia.verseLiteral ?? dia.verse,
+      reference: dia.referenceExact ?? dia.reference,
+      reflection: dia.body,
+      prayer: null, practice: null, music: null,
+      completa: false,
+      bloqueado: { prayer: true, practice: true, music: true },
+      lido: !!leitura,
+    });
+  } catch (err: any) {
+    console.error('[devocional/hoje]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao carregar o devocional.' });
+  }
+});
+
 app.get('/devocional/:userId/resumo', async (req, res) => {
   try {
     return res.json(await resumoDeLeitura(req.params.userId));
