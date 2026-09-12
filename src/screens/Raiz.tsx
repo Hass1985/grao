@@ -111,9 +111,14 @@ export default function Raiz({ navigation }: { navigation: any }) {
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
         >
+          {/* O subtítulo diz o que a aba É, não em que dia estamos.
+              "Raiz" sozinho não explica nada a quem abre pela primeira vez, e
+              a data o cabeçalho não precisa carregar: ela aparece ali embaixo,
+              junto da página do dia. Quem chega aqui navegando descobre no
+              topo, sem ninguém ter avisado de outra tela. */}
           <AppHeader
             title="Raiz"
-            subtitle={dataLonga}
+            subtitle="Devocional diário"
             onLogoPress={() => navigation.navigate('Settings')}
             onProfilePress={() => navigation.navigate('Settings')}
           />
@@ -133,9 +138,13 @@ export default function Raiz({ navigation }: { navigation: any }) {
           ) : (
             <>
               <View style={styles.hero}>
-                <Text style={styles.eyebrow}>Devocional diário</Text>
+                <Text style={styles.eyebrow}>{dataLonga}</Text>
                 <Text style={styles.titulo}>
                   {seed.title || seed.reference || 'Página de hoje'}
+                </Text>
+                <Text style={styles.explica}>
+                  Uma página nova por dia, a mesma para todo mundo. É sua de graça,
+                  para sempre.
                 </Text>
               </View>
 
@@ -226,6 +235,10 @@ const styles = StyleSheet.create({
   titulo: {
     fontFamily: fonts.serifMedium, fontSize: 28, lineHeight: 34,
     color: colors.palha, letterSpacing: -0.6,
+  },
+  explica: {
+    fontFamily: fonts.sans, fontSize: fontSizes.sm, lineHeight: 21,
+    color: colors.foregroundMuted,
   },
   ouvir: { marginBottom: 16 },
   leituraWrap: { marginTop: 24 },

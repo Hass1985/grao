@@ -221,10 +221,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
               <ActivityIndicator color={colors.ambarSoft} />
             </View>
           ) : isFree ? (
-            <ConviteDoPlantio
-              onAssinar={() => navigation.navigate('Assinar')}
-              onLerDevocional={() => navigation.navigate('Raiz')}
-            />
+            <ConviteDoPlantio onAssinar={() => navigation.navigate('Assinar')} />
           ) : (
           <>
           <View style={styles.weekWrap}>

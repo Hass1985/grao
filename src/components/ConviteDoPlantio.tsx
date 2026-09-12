@@ -10,11 +10,13 @@
 // página leu os argumentos; quem não chegou não seria convencido por um botão
 // no topo.
 //
-// E o devocional gratuito não desaparece: a primeira linha diz onde ele está.
-// Uma tela que só vende, para quem veio ler, é uma porta na cara.
+// O devocional gratuito não é anunciado aqui: quem navega pelo app encontra a
+// Raiz sozinho, e é lá, no topo dela, que está escrito o que ela é. Uma placa
+// nesta tela apontando para outra só disputaria atenção com o que esta tem a
+// dizer.
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BookOpen, Check, Mic, MessageCircle, Sprout } from './icons';
 import Button from './ui/Button';
@@ -62,13 +64,7 @@ function PassoIcone({ nome }: { nome: (typeof PASSOS)[number]['icone'] }) {
   return <BookOpen size={20} color={cor} strokeWidth={1.9} />;
 }
 
-export default function ConviteDoPlantio({
-  onAssinar,
-  onLerDevocional,
-}: {
-  onAssinar: () => void;
-  onLerDevocional?: () => void;
-}) {
+export default function ConviteDoPlantio({ onAssinar }: { onAssinar: () => void }) {
   const [preco, setPreco] = useState<string | null>(null);
 
   // O preço vem do servidor, do lado de onde a cobrança é criada. Preço escrito
@@ -85,16 +81,6 @@ export default function ConviteDoPlantio({
 
   return (
     <View style={styles.wrap}>
-      {/* Onde está o que ela já tem. Primeiro, e em uma linha só. */}
-      {onLerDevocional ? (
-        <TouchableOpacity onPress={onLerDevocional} style={styles.atalho} hitSlop={6}>
-          <BookOpen size={15} color={colors.palha} strokeWidth={2} />
-          <Text style={styles.atalhoTexto}>
-            Seu devocional de hoje está na <Text style={styles.atalhoForte}>Raiz</Text>
-          </Text>
-        </TouchableOpacity>
-      ) : null}
-
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>Plantio</Text>
         <Text style={styles.titulo}>Uma Palavra{'\n'}escolhida para você.</Text>
@@ -167,23 +153,6 @@ export default function ConviteDoPlantio({
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 6 },
-  atalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    alignSelf: 'flex-start',
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: 'rgba(72, 48, 24, 0.34)',
-    marginBottom: 26,
-  },
-  atalhoTexto: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
-  },
-  atalhoForte: { fontFamily: fonts.sansSemi, color: colors.palha },
   hero: { gap: 12, marginBottom: 30 },
   eyebrow: {
     fontFamily: fonts.sansSemi,
