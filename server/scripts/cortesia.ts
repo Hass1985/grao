@@ -15,6 +15,13 @@
 //   npm run cortesia -- add +5511999999999 90 "Imprensa"   → 90 dias
 //   npm run cortesia -- remove lucas@exemplo.com           → tira da lista
 //                                                            e encerra o acesso
+//   npm run cortesia -- pausar lucas@exemplo.com           → vira gratuito,
+//                                                            sem sair da lista
+//   npm run cortesia -- voltar lucas@exemplo.com           → devolve o acesso
+//
+// Pausar existe para ver o app como a MAIORIA das pessoas vê: gratuito, com o
+// paywall no lugar e o convite do Plantio aparecendo. Quem tem acesso completo
+// testa só a minoria do próprio produto.
 
 import 'dotenv/config';
 import { pool } from '../src/db.js';
@@ -23,7 +30,7 @@ import { TEM_ACESSO_SQL } from '../src/acesso.js';
 
 async function listar() {
   const { rows } = await pool.query(`
-    SELECT c.identificador, c.tipo, c.nota, c.dias, c.aplicada_em,
+    SELECT c.identificador, c.tipo, c.nota, c.dias, c.aplicada_em, c.pausada,
            u.name nome,
            coalesce(${TEM_ACESSO_SQL('s')}, false) completo,
            s.status, s.trial_ends_at
@@ -43,11 +50,13 @@ async function listar() {
     const prazo = r.dias === null
       ? 'sem prazo'
       : `${r.dias} dias`;
-    const estado = !r.aplicada_em
-      ? 'aguardando o primeiro login'
-      : r.completo
-        ? `ativa${r.trial_ends_at ? ' até ' + new Date(r.trial_ends_at).toLocaleDateString('pt-BR') : ''}`
-        : `NÃO está valendo (assinatura ${r.status ?? 'ausente'})`;
+    const estado = r.pausada
+      ? 'PAUSADA — enxergando o app como gratuito'
+      : !r.aplicada_em
+        ? 'aguardando o primeiro login'
+        : r.completo
+          ? `ativa${r.trial_ends_at ? ' até ' + new Date(r.trial_ends_at).toLocaleDateString('pt-BR') : ''}`
+          : `NÃO está valendo (assinatura ${r.status ?? 'ausente'})`;
     console.log(`  ${String(r.identificador).padEnd(32)} ${prazo.padEnd(10)} ${estado}`);
     console.log(`    ${r.nota ?? 'sem nota'}${r.nome ? '  ·  ' + r.nome : ''}`);
   }
@@ -98,6 +107,50 @@ async function adicionar(bruto: string, resto: string[]) {
   }
 }
 
+/**
+ * Suspende o acesso sem apagar o registro.
+ *
+ * A assinatura vai para 'expirada' (é o que o resto do sistema entende como
+ * "voltou a ser gratuito") e a linha da lista fica marcada, para que o próximo
+ * login não reaplique a cortesia e desfaça a pausa sem ninguém perceber.
+ */
+async function pausar(bruto: string, pausada: boolean) {
+  const id = normalizarIdentificador(bruto);
+  if (!id) { console.log(`✗ não parece e-mail nem telefone: ${bruto}`); process.exit(1); }
+
+  const { rows: [c] } = await pool.query(
+    `UPDATE cortesias SET pausada = $2 WHERE identificador = $1
+     RETURNING user_id, dias`, [id.identificador, pausada]);
+  if (!c) { console.log(`✗ ${id.identificador} não está na lista`); process.exit(1); }
+
+  const coluna = id.tipo === 'email' ? 'lower(email)' : 'phone_e164';
+  const { rows } = await pool.query(
+    `SELECT id, coalesce(name, '(sem nome)') nome FROM users WHERE ${coluna} = $1`,
+    [id.identificador]);
+  const alvos = rows.length ? rows : (c.user_id ? [{ id: c.user_id, nome: 'o cadastro' }] : []);
+
+  for (const u of alvos as any[]) {
+    if (pausada) {
+      await pool.query(
+        `UPDATE subscriptions SET status = 'expirada', updated_at = now()
+          WHERE user_id = $1 AND status = 'cortesia'`, [u.id]);
+    } else {
+      await aplicarCortesias(u.id, {
+        email: id.tipo === 'email' ? id.identificador : null,
+        telefone: id.tipo === 'telefone' ? id.identificador : null,
+      });
+    }
+  }
+
+  if (pausada) {
+    console.log(`✓ ${id.identificador} agora enxerga o app como gratuito`);
+    console.log('  (feche e abra o app; o acesso completo não volta sozinho no login)');
+    console.log(`  para desfazer: npm run cortesia -- voltar ${id.identificador}`);
+  } else {
+    console.log(`✓ ${id.identificador} de volta ao acesso completo`);
+  }
+}
+
 async function remover(bruto: string) {
   const id = normalizarIdentificador(bruto);
   if (!id) { console.log(`✗ não parece e-mail nem telefone: ${bruto}`); process.exit(1); }
@@ -123,7 +176,9 @@ async function main() {
   if (!cmd) return listar();
   if (cmd === 'add' && alvo) return adicionar(alvo, resto);
   if (cmd === 'remove' && alvo) return remover(alvo);
-  console.log('Uso: npm run cortesia [-- add <e-mail|telefone> [dias] ["nota"] | remove <e-mail|telefone>]');
+  if (cmd === 'pausar' && alvo) return pausar(alvo, true);
+  if (cmd === 'voltar' && alvo) return pausar(alvo, false);
+  console.log('Uso: npm run cortesia [-- add <id> [dias] ["nota"] | pausar <id> | voltar <id> | remove <id>]');
   process.exit(1);
 }
 

@@ -58,10 +58,14 @@ export async function aplicarCortesias(
 
   // Quem não tem prazo vence primeiro na ordenação: se a pessoa está na lista
   // duas vezes (pelo e-mail com prazo e pelo telefone sem), vale a mais generosa.
+  // `NOT pausada` é o que faz a pausa existir de verdade: esta função roda a
+  // cada login, então sem o filtro o acesso completo voltaria sozinho na
+  // próxima vez que a pessoa entrasse.
   const { rows: [c] } = await pool.query(
     `SELECT identificador, dias, nota
        FROM cortesias
       WHERE identificador = ANY($1::text[])
+        AND NOT pausada
       ORDER BY dias IS NULL DESC, dias DESC
       LIMIT 1`,
     [chaves]);

@@ -336,19 +336,36 @@ export default function Settings({ navigation }: Props) {
               produto. */}
           <Section title="Meu plano">
             {assinatura?.completo ? (
-              <Row
-                icon={Sprout}
-                label={assinatura.nomeDoPlano ?? 'Plano ativo'}
-                value={[
-                  assinatura.situacao === 'trial' ? 'Em teste'
-                    : assinatura.situacao === 'cortesia' ? 'Cortesia'
-                    : emReais(assinatura.valorCentavos),
-                  assinatura.proximaCobranca
-                    ? `próxima cobrança em ${porExtenso(assinatura.proximaCobranca)}`
-                    : assinatura.terminaEm ? `até ${porExtenso(assinatura.terminaEm)}` : '',
-                ].filter(Boolean).join(' · ')}
-                last
-              />
+              <>
+                <Row
+                  icon={Sprout}
+                  label={assinatura.nomeDoPlano ?? 'Plano ativo'}
+                  value={[
+                    assinatura.situacao === 'trial' ? 'Em teste'
+                      : assinatura.situacao === 'cortesia' ? 'Cortesia'
+                      : emReais(assinatura.valorCentavos),
+                    assinatura.proximaCobranca
+                      ? `próxima cobrança em ${porExtenso(assinatura.proximaCobranca)}`
+                      : assinatura.terminaEm ? `até ${porExtenso(assinatura.terminaEm)}` : '',
+                  ].filter(Boolean).join(' · ')}
+                  last={assinatura.situacao !== 'cortesia'}
+                />
+                {/* Quem está de cortesia tem o produto inteiro e não paga nada
+                    — e por isso era a única pessoa sem NENHUM caminho para a
+                    tela de planos: o convite do Hoje só aparece para quem é
+                    gratuito, e aqui embaixo também não havia porta.
+                    Uma cortesia pode terminar, e quem quiser assinar de
+                    verdade antes disso precisa conseguir chegar lá. */}
+                {assinatura.situacao === 'cortesia' ? (
+                  <Row
+                    icon={CreditCard}
+                    label="Conhecer o Plantio"
+                    value="Ver o plano e assinar quando quiser"
+                    onPress={() => navigation.navigate('Plantio')}
+                    last
+                  />
+                ) : null}
+              </>
             ) : (
               <>
                 <Row
