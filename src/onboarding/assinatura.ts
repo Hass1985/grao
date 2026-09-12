@@ -137,10 +137,24 @@ export function emReais(centavos: number | null): string {
   });
 }
 
-/** "11 de setembro" — como a pessoa lê, não como o banco guarda. */
+/**
+ * "11 de setembro" — como a pessoa lê, não como o banco guarda.
+ *
+ * Data pura ("2026-09-18") é montada com os números na mão, e não com
+ * `new Date(iso)`. O construtor lê esse formato como meia-noite em UTC; no
+ * Brasil, três horas antes, isso ainda é o dia anterior — e a tela dizia que a
+ * primeira cobrança era em 17 quando o Pix vence em 18.
+ *
+ * Errar a data para MENOS é menos grave que para mais, mas continua sendo o app
+ * anunciando uma cobrança no dia errado. Com hora junto (um timestamp de
+ * verdade) não há ambiguidade, e o caminho normal vale.
+ */
 export function porExtenso(iso: string | null): string {
   if (!iso) return '';
-  const d = new Date(iso);
+  const so = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = so
+    ? new Date(Number(so[1]), Number(so[2]) - 1, Number(so[3]))
+    : new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
 }

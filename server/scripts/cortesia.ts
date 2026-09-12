@@ -27,6 +27,7 @@ import 'dotenv/config';
 import { pool } from '../src/db.js';
 import { normalizarIdentificador, aplicarCortesias } from '../src/cortesia.js';
 import { TEM_ACESSO_SQL } from '../src/acesso.js';
+import { cancelarPara } from '../src/cobranca.js';
 
 async function listar() {
   const { rows } = await pool.query(`
@@ -131,9 +132,21 @@ async function pausar(bruto: string, pausada: boolean) {
 
   for (const u of alvos as any[]) {
     if (pausada) {
-      await pool.query(
-        `UPDATE subscriptions SET status = 'expirada', updated_at = now()
-          WHERE user_id = $1 AND status = 'cortesia'`, [u.id]);
+      // Não basta expirar a cortesia: quem já rodou o fluxo do trial está com
+      // status 'trial', e deixar essa linha de pé manteria o acesso completo —
+      // a pausa não pausaria nada. Uma assinatura ATIVA fica intocada: quem
+      // paga de verdade não perde acesso por causa de um comando de teste.
+      const { rows: [s] } = await pool.query(
+        `SELECT status, provider_ref FROM subscriptions WHERE user_id = $1`, [u.id]);
+      if (s && s.status !== 'ativa') {
+        // Com assinatura no gateway, cancelar lá também. Expirar só do nosso
+        // lado deixaria a cobrança correndo por fora, invisível para nós — em
+        // sandbox é ruído, em produção é dinheiro.
+        if (s.provider_ref) await cancelarPara(u.id, 'pausa-de-teste');
+        else await pool.query(
+          `UPDATE subscriptions SET status = 'expirada', updated_at = now()
+            WHERE user_id = $1`, [u.id]);
+      }
     } else {
       await aplicarCortesias(u.id, {
         email: id.tipo === 'email' ? id.identificador : null,

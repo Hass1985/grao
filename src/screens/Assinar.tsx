@@ -41,7 +41,7 @@ import { webScreenFill, webScroll } from '../theme/webScreen';
 import { useAuth } from '../auth/AuthContext';
 import {
   configuracaoDeCobranca, assinar, mascararCpf, cpfValido,
-  emReais, porExtenso,
+  emReais,
   type ConfigCobranca, type PlanoOferecido,
 } from '../onboarding/assinatura';
 
@@ -65,7 +65,6 @@ export default function Assinar({ navigation }: Props) {
   const [email, setEmail] = useState<string>(user?.email ?? '');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [pronto, setPronto] = useState<{ primeiraCobranca: string } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -94,60 +93,18 @@ export default function Assinar({ navigation }: Props) {
     setEnviando(true);
     const r = await assinar({ plano, cpf, email: email.trim() || undefined });
     setEnviando(false);
-    if (r.ok) setPronto({ primeiraCobranca: r.primeiraCobranca });
-    else setErro(r.erro);
-  }
+    if (!r.ok) { setErro(r.erro); return; }
 
-  // -------------------------------------------------------------------------
-  // Depois de confirmar.
-  // -------------------------------------------------------------------------
-  if (pronto) {
-    return (
-      <ScreenBackground style={webScreenFill}>
-        <SafeAreaView style={styles.safe}>
-          <StatusBar barStyle="light-content" backgroundColor="transparent" />
-          <View style={styles.topbar}>
-            <CircleBack onPress={() => navigation.goBack()} />
-          </View>
-          <View style={styles.centro}>
-            <View style={styles.selo}>
-              <Check size={28} color={colors.palha} strokeWidth={2.2} />
-            </View>
-            <Text style={styles.titulo}>Seus 7 dias{'\n'}começaram.</Text>
-            <Text style={styles.sub}>
-              Hoje você não paga nada. A primeira cobrança é em{' '}
-              <Text style={styles.forte}>{porExtenso(pronto.primeiraCobranca)}</Text>
-              {escolhido ? `, de ${emReais(escolhido.valorCentavos)} por ${escolhido.ciclo}` : ''},
-              por Pix.
-            </Text>
-            <Text style={styles.sub}>
-              Quer parar antes? Responda <Text style={styles.forte}>CANCELAR</Text> no WhatsApp,
-              ou cancele em Ajustes. Cancela na hora, sem formulário e sem falar com ninguém.
-            </Text>
-            {/* O trial não termina aqui, começa aqui.
-                O Plantio é a semente escolhida para o momento da pessoa — e o
-                momento é algo que só ela sabe. Mandar direto para o Hoje
-                entregaria, no primeiro dia do plano pago, o mesmo devocional
-                que todo mundo recebe de graça: a promessa quebrada exatamente
-                onde ela deveria ser cumprida pela primeira vez. */}
-            <Button
-              title="Contar como estou hoje"
-              onPress={() => navigation.replace('MomentoSemente', { real: true })}
-              variant="dark"
-              uppercase
-              style={styles.botaoFinal}
-            />
-            <Pressable
-              onPress={() => navigation.navigate('Main', { screen: 'Hoje' })}
-              style={styles.link}
-              hitSlop={8}
-            >
-              <Text style={styles.linkTexto}>Agora não, ver o devocional</Text>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </ScreenBackground>
-    );
+    // Direto para o relato, sem tela de recibo no meio.
+    //
+    // O que a pessoa comprou não foi um comprovante: foi ser ouvida. Parar o
+    // fluxo para dizer "deu certo" bem no instante de maior expectativa é
+    // trocar a entrega pela burocracia da entrega — e o compromisso da
+    // cobrança ela já leu, por extenso, logo acima do botão que apertou.
+    //
+    // A data segue junto e reaparece discreta no alto da próxima tela, para a
+    // promessa continuar à vista sem virar parada obrigatória.
+    navigation.replace('MomentoSemente', { real: true, trialAte: r.primeiraCobranca });
   }
 
   // -------------------------------------------------------------------------
@@ -305,12 +262,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingHorizontal: space.gutter, paddingBottom: 56, flexGrow: 1 },
   topbar: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, paddingBottom: 20 },
-  centro: { flex: 1, justifyContent: 'center', paddingHorizontal: space.gutter, gap: 14 },
-  selo: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: 'rgba(192, 120, 38, 0.24)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-  },
   eyebrow: {
     fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.4,
     textTransform: 'uppercase', color: colors.ambarSoft, marginBottom: 10,
@@ -397,7 +348,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, lineHeight: 22,
     color: colors.palha, marginTop: 26, marginBottom: 14,
   },
-  botaoFinal: { marginTop: 20 },
   link: { alignSelf: 'center', marginTop: 16, paddingVertical: 8 },
   linkTexto: {
     fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.foregroundMuted,

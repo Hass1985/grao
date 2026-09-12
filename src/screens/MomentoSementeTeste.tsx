@@ -40,6 +40,7 @@ import Reveal from '../components/ui/Reveal';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import { AI_MODE, getUserId, postOpening } from '../onboarding/aiClient';
 import { setMoment, reescolherSementeDeHoje } from '../onboarding/seedDelivery';
+import { porExtenso } from '../onboarding/assinatura';
 import {
   scoreFreeText,
   emotionalHintFromText,
@@ -56,7 +57,10 @@ import { glassCard } from '../theme/glass';
 import { motion } from '../theme/motion';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 
-type Props = { navigation: any; route?: { params?: { real?: boolean } } };
+type Props = {
+  navigation: any;
+  route?: { params?: { real?: boolean; trialAte?: string } };
+};
 type Phase = 'share' | 'recording' | 'thinking' | 'response' | 'care';
 
 const MAX_SECONDS = 60;
@@ -133,6 +137,8 @@ function ProgressRing({ size, progress }: { size: number; progress: number }) {
 export default function MomentoSementeTeste({ navigation, route }: Props) {
   /** Valendo (grava) ou demonstração (não grava). A rota decide. */
   const real: boolean = route?.params?.real === true;
+  /** Data da primeira cobrança, quando se chega aqui vindo do trial. */
+  const trialAte: string | undefined = route?.params?.trialAte;
   const [phase, setPhase] = useState<Phase>('share');
   const [nome, setNome] = useState('');
   const [text, setText] = useState('');
@@ -389,6 +395,18 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
           <View style={styles.topSpacer} />
         </View>
 
+        {/* A promessa da cobrança continua à vista sem virar parada obrigatória.
+            Quem acabou de assinar veio direto para cá: a tela de recibo saiu do
+            caminho, mas a data não pode sair junto — é a diferença entre um
+            teste e uma surpresa na fatura. */}
+        {trialAte ? (
+          <View style={styles.faixaTrial}>
+            <Text style={styles.faixaTrialTexto}>
+              Seus 7 dias grátis começaram · primeira cobrança em {porExtenso(trialAte)}
+            </Text>
+          </View>
+        ) : null}
+
         <ScrollView
           style={webScroll}
           contentContainerStyle={styles.scroll}
@@ -557,6 +575,21 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  faixaTrial: {
+    marginHorizontal: space.gutter,
+    marginBottom: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(192, 120, 38, 0.22)',
+  },
+  faixaTrialTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.palha,
+    textAlign: 'center',
+  },
   safe: { flex: 1 },
   topbar: {
     flexDirection: 'row',
