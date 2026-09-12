@@ -1,5 +1,22 @@
-// Momento do fluxo pago (teste): áudio até 1 min ou texto → motor emocional
-// → semente personalizada. Reaproveita a lógica da Abertura, no design atual.
+// Momento do fluxo pago: áudio até 1 min ou texto → motor emocional → semente
+// personalizada. Reaproveita a lógica da Abertura, no design atual.
+//
+// A MESMA tela serve os dois modos, escolhidos pelo parâmetro `real` da rota:
+//
+//   MomentoSementeTeste  (real: false)  demonstração — não grava nada, e a
+//                                       família viaja pela navegação
+//   MomentoSemente       (real: true)   valendo — grava o relato, o perfil e o
+//                                       momento, e /seed/today passa a devolver
+//                                       a semente escolhida a partir dele
+//
+// São a mesma tela porque são o mesmo gesto. Duplicar 500 linhas para mudar um
+// booleano garantiria que uma das duas cópias fosse ficando para trás, e a que
+// ficaria para trás seria justamente a de verdade.
+//
+// Sem o modo real, o produto pago não tinha entrada: a pessoa terminava de
+// assinar e caía num devocional igual ao de todo mundo, sem nunca ter contado
+// nada. A semente personalizada é a promessa inteira do Plantio, e ela começa
+// aqui.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -22,6 +39,7 @@ import Button from '../components/ui/Button';
 import Reveal from '../components/ui/Reveal';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import { AI_MODE, getUserId, postOpening } from '../onboarding/aiClient';
+import { setMoment, reescolherSementeDeHoje } from '../onboarding/seedDelivery';
 import {
   scoreFreeText,
   emotionalHintFromText,
@@ -38,7 +56,7 @@ import { glassCard } from '../theme/glass';
 import { motion } from '../theme/motion';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 
-type Props = { navigation: any };
+type Props = { navigation: any; route?: { params?: { real?: boolean } } };
 type Phase = 'share' | 'recording' | 'thinking' | 'response' | 'care';
 
 const MAX_SECONDS = 60;
@@ -112,7 +130,9 @@ function ProgressRing({ size, progress }: { size: number; progress: number }) {
  * Entrada do fluxo pago de teste: contar o momento (áudio ou texto),
  * o motor lê o estado emocional e em seguida abre a semente.
  */
-export default function MomentoSementeTeste({ navigation }: Props) {
+export default function MomentoSementeTeste({ navigation, route }: Props) {
+  /** Valendo (grava) ou demonstração (não grava). A rota decide. */
+  const real: boolean = route?.params?.real === true;
   const [phase, setPhase] = useState<Phase>('share');
   const [nome, setNome] = useState('');
   const [text, setText] = useState('');
@@ -283,7 +303,11 @@ export default function MomentoSementeTeste({ navigation }: Props) {
     if (AI_MODE) {
       try {
         const userId = await getUserId();
-        const r = await postOpening(userId, n || 'você', transcript, source, true);
+        // O último argumento é `teste`. No modo real ele vai false, e é isso
+        // que faz o servidor gravar o turno, salvar a leitura e definir o
+        // momento — sem isso o relato morre na tela e /seed/today continua
+        // escolhendo às cegas.
+        const r = await postOpening(userId, n || 'você', transcript, source, !real);
         message = r.message;
         channel = r.channel as Channel;
         family = (r.emotionalHint as EmotionalFamily) ?? null;
@@ -321,6 +345,20 @@ export default function MomentoSementeTeste({ navigation }: Props) {
     setFamiliaDoTeste(family);
     setRelatoDoTeste(transcript);
 
+    // No modo real, o momento também é gravado NO APARELHO — e não só no
+    // servidor. O Hoje mora dentro das abas e não desmonta: ele só recarrega
+    // quando este valor local muda. Sem esta linha a pessoa contaria o próprio
+    // momento, voltaria para o Hoje e encontraria a semente de antes, como se
+    // nada do que ela disse tivesse chegado.
+    if (real) {
+      if (family) await setMoment(family).catch(() => {});
+      // E a semente do dia é escolhida de novo a partir do que ela contou.
+      // Sem isto, quem já tinha recebido a semente hoje — inclusive quem
+      // acabou de assinar e passou pelo Hoje antes — continuaria com a
+      // escolha feita às cegas, e o relato não mudaria uma vírgula da tela.
+      await reescolherSementeDeHoje({ familia: family, relato: transcript }).catch(() => {});
+    }
+
     setTimeout(() => {
       setResponseMsg(message);
       setPhase('response');
@@ -346,7 +384,7 @@ export default function MomentoSementeTeste({ navigation }: Props) {
           />
           <View style={styles.topTitles}>
             <Text style={styles.topTitle}>Plantio</Text>
-            <Text style={styles.topHint}>Modo teste</Text>
+            <Text style={styles.topHint}>{real ? 'Sua semente de hoje' : 'Modo teste'}</Text>
           </View>
           <View style={styles.topSpacer} />
         </View>
@@ -495,10 +533,16 @@ export default function MomentoSementeTeste({ navigation }: Props) {
                 <Button
                   title="Ver minha semente"
                   onPress={() =>
-                    navigation.replace('HojeSementeTeste', {
-                      family: familiaDoTeste,
-                      relato: relatoDoTeste,
-                    })
+                    real
+                      // No modo real a semente já é a do Hoje: o servidor
+                      // gravou o momento, e /seed/today devolve a escolha feita
+                      // a partir do que ela acabou de contar. Não existe tela
+                      // separada, e é esse o ponto.
+                      ? navigation.replace('Main', { screen: 'Hoje' })
+                      : navigation.replace('HojeSementeTeste', {
+                          family: familiaDoTeste,
+                          relato: relatoDoTeste,
+                        })
                   }
                   variant="dark"
                   uppercase

@@ -99,6 +99,13 @@ function AppNavigator() {
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="Assinar" component={Assinar} />
+      {/* A mesma tela em dois modos. `real` é o que separa a demonstração, que
+          não grava nada, do gesto que de fato escolhe a semente do dia. */}
+      <AppStack.Screen
+        name="MomentoSemente"
+        component={MomentoSementeTeste}
+        initialParams={{ real: true }}
+      />
       <AppStack.Screen name="MomentoSementeTeste" component={MomentoSementeTeste} />
       <AppStack.Screen name="HojeSementeTeste" component={HojeSementeTeste} />
       <AppStack.Screen name="HistoricoTeste" component={HistoricoTeste} />

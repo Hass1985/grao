@@ -196,6 +196,38 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 }
 
 /**
+ * Contei um momento novo — escolhe outra semente para hoje.
+ *
+ * A semente do dia é travada na primeira entrega, de propósito: abrir o app não
+ * pode trocar o que já foi lido. Mas quem acabou de contar como está, ou de
+ * dizer que está passando por outra coisa, fez um gesto — e o gesto precisa
+ * chegar na tela, senão o app aceita o que a pessoa disse e mostra a mesma
+ * coisa de antes.
+ *
+ * Silenciosa de propósito: quem chama já vai recarregar a tela em seguida, e
+ * uma falha aqui no máximo mantém a semente que já estava lá.
+ */
+export async function reescolherSementeDeHoje(dados: {
+  familia?: EmotionalFamily | null;
+  relato?: string | null;
+}): Promise<boolean> {
+  if (!API_URL) return false;
+  try {
+    const userId = await getUserId();
+    const res = await fetch(`${API_URL}/seed/today/${userId}/reescolher`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ familia: dados.familia ?? undefined, relato: dados.relato ?? undefined }),
+    });
+    if (!res.ok) return false;
+    const j = await res.json();
+    return !!j.trocou;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * A semente REAL do plano pago, na tela de teste.
  *
  * Pede ao motor a semente que a pessoa receberia se assinasse: mesma escolha,

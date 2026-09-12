@@ -535,6 +535,61 @@ app.get('/seed/today/:userId', async (req, res) => {
   });
 });
 
+/**
+ * A pessoa contou um momento novo — a semente do dia é escolhida de novo.
+ *
+ * `/seed/today` devolve de propósito a MESMA semente o dia inteiro: abrir o app
+ * não pode trocar o que já foi entregue nem consumir outra das 380. Só que essa
+ * regra, sozinha, engolia o gesto mais importante do produto pago. Quem
+ * assinava, caía no Hoje, recebia uma semente escolhida sem ter contado nada —
+ * e a partir dali qualquer relato chegava tarde demais. O "Estou passando por
+ * outra coisa" tinha o mesmo destino: trocava o sentimento e a tela continuava
+ * exibindo a semente de antes, como se a escolha não valesse.
+ *
+ * A distinção que faltava não é de horário, é de intenção: abrir o app é
+ * passivo, contar como se está é um ato. Esta rota existe só para o segundo.
+ *
+ * As entregas antigas do dia NÃO são apagadas. É o registro delas que faz o
+ * motor não repetir semente, e apagar para "corrigir" a do dia devolveria ao
+ * catálogo algo que a pessoa já leu.
+ */
+const MAX_TROCAS_DIA = 3;
+
+app.post('/seed/today/:userId/reescolher', async (req, res) => {
+  const { familia, relato } = req.body as { familia?: string; relato?: string };
+  try {
+    const acesso = await acessoDoUsuario(req.params.userId);
+    // No gratuito a página do dia é fixa e igual para todo mundo: não há o que
+    // reescolher, e responder "ok" seria mentir para a tela.
+    if (!acesso.completo) return res.status(403).json({ error: 'sem acesso ao motor' });
+
+    const { rows: [{ n }] } = await pool.query(
+      `SELECT count(*)::int n FROM seed_deliveries d
+         JOIN users u ON u.id = d.user_id
+        WHERE d.user_id = $1
+          AND (d.delivered_at AT TIME ZONE u.timezone)::date
+            = (now() AT TIME ZONE u.timezone)::date`, [req.params.userId]);
+
+    // O teto protege o catálogo: cada troca gasta uma das 380 para sempre.
+    // Quem já trocou três vezes hoje recebe de volta a que está valendo, sem
+    // erro na cara — pedir de novo não é abuso, é indecisão.
+    if (n > MAX_TROCAS_DIA) {
+      const atual = await getTodaySeed(req.params.userId);
+      return res.json({ trocou: false, motivo: 'limite do dia', seed: atual });
+    }
+
+    const seed = await selectSeedForUser(req.params.userId, familia ?? null, relato ?? null);
+    if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
+
+    void logEvent(req.params.userId, 'semente_reescolhida',
+      { seedId: seed.id, family: seed.family, porFamilia: !!familia, porRelato: !!relato });
+    return res.json({ trocou: true, seed });
+  } catch (err: any) {
+    console.error('[reescolher]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao escolher outra semente.' });
+  }
+});
+
 // EXPERIMENTAR: a semente real do plano pago, para quem ainda não assina.
 //
 // Existe porque testar o plano pago com semente de mentira não testa nada. Aqui

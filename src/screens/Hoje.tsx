@@ -13,7 +13,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { BookOpen, Share2, Sprout } from '../components/icons';
+import { BookOpen, Mic, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
@@ -29,7 +29,7 @@ import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
 import {
-  selectTodaySeed, setMoment, getMoment, confirmarLeitura,
+  selectTodaySeed, setMoment, getMoment, confirmarLeitura, reescolherSementeDeHoje,
 } from '../onboarding/seedDelivery';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -118,6 +118,11 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const confirmFamily = async (family: EmotionalFamily) => {
     setPendingFamily(family);
     await setMoment(family);
+    // Guardar o sentimento não bastava: a semente do dia já estava entregue e
+    // /seed/today devolvia a mesma, então a pessoa dizia que estava passando
+    // por outra coisa e a tela não mudava nada. Quem assina precisa ver o
+    // produto responder ao que acabou de contar.
+    if (isSemente) await reescolherSementeDeHoje({ familia: family });
     setModalVisible(false);
     setOpened(false);
     reveal.setValue(0);
@@ -330,6 +335,25 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   leu está sendo interrompido por uma oferta. */}
               {isFree ? (
                 <ConviteDoPlantio onSaibaMais={() => navigation.navigate('Plantio')} />
+              ) : null}
+
+              {/* A porta do produto pago, que faltava.
+                  Quem assina recebe a semente escolhida para o SEU momento, e
+                  o momento muda todo dia — mas dentro do app só existia o
+                  seletor de sentimentos, que é um atalho, não um relato. Sem
+                  este caminho, contar com as próprias palavras só era possível
+                  no WhatsApp ou no primeiro dia de cadastro, e o motor
+                  envelhecia junto com aquele retrato. */}
+              {isSemente ? (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('MomentoSemente', { real: true })}
+                  style={styles.otherLink}
+                >
+                  <Mic size={14} color={colors.ambarSoft} strokeWidth={2} />
+                  <Text style={[styles.otherLinkText, { color: colors.ambarSoft }]}>
+                    Contar como estou hoje
+                  </Text>
+                </TouchableOpacity>
               ) : null}
 
               {isSemente ? (

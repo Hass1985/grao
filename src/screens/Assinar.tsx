@@ -124,13 +124,26 @@ export default function Assinar({ navigation }: Props) {
               Quer parar antes? Responda <Text style={styles.forte}>CANCELAR</Text> no WhatsApp,
               ou cancele em Ajustes. Cancela na hora, sem formulário e sem falar com ninguém.
             </Text>
+            {/* O trial não termina aqui, começa aqui.
+                O Plantio é a semente escolhida para o momento da pessoa — e o
+                momento é algo que só ela sabe. Mandar direto para o Hoje
+                entregaria, no primeiro dia do plano pago, o mesmo devocional
+                que todo mundo recebe de graça: a promessa quebrada exatamente
+                onde ela deveria ser cumprida pela primeira vez. */}
             <Button
-              title="Ver minha semente de hoje"
-              onPress={() => navigation.navigate('Main', { screen: 'Hoje' })}
+              title="Contar como estou hoje"
+              onPress={() => navigation.replace('MomentoSemente', { real: true })}
               variant="dark"
               uppercase
               style={styles.botaoFinal}
             />
+            <Pressable
+              onPress={() => navigation.navigate('Main', { screen: 'Hoje' })}
+              style={styles.link}
+              hitSlop={8}
+            >
+              <Text style={styles.linkTexto}>Agora não, ver o devocional</Text>
+            </Pressable>
           </View>
         </SafeAreaView>
       </ScreenBackground>
