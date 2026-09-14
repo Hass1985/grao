@@ -56,7 +56,6 @@ function weekDates() {
 }
 
 export default function Hoje({ navigation }: { navigation: any }) {
-  const [opened, setOpened] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   /**
    * Tem o plano pago? `null` enquanto não se sabe.
@@ -92,8 +91,18 @@ export default function Hoje({ navigation }: { navigation: any }) {
       momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
+    } finally {
+      // A entrada suave continua, agora disparada pela chegada da semente e
+      // não por um toque. O movimento era do conteúdo aparecendo; só o botão
+      // que o provocava é que sobrava.
+      Animated.timing(reveal, {
+        toValue: 1,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: NATIVE,
+      }).start();
     }
-  }, []);
+  }, [reveal]);
 
   // O plano é conferido a cada foco, e não uma vez só: é nesta tela que a
   // pessoa volta depois de assinar, e ela precisa encontrar a semente no lugar
@@ -114,7 +123,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
         if (!vivo) return;
         if (seedCarregada.current && agora === momentoCarregado.current) return;
         seedCarregada.current = true;
-        setOpened(false);
         reveal.setValue(0);
         await loadSeed();
       })();
@@ -123,17 +131,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
       };
     }, [loadSeed, reveal])
   );
-
-  const openToday = () => {
-    if (opened) return;
-    setOpened(true);
-    Animated.timing(reveal, {
-      toValue: 1,
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: NATIVE,
-    }).start();
-  };
 
   const confirmFamily = async (family: EmotionalFamily) => {
     setPendingFamily(family);
@@ -144,7 +141,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
     // produto responder ao que acabou de contar.
     if (isSemente) await reescolherSementeDeHoje({ familia: family });
     setModalVisible(false);
-    setOpened(false);
     reveal.setValue(0);
     setPendingFamily(null);
     await loadSeed();
@@ -250,26 +246,14 @@ export default function Hoje({ navigation }: { navigation: any }) {
             </TouchableOpacity>
           </View>
 
-          {!opened ? (
-            <View style={styles.hero}>
-              <Text style={styles.dateLine}>{dateLine}</Text>
-              <Text style={styles.heroTitle}>Deus, o que temos para hoje?</Text>
-              <Text style={styles.sectionEyebrow}>Devocional diário</Text>
-
-              <View style={styles.passCard}>
-                <View style={styles.passTop}>
-                  <View style={styles.passLabelRow}>
-                    <BookOpen size={16} color={colors.ambarSoft} strokeWidth={2.2} />
-                    <Text style={styles.passLabel}>Passagem</Text>
-                  </View>
-                  <Text style={styles.passMeta}>1 min</Text>
-                </View>
-                <Text style={styles.passTitle}>Toque para abrir a semente de hoje</Text>
-                <Button title="Abrir" onPress={openToday} variant="dark" uppercase />
-              </View>
-            </View>
-          ) : (
-            <Animated.View style={{ opacity: contentOp, transform: [{ translateY: contentTy }] }}>
+          {/* A porta que pedia para ser aberta saiu.
+              Havia um cartão intermediário — "Deus, o que temos para hoje?",
+              "Toque para abrir" — entre a pessoa e a própria semente. Fazia
+              sentido quando o Hoje servia os dois produtos e a abertura era
+              uma pequena cerimônia; hoje é só um toque a mais para ver o que
+              ela assinou. A pergunta foi para a Raiz, onde ela abre o
+              devocional do dia. */}
+          <Animated.View style={{ opacity: contentOp, transform: [{ translateY: contentTy }] }}>
               <View style={styles.hero}>
                 <Text style={styles.dateLine}>{dateLine}</Text>
                 <Text style={styles.heroTitle}>
@@ -366,7 +350,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 </TouchableOpacity>
               ) : null}
             </Animated.View>
-          )}
           </>
           )}
         </ScrollView>

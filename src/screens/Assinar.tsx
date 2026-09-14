@@ -95,16 +95,16 @@ export default function Assinar({ navigation }: Props) {
     setEnviando(false);
     if (!r.ok) { setErro(r.erro); return; }
 
-    // Direto para o relato, sem tela de recibo no meio.
+    // Sem tela de recibo no meio: o que a pessoa comprou não foi um
+    // comprovante, e o compromisso da cobrança ela já leu, por extenso, logo
+    // acima do botão que apertou. A data segue junto e reaparece discreta no
+    // alto das próximas telas.
     //
-    // O que a pessoa comprou não foi um comprovante: foi ser ouvida. Parar o
-    // fluxo para dizer "deu certo" bem no instante de maior expectativa é
-    // trocar a entrega pela burocracia da entrega — e o compromisso da
-    // cobrança ela já leu, por extenso, logo acima do botão que apertou.
-    //
-    // A data segue junto e reaparece discreta no alto da próxima tela, para a
-    // promessa continuar à vista sem virar parada obrigatória.
-    navigation.replace('MomentoSemente', { real: true, trialAte: r.primeiraCobranca });
+    // Antes da semente vem a entrega: número do WhatsApp e horário. É a metade
+    // do produto que mora fora do app, e o único momento em que perguntar isso
+    // não interrompe nada — depois começa o relato, que é íntimo e não combina
+    // com formulário.
+    navigation.replace('EntregaWhatsApp', { trialAte: r.primeiraCobranca });
   }
 
   // -------------------------------------------------------------------------

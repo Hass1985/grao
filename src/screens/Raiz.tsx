@@ -137,11 +137,13 @@ export default function Raiz({ navigation }: { navigation: any }) {
             </View>
           ) : (
             <>
+              {/* A pergunta veio do Hoje, onde abria um cartão intermediário
+                  que só atrasava a semente. Aqui ela é a pergunta certa: a
+                  página do dia é justamente a resposta, e o título dela aparece
+                  logo abaixo, no cartão. */}
               <View style={styles.hero}>
                 <Text style={styles.eyebrow}>{dataLonga}</Text>
-                <Text style={styles.titulo}>
-                  {seed.title || seed.reference || 'Página de hoje'}
-                </Text>
+                <Text style={styles.titulo}>Deus, o que temos{'\n'}para hoje?</Text>
                 <Text style={styles.explica}>
                   Uma página nova por dia, a mesma para todo mundo. É sua de graça,
                   para sempre.

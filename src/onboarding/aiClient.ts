@@ -112,13 +112,20 @@ export async function linkWhatsApp(
   userId: string,
   phone: string,
   time: string,                // "HH:MM", horário local escolhido pela pessoa
+  timezone?: string,
 ): Promise<{ userId: string; merged: boolean } | null> {
   if (!API_URL) return null;   // modo demo, sem backend
   try {
+    // O fuso vem do aparelho quando é possível. Brasília fixa acertava a
+    // maioria e errava o resto em silêncio: quem está em Manaus escolhia 7h e
+    // recebia às 6h, todo dia, sem nada na tela explicando por quê.
+    const fuso = timezone
+      || Intl.DateTimeFormat().resolvedOptions().timeZone
+      || 'America/Sao_Paulo';
     const res = await fetch(`${API_URL}/profile/${userId}/whatsapp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, time, timezone: 'America/Sao_Paulo' }),
+      body: JSON.stringify({ phone, time, timezone: fuso }),
     });
     if (!res.ok) return null;
     const j = await res.json();

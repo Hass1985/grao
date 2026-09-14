@@ -19,6 +19,7 @@ import Credits from '../screens/Credits';
 import WhatsAppDemo from '../screens/WhatsAppDemo';
 import Plantio from '../screens/Plantio';
 import Assinar from '../screens/Assinar';
+import EntregaWhatsApp from '../screens/EntregaWhatsApp';
 import MomentoSementeTeste from '../screens/MomentoSementeTeste';
 import HojeSementeTeste from '../screens/HojeSementeTeste';
 import HistoricoTeste from '../screens/HistoricoTeste';
@@ -98,6 +99,7 @@ function AppNavigator() {
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="Assinar" component={Assinar} />
+      <AppStack.Screen name="EntregaWhatsApp" component={EntregaWhatsApp} />
       {/* A mesma tela em dois modos. `real` é o que separa a demonstração, que
           não grava nada, do gesto que de fato escolhe a semente do dia. */}
       <AppStack.Screen
