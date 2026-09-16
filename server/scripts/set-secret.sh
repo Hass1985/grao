@@ -38,6 +38,35 @@ case "$VALOR" in
     exit 1 ;;
 esac
 
+# Curto demais para ser chave. Nenhum serviço emite credencial com menos de 20
+# caracteres — mas nomes, ids e rótulos cabem folgados aí. Foi assim que
+# "semente_do_dia_v3", que estava na área de transferência de configurar o
+# Render, virou STT_API_KEY: 17 caracteres, sem espaço, passou pela checagem
+# anterior e ficou gravado como se fosse a chave.
+if [ "${#VALOR}" -lt 20 ]; then
+  echo "✗ O valor colado tem só ${#VALOR} caracteres — curto demais para ser uma chave."
+  echo "  Termina em: …$(printf '%s' "$VALOR" | tail -c 6)"
+  echo "  Confira se a área de transferência não ficou com outra coisa."
+  exit 1
+fi
+
+# Já é o valor de OUTRA variável? Então a área de transferência não mudou desde
+# a última vez. O sintoma é o pior de todos: a integração se declara
+# configurada e falha em toda chamada.
+DUPLICADA="$(awk -F= -v v="$VALOR" -v n="$NOME" '
+  index($0,"=")>0 {
+    chave=substr($0,1,index($0,"=")-1);
+    valor=substr($0,index($0,"=")+1);
+    gsub(/^[ \t]+|[ \t\r]+$/,"",valor);
+    if (valor==v && chave!=n) print chave;
+  }' .env | head -1)"
+if [ -n "$DUPLICADA" ]; then
+  echo "✗ Esse valor já é o de $DUPLICADA no .env."
+  echo "  A área de transferência não mudou desde a última colagem."
+  echo "  Copie a chave certa e rode de novo."
+  exit 1
+fi
+
 # Formato conhecido por variável. Ajuda a pegar a chave certa do serviço errado,
 # que é o erro que não dá mensagem nenhuma: só para de funcionar.
 case "$NOME" in
@@ -50,6 +79,15 @@ case "$NOME" in
         echo "✗ Isso não parece uma chave do Asaas."
         echo "  Elas começam com \$aact_hmlg_ (sandbox) ou \$aact_prod_ (produção)."
         echo "  No painel do Asaas: menu do usuário → Integrações → Gerar nova Chave de API."
+        exit 1 ;;
+    esac ;;
+  STT_API_KEY)
+    case "$VALOR" in
+      sk-*|gsk_*|sk_*) ;;
+      *)
+        echo "✗ Isso não parece uma chave de transcrição."
+        echo "  Groq começa com gsk_ · OpenAI começa com sk-"
+        echo "  Termina em: …$(printf '%s' "$VALOR" | tail -c 6)"
         exit 1 ;;
     esac ;;
 esac
