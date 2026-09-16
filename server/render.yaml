@@ -44,3 +44,12 @@ services:
         value: claude-haiku-4-5-20251001
       - key: CORS_ORIGINS
         sync: false          # ex.: https://dapper-smakager-388102.netlify.app
+      # Transcrição do áudio da troca de sentimento. Qualquer serviço com a
+      # interface /audio/transcriptions serve (OpenAI, Groq e vários outros).
+      # Sem a chave, o Grão pede o relato por escrito e nada quebra.
+      - key: STT_API_KEY
+        sync: false
+      - key: STT_BASE_URL
+        sync: false          # padrão: https://api.openai.com/v1
+      - key: STT_MODEL
+        sync: false          # padrão: whisper-1

@@ -245,7 +245,7 @@ export async function entregarSemente(
     // pessoa, não na última linha da tabela: com o app escolhendo a semente
     // antes, "a última linha" nem sempre é a do dia.
     await pool.query(
-      `UPDATE seed_deliveries d SET sent_wa_at = now()${aberta ? ', planted = true' : ''}
+      `UPDATE seed_deliveries d SET sent_wa_at = now()${aberta ? ", planted = true, porta = 'direta'" : ''}
          FROM users u
         WHERE d.user_id = $1 AND u.id = d.user_id
           AND (d.delivered_at AT TIME ZONE u.timezone)::date

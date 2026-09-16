@@ -22,11 +22,23 @@ import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { guardarMemorias, memoriasVivas, linhaDeLigacao, registrarUso } from './memoria.js';
 import { cancelarPara } from './cobranca.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
+import {
+  BOTAO_TROCA, pedirRelato, receberRelato, responderForaDeFluxo,
+  estadoDoDia, fecharDia,
+} from './trocaDeSentimento.js';
+import { transcricaoConfigurada } from './transcricao.js';
 
-/** Resposta a quem manda áudio, figurinha ou imagem — formatos que ainda não lemos. */
+/**
+ * Resposta a áudio, figurinha ou imagem chegando FORA do fluxo da troca.
+ *
+ * Dentro da troca o Grão escuta: ele perguntou como a pessoa está e transcreve
+ * o que ela responder. Fora dela, não — transcrever toda mídia solta custaria
+ * dinheiro por algo que ninguém pediu, e a resposta aponta o caminho certo em
+ * vez de só recusar.
+ */
 const SO_TEXTO =
-  'Por enquanto eu só consigo ler mensagens escritas — ainda não sei ouvir áudio. ' +
-  'Me conta por texto o que você está vivendo? 🌱';
+  'Consigo ouvir seu áudio quando você toca em *Meu sentimento mudou* na mensagem ' +
+  'da sua semente. Fora dali, me conta por escrito? 🌱';
 
 /**
  * Confere o HMAC do corpo cru. Comparação em tempo constante: comparar
@@ -53,6 +65,17 @@ interface MsgMeta {
   id: string; from: string; type: string;
   text?: { body: string };
   button?: { payload?: string; text?: string };
+  // Áudio gravado na hora chega como `audio` com voice:true; encaminhado, como
+  // `audio` puro. Os dois têm id de mídia e são baixados do mesmo endpoint.
+  audio?: { id: string; voice?: boolean };
+  voice?: { id: string };
+  interactive?: { type: string; button_reply?: { id?: string; title?: string } };
+}
+
+/** O rótulo do botão tocado, venha ele do template ou de uma lista interativa. */
+function rotuloDoBotao(msg: MsgMeta): string {
+  return (msg.button?.text || msg.button?.payload
+    || msg.interactive?.button_reply?.title || '').trim();
 }
 
 /**
@@ -64,6 +87,27 @@ interface MsgMeta {
  * que alimenta o Campo e a Raiz.
  */
 async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
+  // Dois botões, duas portas para a MESMA entrega do dia.
+  //
+  // "Meu sentimento mudou" não entrega nada agora: abre a espera pelo relato,
+  // e a semente só sai depois que a pessoa contar. Quem toca nele com o dia já
+  // fechado ouve que a semente de hoje já foi plantada — a outra porta deixou
+  // de valer, que é a regra central do fluxo.
+  if (rotuloDoBotao(msg).toLowerCase() === BOTAO_TROCA.toLowerCase()) {
+    await pedirRelato(userId, msg.from);
+    return;
+  }
+
+  // A partir daqui é o botão Plantar. Se o dia já fechou por outra porta —
+  // pela troca, ou porque a semente saiu direto na janela aberta — o toque não
+  // entrega uma segunda semente.
+  const jaFechado = await estadoDoDia(userId);
+  if (jaFechado.fechado) {
+    await responderForaDeFluxo(userId, msg.from);
+    void logEvent(userId, 'plantar_recusado', { motivo: 'dia já fechado', porta: jaFechado.porta });
+    return;
+  }
+
   // d.id precisa de apelido: s.* traz s.id (texto) e sobrescreveria o id
   // numérico da entrega, quebrando o UPDATE lá embaixo.
   //
@@ -92,7 +136,7 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
       formatSeed(fresca, perfil ? null : undefined, (await acessoDoUsuario(userId)).completo));
     if (!r.ok) { console.error(`[wa] falha ao entregar semente do dia: ${r.erro}`); return; }
     await pool.query(
-      `UPDATE seed_deliveries SET planted = true
+      `UPDATE seed_deliveries SET planted = true, porta = 'plantar'
         WHERE id = (SELECT max(id) FROM seed_deliveries WHERE user_id = $1)`, [userId]);
     void logEvent(userId, 'seed_planted', { seedId: fresca.id, source: 'whatsapp_botao', aviso_vencido: true });
     return;
@@ -117,7 +161,9 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
   if (!r.ok) { console.error(`[wa] falha ao entregar a semente: ${r.erro}`); return; }
 
   if (ligacao) await registrarUso(ligacao.memoriaId);
-  await pool.query(`UPDATE seed_deliveries SET planted = true WHERE id = $1`, [entrega.entrega_id]);
+  await pool.query(
+    `UPDATE seed_deliveries SET planted = true, porta = 'plantar' WHERE id = $1`,
+    [entrega.entrega_id]);
   void logEvent(userId, 'seed_planted', { seedId: entrega.id, source: 'whatsapp_botao', retomou: !!ligacao });
 }
 
@@ -132,11 +178,32 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
   // Qualquer mensagem dela — texto ou toque de botão — abre a janela de 24h.
   await pool.query(`UPDATE users SET wa_last_inbound_at = now() WHERE id = $1`, [userId]);
 
-  if (msg.type === 'button') { await processarBotao(msg, userId); return; }
+  if (msg.type === 'button' || msg.type === 'interactive') {
+    await processarBotao(msg, userId);
+    return;
+  }
+
+  // Estamos esperando o relato da troca de sentimento? Então esta mensagem é
+  // ele — texto ou áudio — e o fluxo da troca a consome inteira.
+  if (await receberRelato(userId, msg.from, msg)) return;
 
   if (msg.type !== 'text' || !msg.text?.body?.trim()) {
     void logEvent(userId, 'message_in', { source: 'whatsapp', tipo: msg.type, lido: false });
+    // Fora da troca, áudio continua sem ser lido: transcrever toda mensagem
+    // solta custaria dinheiro por algo que ninguém pediu. Dentro da troca, o
+    // Grão pergunta e escuta; fora dela, ele diz que não sabe ouvir.
     await sendText(msg.from, SO_TEXTO);
+    return;
+  }
+
+  // Dia já fechado: uma resposta, e só na primeira mensagem do dia.
+  //
+  // Vem antes do cérebro de propósito. Sem isto, quem escrevesse depois de
+  // receber a semente entraria na conversa livre e poderia ganhar uma segunda
+  // semente — furando a regra que sustenta o fluxo e a conta.
+  if (await responderForaDeFluxo(userId, msg.from)) {
+    await saveTurn(userId, 'user', msg.text.body);
+    void logEvent(userId, 'message_in', { source: 'whatsapp', fora_de_fluxo: true });
     return;
   }
 
