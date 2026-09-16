@@ -46,7 +46,7 @@ export interface EstadoDoDia {
   porta: string | null;
   /** Já mandamos hoje a resposta automática de fora de fluxo. */
   foraDeFluxoEnviada: boolean;
-  /** Pedimos o relato e ainda estamos dentro da janela de 24h. */
+  /** Pedimos o relato e ele ainda vale para a semente de hoje. */
   aguardandoRelato: boolean;
   nome: string | null;
 }
@@ -56,6 +56,16 @@ export interface EstadoDoDia {
  *
  * Tudo é resolvido no fuso DA PESSOA. Com o fuso do servidor, quem lê às 23h
  * em Manaus teria o dia virado no meio da leitura.
+ *
+ * A espera pelo relato NÃO morre em 24 horas. Ela morre quando o dia fecha,
+ * que é o que ela existe para preencher. Quem toca no botão de manhã, larga o
+ * celular e só volta à noite — ou no dia seguinte, antes da semente daquele
+ * dia sair — continua sendo ouvido. A pessoa respondeu a uma pergunta que o
+ * Grão fez; descartar a resposta porque ela demorou seria castigá-la por ter
+ * tido um dia cheio.
+ *
+ * O teto de 48h existe só para um pedido esquecido não sequestrar uma mensagem
+ * solta uma semana depois.
  */
 export async function estadoDoDia(userId: string): Promise<EstadoDoDia> {
   const { rows: [r] } = await pool.query(
@@ -63,7 +73,7 @@ export async function estadoDoDia(userId: string): Promise<EstadoDoDia> {
             (u.wa_fora_fluxo_em = (now() AT TIME ZONE coalesce(u.timezone,'America/Sao_Paulo'))::date)
               AS fora_enviada,
             (u.wa_relato_pedido_em IS NOT NULL
-              AND u.wa_relato_pedido_em > now() - interval '24 hours') AS aguardando,
+              AND u.wa_relato_pedido_em > now() - interval '48 hours') AS pedido_vivo,
             d.porta,
             (d.id IS NOT NULL) AS fechado
        FROM users u
@@ -76,11 +86,14 @@ export async function estadoDoDia(userId: string): Promise<EstadoDoDia> {
        ) d ON true
       WHERE u.id = $1`, [userId]);
 
+  const fechado = !!r?.fechado;
   return {
-    fechado: !!r?.fechado,
+    fechado,
     porta: r?.porta ?? null,
     foraDeFluxoEnviada: !!r?.fora_enviada,
-    aguardandoRelato: !!r?.aguardando,
+    // Dia fechado encerra a espera: a semente daquele dia já saiu, e é ela que
+    // o relato existia para escolher.
+    aguardandoRelato: !fechado && !!r?.pedido_vivo,
     nome: r?.name ?? null,
   };
 }
