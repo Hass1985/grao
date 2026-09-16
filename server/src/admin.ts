@@ -336,6 +336,12 @@ async function montarPainel(dias: number) {
     ['Token do cron', estado(!!process.env.GRAO_API_TOKEN), 'disparo diário pelo GitHub Actions'],
     ['Token do painel', process.env.GRAO_ADMIN_TOKEN ? 'ok' : 'padrao',
       process.env.GRAO_ADMIN_TOKEN ? 'separado do token do cron' : 'usando o token do cron — melhor separar'],
+    ['Template diário', process.env.WA_TEMPLATE_NAME ? 'ok' : 'padrao',
+      process.env.WA_TEMPLATE_NAME || 'semente_do_dia (nome padrão do código)'],
+    ['Transcrição de áudio', estado(!!process.env.STT_API_KEY),
+      process.env.STT_API_KEY
+        ? 'o botão de troca aceita áudio'
+        : 'sem chave: a troca de sentimento só aceita texto'],
     ['Chave do Asaas', estado(!!process.env.ASAAS_API_KEY),
       process.env.ASAAS_API_KEY?.includes('_hmlg_')
         ? 'SANDBOX, não cobra de verdade'

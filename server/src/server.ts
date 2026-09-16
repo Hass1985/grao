@@ -78,6 +78,14 @@ async function diagnose() {
     supabase: !!process.env.SUPABASE_URL,
     asaas: !!process.env.ASAAS_API_KEY,
     asaasWebhook: !!process.env.ASAAS_WEBHOOK_TOKEN,
+    // Sem isto, o botão "Meu sentimento mudou" pede o relato por escrito e
+    // quem só manda áudio não consegue responder. É a diferença entre o fluxo
+    // funcionar e funcionar pela metade — e não dá para ver de fora sem
+    // mandar um áudio de verdade.
+    transcricao: !!process.env.STT_API_KEY,
+    // O nome do template não é segredo, e é a única forma de conferir de fora
+    // se a virada para o v3 chegou ao Render.
+    templateDiario: process.env.WA_TEMPLATE_NAME || 'semente_do_dia',
   };
   return {
     ok: hasKey && db === 'ok',
