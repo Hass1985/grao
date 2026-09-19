@@ -1,6 +1,9 @@
 {
   "name": "grao-backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22"
+  },
   "private": true,
   "type": "module",
   "description": "Backend do Grão — conversa generativa (Claude API) + perfil + entrega de sementes",

@@ -1,0 +1,64 @@
+# Grão — backend em São Paulo.
+#
+# POR QUE GRU E NÃO OREGON
+#
+# O produto é brasileiro e o banco (Supabase) está em sa-east-1, São Paulo.
+# Com o servidor em Oregon, medimos em 18/09/2026:
+#
+#   Brasil → servidor            222 ms
+#   servidor → banco → servidor  177 ms POR CONSULTA
+#
+# O caminho de uma tela do aplicativo era Brasil → Oregon → São Paulo →
+# Oregon → Brasil: duas travessias do continente a mais do que o necessário,
+# em toda consulta. Com tudo em São Paulo, a mesma tela passa a pagar dezenas
+# de milissegundos em vez de mais de um segundo.
+
+app = "grao-backend"
+primary_region = "gru"          # São Paulo
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8787"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+
+  # NÃO MEXER NESTAS DUAS LINHAS SEM LER O QUE VEM ABAIXO.
+  #
+  # A agenda de entrega é um setInterval DENTRO deste processo. Se a máquina
+  # for desligada por falta de requisição, a agenda para junto — e o sintoma é
+  # o pior possível: ninguém recebe a semente, e não há erro nenhum no log,
+  # porque não houve execução para falhar.
+  #
+  # É exatamente o mesmo bug que o plano free do Render causaria, e o mesmo
+  # motivo pelo qual Cloud Run e Lambda não servem para este serviço.
+  auto_stop_machines = false
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    # Medido no Render com 0,5 CPU: satura em ~27 req/s e degrada com
+    # elegância. Estes limites existem para o Fly saber quando enfileirar, não
+    # para cortar tráfego.
+    soft_limit = 40
+    hard_limit = 80
+
+# O /health responde 200 mesmo com dependências ruins, de propósito: devolver
+# 503 aqui faria a plataforma reiniciar em laço quando o banco caísse,
+# derrubando também o que ainda funciona. Quem diz "dá para atender?" é /ready.
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "20s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  # Mesmo tamanho do Starter do Render, para a comparação ser honesta: se o
+  # gargalo for mesmo a geografia, a máquina não precisa crescer.
+  size = "shared-cpu-1x"
+  memory = "512mb"
