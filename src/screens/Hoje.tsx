@@ -107,29 +107,56 @@ export default function Hoje({ navigation }: { navigation: any }) {
   // O plano é conferido a cada foco, e não uma vez só: é nesta tela que a
   // pessoa volta depois de assinar, e ela precisa encontrar a semente no lugar
   // onde, um minuto antes, havia uma página de venda.
+  //
+  // As duas idas à rede saem JUNTAS. Elas nunca dependeram uma da outra — o
+  // plano não muda qual semente o servidor escolhe —, mas estavam em sequência,
+  // e sequência aqui é cara: o servidor está em Oregon e o banco em São Paulo,
+  // então cada chamada custa entre meio segundo e três quartos. Somadas, eram
+  // ~1,3 s de tela parada antes da semente aparecer; juntas, ~0,75 s.
   useFocusEffect(
     React.useCallback(() => {
       let vivo = true;
       (async () => {
-        const a = await minhaAssinatura();
-        if (!vivo) return;
-        const completo = !!a?.completo;
-        setPago(completo);
-        if (!completo) return;
-
-        // Assinante: recarrega a semente só quando o momento mudou de verdade.
-        // Trocar de aba não custa uma ida à rede.
+        // O momento é lido do próprio aparelho, então é instantâneo e pode vir
+        // antes. É ele que diz se a semente precisa ser buscada de novo:
+        // trocar de aba continua não custando uma ida à rede.
         const agora = await getMoment();
         if (!vivo) return;
-        if (seedCarregada.current && agora === momentoCarregado.current) return;
+        const precisaDaSemente =
+          !seedCarregada.current || agora !== momentoCarregado.current;
+
+        const [a, dados] = await Promise.all([
+          minhaAssinatura(),
+          precisaDaSemente ? selectTodaySeed().catch(() => null) : Promise.resolve(null),
+        ]);
+        if (!vivo) return;
+
+        const completo = !!a?.completo;
+        setPago(completo);
+        if (!completo || !precisaDaSemente) return;
+
         seedCarregada.current = true;
         reveal.setValue(0);
-        await loadSeed();
+        if (dados) {
+          setSeed(dados.seed);
+          setLido(!!dados.lido);
+          setLigacao(dados.ligacao ?? null);
+          momentoCarregado.current = agora;
+        } else {
+          setSeed(todaySeed);
+        }
+        // A entrada suave é do conteúdo aparecendo, não de um toque.
+        Animated.timing(reveal, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: NATIVE,
+        }).start();
       })();
       return () => {
         vivo = false;
       };
-    }, [loadSeed, reveal])
+    }, [reveal])
   );
 
   const confirmFamily = async (family: EmotionalFamily) => {
