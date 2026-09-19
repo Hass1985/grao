@@ -32,6 +32,16 @@ import { avisarCobrancasProximas } from './cobranca.js';
 const INTERVALO_MS = 60_000;
 
 /**
+ * Quantas entregas correm ao mesmo tempo.
+ *
+ * Limitado pelo pool do Postgres (PG_POOL_MAX, 10 por padrão), não pela Meta:
+ * o throughput STANDARD da Cloud API aceita 80 mensagens por segundo, muito
+ * acima disso. Deixar uma conexão de folga evita que a varredura monopolize o
+ * pool e trave as requisições do aplicativo que chegam no mesmo instante.
+ */
+const LARGURA_ENTREGA = Number(process.env.GRAO_LARGURA_ENTREGA ?? 8);
+
+/**
  * Atraso máximo tolerado.
  *
  * Se o processo ficou fora do ar, entregar a semente das 7h às 22h é pior do
@@ -97,15 +107,43 @@ export async function despacharDevidos(): Promise<ResultadoVarredura> {
 
       let enviadas = 0, falhas = 0;
       const detalhes: string[] = [];
-      for (const u of usuarios) {
-        const r = await entregarSemente(u, 'agenda');
-        if (r.ok) enviadas++;
-        else if (r.erro) {
-          falhas++;
-          detalhes.push(`${u.phone_e164}: ${r.erro}`);
-          console.error(`[agenda] ${u.phone_e164}: ${r.erro}`);
+
+      // Entrega em PARALELO, com largura fixa.
+      //
+      // Em série, cada entrega custa a ida e volta até a Meta — cerca de 300ms
+      // que o processo passa parado esperando a rede. Com todo mundo pedindo
+      // 7h, isso vira uma fila: medido, dá 8 minutos para mil pessoas e 39
+      // para cinco mil. A última da fila recebe a semente das 7h quase às 8h,
+      // e o problema cresce junto com o produto.
+      //
+      // A largura é fixa e modesta de propósito. O teto real não é a Meta
+      // (STANDARD aceita 80 mensagens por segundo), é o pool do Postgres: cada
+      // entrega segura uma conexão por várias consultas, e abrir mais frentes
+      // do que o pool comporta troca a fila da rede por uma fila pior, a de
+      // conexão, com timeout no fim.
+      const fila = [...usuarios];
+      const trabalhar = async () => {
+        for (;;) {
+          const u = fila.shift();
+          if (!u) return;
+          try {
+            const r = await entregarSemente(u, 'agenda');
+            if (r.ok) enviadas++;
+            else if (r.erro) {
+              falhas++;
+              detalhes.push(`${u.phone_e164}: ${r.erro}`);
+              console.error(`[agenda] ${u.phone_e164}: ${r.erro}`);
+            }
+          } catch (e: any) {
+            // Uma pessoa que explode não pode levar junto o resto da fila.
+            falhas++;
+            detalhes.push(`${u.phone_e164}: ${e?.message || e}`);
+            console.error(`[agenda] ${u.phone_e164}: ${e?.message || e}`);
+          }
         }
-      }
+      };
+      const largura = Math.min(LARGURA_ENTREGA, usuarios.length);
+      await Promise.all(Array.from({ length: largura }, trabalhar));
       // Só registra quando fez algo. A varredura roda 1.440 vezes por dia e
       // quase sempre não acha ninguém — gravar todas afogaria a linha do tempo
       // do painel e nada diria.

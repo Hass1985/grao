@@ -2,14 +2,24 @@
 # No painel: New → Blueprint → aponte para o repositório Hass1985/grao.
 # As variáveis com sync:false são pedidas na tela (nunca ficam no repositório).
 #
-# Plano free: 750h/mês, porém o serviço HIBERNA após ~15 min sem tráfego e a
-# primeira chamada depois disso leva ~50s para responder. Ótimo para validar o
-# Trial; troque para "starter" antes de abrir para usuários de verdade.
+# O PLANO PRECISA SER PAGO. Não é preferência, é requisito de funcionamento.
+#
+# No free o serviço HIBERNA após ~15 min sem tráfego. A agenda de entrega mora
+# DENTRO deste processo (setInterval de 60s em agenda.ts) e dorme junto: quem
+# pediu a semente para as 7h só recebe quando alguma coisa acorda o serviço.
+#
+# Medido em 18/09/2026, com o serviço no free:
+#   primeira chamada ao /health   23,6 s   (cold start)
+#   chamadas seguintes             0,9 s
+#   atraso das entregas          1 min quando acordado · 85 a 137 min quando não
+#
+# O padrão é bimodal justamente por isso: ou a agenda estava rodando, ou não
+# estava. Nenhum ajuste de código conserta um processo que não existe.
 services:
   - type: web
     name: grao-backend
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     rootDir: server
     # --include=dev é obrigatório: com NODE_ENV=production o npm omite as

@@ -18,7 +18,13 @@ name: Semente diária (reserva)
 
 on:
   schedule:
-    - cron: '7 * * * *'   # de hora em hora, no minuto 7
+    # A cada 15 minutos. Era de hora em hora, e isso definia o pior caso do
+    # atraso enquanto o serviço hibernava no plano free: a semente das 7h saía
+    # às 7h07, 8h07 ou mais tarde, conforme o que acordasse o processo.
+    #
+    # Com o plano pago isto vira só rede de segurança para queda de processo —
+    # a agenda de dentro varre de minuto em minuto e chega primeiro.
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:

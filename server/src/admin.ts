@@ -106,7 +106,23 @@ async function montarPainel(dias: number) {
       (SELECT count(*) FROM seed_deliveries
         WHERE delivered_at > now() - $1::interval AND planted) plantios,
       (SELECT count(*) FROM subscriptions WHERE status IN ('trial','ativa')) assinaturas,
-      (SELECT count(*) FROM subscriptions s WHERE ${TEM_ACESSO_SQL('s')}) acesso_completo`,
+      (SELECT count(*) FROM subscriptions s WHERE ${TEM_ACESSO_SQL('s')}) acesso_completo,
+      -- Atraso da entrega: a distância entre o horário que a pessoa escolheu e
+      -- o minuto em que a mensagem saiu. É a métrica que traduz "o serviço
+      -- estava de pé?" em um número que alguém olha todo dia. Enquanto o Render
+      -- hibernava, ela ficava em 85 a 137 minutos; com o processo vivo, em 1.
+      (SELECT round(avg(extract(epoch from (
+                (d.sent_wa_at AT TIME ZONE u.timezone)::time - u.delivery_time))/60))
+         FROM seed_deliveries d JOIN users u ON u.id = d.user_id
+        WHERE d.sent_wa_at > now() - $1::interval
+          AND u.delivery_time IS NOT NULL
+          AND (d.sent_wa_at AT TIME ZONE u.timezone)::time >= u.delivery_time) atraso_medio,
+      (SELECT round(max(extract(epoch from (
+                (d.sent_wa_at AT TIME ZONE u.timezone)::time - u.delivery_time))/60))
+         FROM seed_deliveries d JOIN users u ON u.id = d.user_id
+        WHERE d.sent_wa_at > now() - $1::interval
+          AND u.delivery_time IS NOT NULL
+          AND (d.sent_wa_at AT TIME ZONE u.timezone)::time >= u.delivery_time) atraso_pior`,
     [janelaSql]);
 
   // --- pessoas, e o funil que sai delas ------------------------------------
@@ -373,6 +389,8 @@ async function montarPainel(dias: number) {
         ? Math.round((num(resumo.plantios) / num(resumo.entregas)) * 100) : 0,
       assinaturas: num(resumo.assinaturas),
       acessoCompleto: num(resumo.acesso_completo),
+      atrasoMedioMin: resumo.atraso_medio === null ? null : num(resumo.atraso_medio),
+      atrasoPiorMin: resumo.atraso_pior === null ? null : num(resumo.atraso_pior),
     },
     funil,
     serie: serie.map((d: any) => ({
