@@ -489,12 +489,22 @@ app.get('/seed/today/:userId', async (req, res) => {
   if (!acesso.completo) {
     const dia = await devocionalDeHoje(req.params.userId);
     if (!dia) return res.status(404).json({ error: 'devocional do dia não encontrado' });
-    // Cria a linha do usuário na primeira leitura. Quem lê o devocional É
-    // usuário do produto e precisa aparecer no funil; sem isto o evento bateria
-    // na chave estrangeira, sairia um aviso no log e a leitura não seria
-    // contada em lugar nenhum.
+    // Cria a linha do usuário, que o resto do fluxo pressupõe existir.
     await ensureUser(req.params.userId).catch(() => {});
-    void logEvent(req.params.userId, 'devocional_lido', { data: dia.data });
+
+    // AQUI NÃO SE REGISTRA LEITURA.
+    //
+    // Esta rota devolve o devocional, mas desde que o devocional mudou para a
+    // Raiz ninguém EXIBE o que ela devolve: a tela Hoje mostra a página do
+    // Plantio para quem é gratuito e descarta este corpo. Registrar leitura
+    // aqui contava como lido algo que a pessoa nunca viu — e, desde que a tela
+    // passou a buscar plano e semente em paralelo, contava isso em toda
+    // abertura do app.
+    //
+    // Quem registra é /devocional/:userId/hoje, que é a rota da Raiz — a tela
+    // que de fato põe a página na frente da pessoa. O evento é só métrica: os
+    // grãos e a sequência vêm de devotional_reads, alimentada pelo gesto
+    // explícito de confirmar a leitura.
     // A tela precisa saber se o dia já foi confirmado para não oferecer de
     // novo um gesto que a pessoa já fez.
     const { rows: [leitura] } = await pool.query(
