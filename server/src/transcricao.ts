@@ -27,6 +27,13 @@ const TOKEN = () => process.env.WA_ACCESS_TOKEN ?? '';
 /** Teto de segurança: um minuto de voz cabe folgado em 3 MB. */
 const MAX_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Teto de espera. O `fetch` do Node não tem timeout padrão, e transcrever é a
+ * etapa mais lenta do fluxo — justamente onde uma conexão pendurada passaria
+ * despercebida, com a pessoa achando que o Grão ignorou o áudio dela.
+ */
+const TIMEOUT_MS = Number(process.env.STT_TIMEOUT_MS ?? 60_000);
+
 export function transcricaoConfigurada(): boolean {
   return !!CHAVE();
 }
@@ -43,6 +50,7 @@ async function baixarMidia(mediaId: string): Promise<{ bytes: Buffer; mime: stri
   try {
     const meta = await fetch(`${GRAPH}/${mediaId}`, {
       headers: { Authorization: `Bearer ${TOKEN()}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!meta.ok) {
       console.error(`[transcricao] metadados da mídia: HTTP ${meta.status}`);
@@ -55,7 +63,10 @@ async function baixarMidia(mediaId: string): Promise<{ bytes: Buffer; mime: stri
       return null;
     }
 
-    const arquivo = await fetch(j.url, { headers: { Authorization: `Bearer ${TOKEN()}` } });
+    const arquivo = await fetch(j.url, {
+      headers: { Authorization: `Bearer ${TOKEN()}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
     if (!arquivo.ok) {
       console.error(`[transcricao] download da mídia: HTTP ${arquivo.status}`);
       return null;
@@ -104,6 +115,7 @@ export async function transcreverAudioDoWhatsapp(mediaId: string): Promise<strin
       method: 'POST',
       headers: { Authorization: `Bearer ${CHAVE()}` },
       body: forma,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
 
     if (!res.ok) {

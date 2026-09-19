@@ -2,19 +2,16 @@
 # No painel: New → Blueprint → aponte para o repositório Hass1985/grao.
 # As variáveis com sync:false são pedidas na tela (nunca ficam no repositório).
 #
-# O PLANO PRECISA SER PAGO. Não é preferência, é requisito de funcionamento.
+# O plano precisa ser pago — o free hiberna após ~15 min sem tráfego, e a
+# agenda de entrega mora DENTRO deste processo (setInterval de 60s em
+# agenda.ts). O serviço já roda no starter.
 #
-# No free o serviço HIBERNA após ~15 min sem tráfego. A agenda de entrega mora
-# DENTRO deste processo (setInterval de 60s em agenda.ts) e dorme junto: quem
-# pediu a semente para as 7h só recebe quando alguma coisa acorda o serviço.
-#
-# Medido em 18/09/2026, com o serviço no free:
-#   primeira chamada ao /health   23,6 s   (cold start)
-#   chamadas seguintes             0,9 s
-#   atraso das entregas          1 min quando acordado · 85 a 137 min quando não
-#
-# O padrão é bimodal justamente por isso: ou a agenda estava rodando, ou não
-# estava. Nenhum ajuste de código conserta um processo que não existe.
+# Nota para quem for investigar atraso na entrega: starter NÃO hiberna, então
+# hibernação não explica atraso aqui. O que explicou, em 18/09/2026, foi uma
+# chamada à Meta pendurada sem timeout — a varredura nunca terminava e a trava
+# `rodando` nunca era liberada. Sintoma: entregas às 13h30 num dia e às 15h47
+# no outro, sempre com "falhas: 0", porque não havia execução para falhar.
+# Corrigido com timeout em meta.ts e cão de guarda em agenda.ts.
 services:
   - type: web
     name: grao-backend

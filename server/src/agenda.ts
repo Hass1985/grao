@@ -67,6 +67,46 @@ const ATRASO_MAXIMO_HORAS = 3;
 const TRAVA = 828_100;
 
 let rodando = false;
+/** Quando a varredura atual começou. Null quando não há nenhuma em curso. */
+let comecouEm: number | null = null;
+
+/**
+ * Quanto tempo uma varredura pode durar antes de ser considerada travada.
+ *
+ * Existe porque a trava `rodando` já matou a entrega diária. Uma chamada à
+ * Meta ficou pendurada — o fetch do Node não tinha timeout —, `despacharDevidos`
+ * nunca resolveu, `rodando` nunca voltou a false, e a agenda parou por horas
+ * sem UM erro no log. Nos registros aparecia como silêncio: entregas às 13h30
+ * num dia, às 15h47 no outro, sempre com falhas: 0.
+ *
+ * Os timeouts em meta.ts consertam a causa. Isto aqui é o cinto: se um dia
+ * outra coisa pendurar, a varredura seguinte assume e grita, em vez de o
+ * produto emudecer até alguém reparar.
+ */
+const VARREDURA_TRAVADA_MS = 5 * 60_000;
+
+/**
+ * O batimento da agenda.
+ *
+ * A varredura só deixava rastro quando ENVIAVA alguma coisa, e ela roda 1.440
+ * vezes por dia quase sempre sem achar ninguém. O silêncio de uma agenda
+ * saudável era idêntico ao de uma agenda morta — foi por isso que o problema
+ * levou dias para ser visto. Agora cada volta carimba a hora, e a diferença
+ * entre esse carimbo e agora diz na hora se ela está viva.
+ */
+async function baterPonto(): Promise<void> {
+  await pool.query(
+    `INSERT INTO agenda_batimento (id, em) VALUES (true, now())
+     ON CONFLICT (id) DO UPDATE SET em = now()`).catch(() => {});
+}
+
+/** Há quanto tempo a agenda deu sinal de vida. Null se nunca deu. */
+export async function segundosDesdeOBatimento(): Promise<number | null> {
+  const { rows: [r] } = await pool.query(
+    `SELECT extract(epoch from (now() - em))::int s FROM agenda_batimento WHERE id`)
+    .catch(() => ({ rows: [] } as any));
+  return r?.s ?? null;
+}
 
 export interface ResultadoVarredura {
   enviadas: number;
@@ -175,13 +215,24 @@ export function iniciarAgenda(): void {
     avisarCobrancasProximas().catch((e) => console.error('[cobrança]', e?.message || e));
   }, 3_600_000).unref?.();
 
+  // Sem .unref() aqui, de propósito. Este é o timer que faz o produto
+  // acontecer; ele deve segurar o processo vivo, não pedir licença para existir.
   setInterval(() => {
     // Guarda contra sobreposição dentro do MESMO processo: uma varredura lenta
     // (muitas entregas, Meta devagar) não pode acumular ticks por cima.
-    if (rodando) return;
+    if (rodando) {
+      const ha = comecouEm ? Date.now() - comecouEm : 0;
+      if (ha < VARREDURA_TRAVADA_MS) return;
+      // Passou do teto: a anterior travou. Solta a guarda e deixa esta entrar.
+      // A trava do Postgres continua impedindo duas varreduras de verdade ao
+      // mesmo tempo, então liberar aqui é seguro.
+      console.error(
+        `[agenda] varredura anterior presa há ${Math.round(ha / 1000)}s — assumindo`);
+    }
     rodando = true;
+    comecouEm = Date.now();
     despacharDevidos()
       .catch((e) => console.error('[agenda]', e?.message || e))
-      .finally(() => { rodando = false; });
-  }, INTERVALO_MS).unref?.();
+      .finally(() => { rodando = false; comecouEm = null; void baterPonto(); });
+  }, INTERVALO_MS);
 }

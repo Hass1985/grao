@@ -34,7 +34,7 @@ import {
 import { registerBibliaRoutes } from './biblia.js';
 import { guardarMemorias, linhaDeLigacao, registrarUso } from './memoria.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
-import { iniciarAgenda } from './agenda.js';
+import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
 import { registerAuthRoutes } from './auth.js';
 
@@ -87,10 +87,19 @@ async function diagnose() {
     // se a virada para o v3 chegou ao Render.
     templateDiario: process.env.WA_TEMPLATE_NAME || 'semente_do_dia',
   };
+  // A agenda varre de minuto em minuto. Mais de 5 minutos sem batimento
+  // significa que ela parou — e isso não aparece em nenhum outro lugar, porque
+  // uma agenda que não roda não gera erro, gera silêncio.
+  const batimentoS = db === 'ok' ? await segundosDesdeOBatimento() : null;
+  const agenda = batimentoS === null ? 'sem dados'
+    : batimentoS <= 300 ? 'ok'
+    : `parada há ${Math.round(batimentoS / 60)} min`;
+
   return {
     ok: hasKey && db === 'ok',
     anthropicKey: hasKey ? 'ok' : 'faltando',
     db, dbError, integracoes,
+    agenda,
   };
 }
 

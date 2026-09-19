@@ -15,14 +15,38 @@ export function metaConfigurada(): boolean {
   return !!TOKEN() && !!PHONE_ID();
 }
 
+/**
+ * Teto de espera para qualquer chamada à Meta.
+ *
+ * O `fetch` do Node NÃO tem timeout padrão: uma conexão que fica pendurada
+ * espera para sempre. Numa chamada solta isso é um pedido lento; dentro da
+ * varredura da agenda foi o que matou a entrega diária — uma única conexão
+ * presa segurava o `despacharDevidos`, a trava `rodando` nunca voltava a false
+ * e a agenda parava até o próximo deploy, sem um erro sequer no log.
+ *
+ * Trinta segundos é folgado para a Graph API, que responde em ~300ms.
+ */
+const TIMEOUT_MS = Number(process.env.WA_TIMEOUT_MS ?? 30_000);
+
 async function chamar(corpo: unknown): Promise<{ ok: boolean; id?: string; erro?: string }> {
   if (!metaConfigurada()) return { ok: false, erro: 'WA_ACCESS_TOKEN ou WA_PHONE_NUMBER_ID ausente' };
 
-  const res = await fetch(`${GRAPH}/${PHONE_ID()}/messages`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${TOKEN()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(corpo),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${GRAPH}/${PHONE_ID()}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e: any) {
+    // Falha de rede vira erro tratado, e não promessa pendurada. Quem chamou
+    // decide o que fazer; a varredura registra e segue para a próxima pessoa.
+    const motivo = e?.name === 'TimeoutError'
+      ? `a Meta não respondeu em ${TIMEOUT_MS / 1000}s`
+      : e?.message || 'falha de rede';
+    return { ok: false, erro: motivo };
+  }
   const j: any = await res.json().catch(() => ({}));
 
   if (!res.ok || j.error) {
@@ -108,5 +132,6 @@ export async function markRead(messageId: string): Promise<void> {
     method: 'POST',
     headers: { Authorization: `Bearer ${TOKEN()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', status: 'read', message_id: messageId }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   }).catch(() => { /* nunca deve derrubar o fluxo principal */ });
 }
