@@ -72,10 +72,27 @@ interface MsgMeta {
   interactive?: { type: string; button_reply?: { id?: string; title?: string } };
 }
 
-/** O rótulo do botão tocado, venha ele do template ou de uma lista interativa. */
-function rotuloDoBotao(msg: MsgMeta): string {
-  return (msg.button?.text || msg.button?.payload
-    || msg.interactive?.button_reply?.title || '').trim();
+/**
+ * Qual porta a pessoa tocou.
+ *
+ * Duas formas chegam aqui e não são iguais. O template manda `button` com o
+ * RÓTULO — é tudo o que a Meta devolve, então ali só resta comparar texto. A
+ * mensagem interativa manda `interactive.button_reply` com o `id` que NÓS
+ * definimos, que é estável: sobrevive a mudar a palavra do botão, a acentos e
+ * a maiúsculas.
+ *
+ * O id vem primeiro por isso. O rótulo é o caminho do template, e continua
+ * valendo enquanto ele existir.
+ */
+function portaTocada(msg: MsgMeta): 'plantar' | 'troca' | null {
+  const id = msg.interactive?.button_reply?.id?.trim().toLowerCase();
+  if (id === 'plantar' || id === 'troca') return id;
+
+  const rotulo = (msg.button?.text || msg.button?.payload
+    || msg.interactive?.button_reply?.title || '').trim().toLowerCase();
+  if (!rotulo) return null;
+  if (rotulo === BOTAO_TROCA.toLowerCase()) return 'troca';
+  return 'plantar';
 }
 
 /**
@@ -93,7 +110,7 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
   // e a semente só sai depois que a pessoa contar. Quem toca nele com o dia já
   // fechado ouve que a semente de hoje já foi plantada — a outra porta deixou
   // de valer, que é a regra central do fluxo.
-  if (rotuloDoBotao(msg).toLowerCase() === BOTAO_TROCA.toLowerCase()) {
+  if (portaTocada(msg) === 'troca') {
     await pedirRelato(userId, msg.from);
     return;
   }

@@ -77,6 +77,8 @@ export async function clearMoment(): Promise<void> {
 
 export interface SeedSelection {
   seed: Seed;
+  /** A pessoa já contou o momento hoje — a porta da troca fechou até amanhã. */
+  trocaUsada?: boolean;
   /** Devocional do dia já confirmado como lido (só no plano gratuito). */
   lido?: boolean;
   /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
@@ -151,6 +153,7 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
         const seed = daApi(j);
         return {
           seed,
+          trocaUsada: !!j.trocaUsada,
           family: (j.family as EmotionalFamily) || family,
           source: j.reason?.source ?? source,
           channel: (j.reason?.preferredType === 'oração'

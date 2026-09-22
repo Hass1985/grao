@@ -104,6 +104,63 @@ export function sendText(phone: string, texto: string, preview?: boolean) {
  *
  * O toque, aliás, é o próprio gesto de plantar. A fricção virou o ritual.
  */
+/** Os dois botões, com id estável. O rótulo tem teto de 20 caracteres. */
+export const BOTOES = [
+  { id: 'plantar', titulo: 'Plantar' },
+  { id: 'troca', titulo: 'Meu sentimento mudou' },
+] as const;
+
+/**
+ * O MESMO aviso de dois botões, mas sem gastar template.
+ *
+ * Dentro da janela de 24h o WhatsApp aceita mensagem interativa — botões de
+ * verdade, sem passar pela aprovação da Meta e sem o preço de Marketing.
+ *
+ * Isto existe para resolver um problema de produto que só apareceu no uso: a
+ * semente ia como texto livre quando a janela estava aberta, e texto livre não
+ * tem botão. Resultado, ao contrário do que o produto quer: QUEM USA MAIS via
+ * MENOS o "Meu sentimento mudou", porque cada interação reabre a janela.
+ *
+ * Agora os dois botões chegam todo dia, para todo mundo. Quando a janela está
+ * fechada vai o template (Marketing, ~R$ 0,34); quando está aberta vai isto
+ * (mensagem de sessão, ~R$ 0,04). A pessoa não vê diferença nenhuma.
+ *
+ * O corpo é curto de propósito — é o mesmo aviso do template, não a semente.
+ * Mensagem interativa tem teto de 1024 caracteres, e a semente formatada
+ * chega a 1072; ela continua indo como texto livre depois do toque.
+ */
+export function sendSeedNoticeInteractive(
+  phone: string,
+  partes: { name: string; reference: string },
+) {
+  const nome = partes.name?.trim();
+  const corpo = [
+    `${nome ? 'Olá ' + nome + ', sua' : 'Sua'} semente de hoje já está pronta 🌱`,
+    '',
+    `A palavra vem de ${partes.reference}.`,
+    '',
+    'Toque em Plantar para receber a reflexão, a prática e o louvor. ' +
+    'Se o seu momento mudou, me conta antes.',
+  ].join('\n');
+
+  return chamar({
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: corpo },
+      footer: { text: 'Grão · uma semente por dia' },
+      action: {
+        buttons: BOTOES.map((b) => ({
+          type: 'reply',
+          reply: { id: b.id, title: b.titulo },
+        })),
+      },
+    },
+  });
+}
+
 export function sendSeedNotice(phone: string, partes: { name: string; reference: string }) {
   const campos: Array<[string, string]> = [
     ['nome', partes.name?.trim() || 'tudo bem'],   // variável vazia é recusada

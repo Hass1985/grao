@@ -6,7 +6,6 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Modal,
   StatusBar,
   Share,
   Platform,
@@ -14,7 +13,7 @@ import {
   Easing,
   ActivityIndicator,
 } from 'react-native';
-import { BookOpen, Mic, Share2, Sprout } from '../components/icons';
+import { BookOpen, Mic, Share2 } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
@@ -23,15 +22,12 @@ import OuvirTexto from '../components/OuvirTexto';
 import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
-import EmotionPicker from '../components/EmotionPicker';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
-import {
-  selectTodaySeed, setMoment, getMoment, confirmarLeitura, reescolherSementeDeHoje,
-} from '../onboarding/seedDelivery';
+import { selectTodaySeed, getMoment, confirmarLeitura } from '../onboarding/seedDelivery';
 import { minhaAssinatura } from '../onboarding/assinatura';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -56,7 +52,6 @@ function weekDates() {
 }
 
 export default function Hoje({ navigation }: { navigation: any }) {
-  const [modalVisible, setModalVisible] = useState(false);
   /**
    * Tem o plano pago? `null` enquanto não se sabe.
    *
@@ -69,8 +64,17 @@ export default function Hoje({ navigation }: { navigation: any }) {
    */
   const [pago, setPago] = useState<boolean | null>(null);
   const [seed, setSeed] = useState<Seed>(todaySeed);
-  const [pendingFamily, setPendingFamily] = useState<EmotionalFamily | null>(null);
   const [lido, setLido] = useState(false);
+  /**
+   * A pessoa já contou o momento hoje.
+   *
+   * O aplicativo passa a seguir a mesma regra do WhatsApp: a porta da troca
+   * existe uma vez por dia. Lá, tocar no botão fecha o dia e ele não volta até
+   * amanhã; aqui o botão some pelo mesmo motivo. Quem decide é o servidor —
+   * ele responde `trocaUsada` — porque o dia pode ter sido fechado pelo
+   * WhatsApp, num aparelho que este app nem viu.
+   */
+  const [trocaUsada, setTrocaUsada] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
   const [ligacao, setLigacao] = useState<string | null>(null);
@@ -84,10 +88,12 @@ export default function Hoje({ navigation }: { navigation: any }) {
 
   const loadSeed = React.useCallback(async () => {
     try {
-      const { seed: next, lido: jaLido, ligacao: lembranca } = await selectTodaySeed();
+      const { seed: next, lido: jaLido, ligacao: lembranca, trocaUsada: trocada } =
+        await selectTodaySeed();
       setSeed(next);
       setLido(!!jaLido);
       setLigacao(lembranca ?? null);
+      setTrocaUsada(!!trocada);
       momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
@@ -141,6 +147,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
           setSeed(dados.seed);
           setLido(!!dados.lido);
           setLigacao(dados.ligacao ?? null);
+          setTrocaUsada(!!dados.trocaUsada);
           momentoCarregado.current = agora;
         } else {
           setSeed(todaySeed);
@@ -159,19 +166,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
     }, [reveal])
   );
 
-  const confirmFamily = async (family: EmotionalFamily) => {
-    setPendingFamily(family);
-    await setMoment(family);
-    // Guardar o sentimento não bastava: a semente do dia já estava entregue e
-    // /seed/today devolvia a mesma, então a pessoa dizia que estava passando
-    // por outra coisa e a tela não mudava nada. Quem assina precisa ver o
-    // produto responder ao que acabou de contar.
-    if (isSemente) await reescolherSementeDeHoje({ familia: family });
-    setModalVisible(false);
-    reveal.setValue(0);
-    setPendingFamily(null);
-    await loadSeed();
-  };
 
   const confirmarLeituraDeHoje = async () => {
     if (confirmando || lido) return;
@@ -358,22 +352,15 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   este caminho, contar com as próprias palavras só era possível
                   no WhatsApp ou no primeiro dia de cadastro, e o motor
                   envelhecia junto com aquele retrato. */}
-              {isSemente ? (
+              {isSemente && !trocaUsada ? (
                 <TouchableOpacity
                   onPress={() => navigation.navigate('MomentoSemente', { real: true })}
                   style={styles.otherLink}
                 >
                   <Mic size={14} color={colors.ambarSoft} strokeWidth={2} />
                   <Text style={[styles.otherLinkText, { color: colors.ambarSoft }]}>
-                    Contar como estou hoje
+                    Meu sentimento mudou
                   </Text>
-                </TouchableOpacity>
-              ) : null}
-
-              {isSemente ? (
-                <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.otherLink}>
-                  <Sprout size={14} color={colors.foregroundMuted} strokeWidth={2} />
-                  <Text style={styles.otherLinkText}>Estou passando por outra coisa</Text>
                 </TouchableOpacity>
               ) : null}
             </Animated.View>
@@ -381,26 +368,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
           )}
         </ScrollView>
 
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <ScreenBackground>
-            <SafeAreaView style={styles.modal}>
-              <View style={styles.modalHeader}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={styles.modalTitle}>Como você está{'\n'}se sentindo?</Text>
-                </View>
-                <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={12}>
-                  <Text style={styles.modalClose}>Fechar</Text>
-                </TouchableOpacity>
-              </View>
-              <EmotionPicker selected={pendingFamily} onSelect={confirmFamily} />
-            </SafeAreaView>
-          </ScreenBackground>
-        </Modal>
       </SafeAreaView>
     </ScreenBackground>
   );
@@ -580,28 +547,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
-  },
-  modal: { flex: 1 },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
-    gap: 12,
-  },
-  modalTitle: {
-    fontFamily: fonts.serifMedium,
-    fontSize: 28,
-    lineHeight: 34,
-    color: colors.palha,
-    letterSpacing: -0.5,
-  },
-  modalClose: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
-    marginTop: 8,
   },
 });

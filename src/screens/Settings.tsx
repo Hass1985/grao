@@ -275,7 +275,7 @@ export default function Settings({ navigation }: Props) {
 
             <Text style={styles.profileName}>{name}</Text>
             <Text style={styles.profileMeta}>
-              Evangélico · membro desde {memberSince}
+              Membro desde {memberSince}
             </Text>
 
             <Pressable

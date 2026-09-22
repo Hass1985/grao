@@ -12,9 +12,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './brain.js';
 import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
-import { sendText, sendSeedNotice, metaConfigurada } from './meta.js';
+import { sendText, sendSeedNotice, sendSeedNoticeInteractive, metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
-import { paraPrompt, linhaDeLigacao, registrarUso, type Memoria } from './memoria.js';
+import { paraPrompt, type Memoria } from './memoria.js';
 import { fundirUsuarios } from './auth.js';
 import { normalizePhone } from './telefone.js';
 
@@ -212,9 +212,23 @@ export interface DestinoEntrega {
 /**
  * Entrega a semente do dia para UMA pessoa. Único lugar que sabe enviar.
  *
- * Dentro da janela de 24h da Meta, texto livre é gratuito: mandamos a semente
- * inteira. Fora dela só passa template aprovado, então vai o aviso com o botão
- * "Plantar" — e o toque no botão abre a janela, deixando o resto do dia grátis.
+ * SEMPRE começa por um aviso com os dois botões — Plantar e Meu sentimento
+ * mudou. A semente completa só sai depois do toque.
+ *
+ * Antes, com a janela de 24h aberta, a semente ia direto como texto livre. Era
+ * mais barato e parecia melhor, mas invertia o produto: quem usa mais reabre a
+ * janela todo dia e por isso NUNCA via o botão de trocar o sentimento. O
+ * recurso ficava invisível justamente para quem mais tem momento mudando.
+ *
+ * E há uma razão de produto mais forte: quem trocou o sentimento ontem não
+ * está necessariamente no mesmo lugar hoje. A escolha precisa ser oferecida
+ * todo dia, ou o relato de ontem vira o retrato permanente que este fluxo
+ * inteiro existe para evitar.
+ *
+ * O que muda conforme a janela é só o VEÍCULO do aviso, que a pessoa não
+ * distingue: janela fechada manda o template aprovado (Marketing, ~R$ 0,34);
+ * aberta manda mensagem interativa (sessão, ~R$ 0,04). Os botões são os
+ * mesmos.
  *
  * Se o envio falhar, a entrega registrada pelo seletor é DESFEITA. Sem isso a
  * pessoa ficaria sem semente hoje e ainda perderia a de amanhã, porque esta
@@ -232,26 +246,27 @@ export async function entregarSemente(
   const { seed, jaExistia } = escolha;
 
   const aberta = !!u.janela_aberta;
-  // A ligação só cabe no texto livre: o template tem variáveis fixas aprovadas
-  // pela Meta e não comporta uma frase nova.
-  const ligacao = aberta ? await linhaDeLigacao(u.id, seed.family) : null;
   const r = aberta
-    ? await sendText(u.phone_e164, formatSeed(seed, u.name ?? undefined, true, ligacao?.texto))
+    ? await sendSeedNoticeInteractive(u.phone_e164, {
+        name: u.name ?? '', reference: seed.reference,
+      })
     : await sendSeedNotice(u.phone_e164, { name: u.name ?? '', reference: seed.reference });
-  if (r.ok && ligacao) await registrarUso(ligacao.memoriaId);
 
   if (r.ok) {
     // sent_wa_at é o que impede o reenvio. Marcado na entrega DE HOJE desta
     // pessoa, não na última linha da tabela: com o app escolhendo a semente
     // antes, "a última linha" nem sempre é a do dia.
+    //
+    // `planted` NÃO é marcado aqui: o aviso não é a semente. O dia fecha
+    // quando a pessoa toca num dos botões, e é o toque que diz por qual porta.
     await pool.query(
-      `UPDATE seed_deliveries d SET sent_wa_at = now()${aberta ? ", planted = true, porta = 'direta'" : ''}
+      `UPDATE seed_deliveries d SET sent_wa_at = now()
          FROM users u
         WHERE d.user_id = $1 AND u.id = d.user_id
           AND (d.delivered_at AT TIME ZONE u.timezone)::date
             = (now() AT TIME ZONE u.timezone)::date`, [u.id]);
-    void logEvent(u.id, aberta ? 'seed_delivered' : 'seed_announced',
-      { seedId: seed.id, family: seed.family, source: origem, gratuita: aberta });
+    void logEvent(u.id, 'seed_announced',
+      { seedId: seed.id, family: seed.family, source: origem, porInterativa: aberta });
     return { ok: true, seedId: seed.id };
   }
 

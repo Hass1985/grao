@@ -37,6 +37,7 @@ import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
 import { registerAuthRoutes } from './auth.js';
+import { estadoDoDia, fecharDia } from './trocaDeSentimento.js';
 
 const app = express();
 
@@ -537,6 +538,13 @@ app.get('/seed/today/:userId', async (req, res) => {
   // semente do dia nem consumir outra das 380.
   const jaEntregue = await getTodaySeed(req.params.userId);
   if (jaEntregue) {
+    // `trocaUsada` diz ao aplicativo se a pessoa JÁ contou o momento hoje.
+    //
+    // É o que faz o app se comportar como o WhatsApp: lá, tocar em "Meu
+    // sentimento mudou" fecha o dia e a porta some até amanhã. Sem este campo
+    // o app ofereceria de novo um gesto que o servidor já não honra — e a
+    // pessoa contaria o momento para nada.
+    const estado = await estadoDoDia(req.params.userId);
     return res.json({
       tipo: 'semente', ...limitarSemente(jaEntregue, true),
       compartilhavel: textoCompartilhavel({
@@ -545,6 +553,7 @@ app.get('/seed/today/:userId', async (req, res) => {
       }),
       ligacao: await lembrarEmVozAlta(req.params.userId, jaEntregue.family),
       acesso,
+      trocaUsada: estado.porta === 'troca',
     });
   }
 
@@ -559,6 +568,7 @@ app.get('/seed/today/:userId', async (req, res) => {
     }),
     ligacao: await lembrarEmVozAlta(req.params.userId, seed.family),
     acesso,
+    trocaUsada: false,
   });
 });
 
@@ -605,8 +615,26 @@ app.post('/seed/today/:userId/reescolher', async (req, res) => {
       return res.json({ trocou: false, motivo: 'limite do dia', seed: atual });
     }
 
+    // A porta da troca vale uma vez por dia, no app como no WhatsApp.
+    //
+    // Sem esta checagem o aplicativo seria mais permissivo que o WhatsApp para
+    // o mesmo gesto: lá, tocar em "Meu sentimento mudou" com o dia fechado
+    // ouve que a semente já foi plantada. As duas telas precisam responder a
+    // mesma coisa, ou a regra vira uma sugestão.
+    const estado = await estadoDoDia(req.params.userId);
+    if (estado.fechado && estado.porta === 'troca') {
+      const atual = await getTodaySeed(req.params.userId);
+      return res.json({ trocou: false, motivo: 'a troca de hoje já foi usada', seed: atual });
+    }
+
     const seed = await selectSeedForUser(req.params.userId, familia ?? null, relato ?? null);
     if (!seed) return res.status(404).json({ error: 'sem sementes disponíveis' });
+
+    // Fecha o dia pela porta da troca. É o que faz o botão sumir do aplicativo
+    // até amanhã — o app pergunta ao servidor, e não guarda essa decisão
+    // sozinho, porque o dia pode ter sido fechado pelo WhatsApp, num aparelho
+    // que este app nem viu.
+    await fecharDia(req.params.userId, 'troca');
 
     void logEvent(req.params.userId, 'semente_reescolhida',
       { seedId: seed.id, family: seed.family, porFamilia: !!familia, porRelato: !!relato });
