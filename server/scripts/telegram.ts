@@ -14,7 +14,9 @@
  *     token parecido com 8123456789:AAH...;
  *  2. crie um grupo com quem precisa ser avisado e adicione o bot nele;
  *  3. mande `/start@nome_do_bot` NO GRUPO — com a arroba e o nome de usuário
- *     do bot;
+ *     do bot. ELE NÃO VAI RESPONDER, e está certo: este bot não conversa, só
+ *     manda aviso. O `/start` serve para ele ENXERGAR o grupo, não para
+ *     puxar papo;
  *  4. rode este script com o token.
  *
  * O passo 3 é assim por um motivo. Todo bot nasce com o modo privacidade
@@ -35,6 +37,24 @@ if (!token) {
   console.log('\nFalta o token do bot.\n');
   console.log('  npm run telegram -- 8123456789:AAH...\n');
   console.log('Pegue o token com o @BotFather no próprio Telegram (/newbot).\n');
+  process.exit(1);
+}
+
+// O token de exemplo que anda na documentação e nas instruções. Ele tem o
+// formato certo, então passaria na checagem abaixo e só falharia lá na Meta,
+// com "Unauthorized" — que faz a pessoa procurar defeito num bot que ela nem
+// chegou a criar. Um exemplo bom de copiar é um exemplo que será copiado.
+const EXEMPLO = '8123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
+if (token === EXEMPLO) {
+  console.log('\nEsse é o token de EXEMPLO, não o seu.\n');
+  console.log('Ele não pertence a bot nenhum — está nas instruções só para mostrar o');
+  console.log('formato. O seu vem do @BotFather, no Telegram:\n');
+  console.log('  1. procure BotFather (o do selo azul) e toque em Iniciar');
+  console.log('  2. mande /newbot');
+  console.log('  3. responda o nome:     Grão — avisos');
+  console.log('  4. responda o username: grao_avisos_bot   (tem que terminar em bot)');
+  console.log('  5. ele responde "Use this token to access the HTTP API:" e o token vem');
+  console.log('     na linha seguinte — é aquele que entra aqui.\n');
   process.exit(1);
 }
 
@@ -95,6 +115,8 @@ if (!/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test(token)) {
     console.log('Se você mandou só um "oi", é por isso: o bot nasce com modo privacidade');
     console.log('ligado e não recebe mensagem comum de grupo, só as endereçadas a ele.');
     console.log('Deixe a privacidade ligada — ele só precisa falar, não ler o grupo.\n');
+    console.log('E não espere resposta dele no grupo: este bot não conversa, só manda');
+    console.log('aviso. O silêncio depois do /start é o comportamento certo.\n');
     return;
   }
 
