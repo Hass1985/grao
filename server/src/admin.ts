@@ -17,6 +17,7 @@
 
 import type { Express, Request, Response, NextFunction } from 'express';
 import path from 'node:path';
+import { timingSafeEqual } from 'node:crypto';
 import { pool } from './db.js';
 import { BASE_URL, horarioCurto } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
@@ -33,12 +34,41 @@ const TZ = 'America/Sao_Paulo';
  */
 const CUSTO_TEMPLATE = Number(process.env.WA_CUSTO_TEMPLATE_BRL ?? 0.35);
 
+/**
+ * Só o cabeçalho, só o GRAO_ADMIN_TOKEN, e comparação de tempo constante.
+ *
+ * Três coisas mudaram aqui, cada uma por um motivo:
+ *
+ *  1. `?token=` saiu. Um token na query string fica no log do Render, no
+ *     histórico do navegador e no cabeçalho Referer de qualquer link clicado a
+ *     partir da página. O painel já manda por cabeçalho — isto era só um resto.
+ *
+ *  2. A queda para GRAO_API_TOKEN saiu. Aquele token é do orquestrador externo
+ *     que dispara /whatsapp/*: ele existe para uma máquina falar com outra, e
+ *     não devia abrir a tela que lista pessoas, telefones e sinais de risco.
+ *     Dois poderes diferentes, dois segredos diferentes.
+ *
+ *  3. A comparação virou timingSafeEqual. Comparar string com !== vaza o
+ *     tamanho e o prefixo pelo tempo de resposta. É um ataque de laboratório na
+ *     internet, mas o conserto custa quatro linhas.
+ */
 function exigeAdmin(req: Request, res: Response, next: NextFunction) {
-  const esperado = process.env.GRAO_ADMIN_TOKEN || process.env.GRAO_API_TOKEN;
+  const esperado = process.env.GRAO_ADMIN_TOKEN;
   if (!esperado) return res.status(503).json({ error: 'GRAO_ADMIN_TOKEN não configurado' });
-  const recebido = req.header('x-grao-token') || String(req.query.token ?? '');
-  if (recebido !== esperado) return res.status(401).json({ error: 'token inválido' });
+  const recebido = req.header('x-grao-token') ?? '';
+  if (!igualEmTempoConstante(recebido, esperado)) {
+    return res.status(401).json({ error: 'token inválido' });
+  }
   next();
+}
+
+function igualEmTempoConstante(a: string, b: string): boolean {
+  const A = Buffer.from(a);
+  const B = Buffer.from(b);
+  // timingSafeEqual exige o mesmo tamanho. Comparar o tamanho antes já vaza um
+  // bit, e não tem jeito de esconder isso — o que importa é não vazar o
+  // conteúdo, byte a byte, que é o que daria para explorar.
+  return A.length === B.length && timingSafeEqual(A, B);
 }
 
 /** Telefone parcialmente oculto: dá para reconhecer quem é sem expor o número. */

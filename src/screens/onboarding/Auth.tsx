@@ -440,6 +440,18 @@ export default function Auth({ navigation }: Props) {
           ) : busy ? (
             <ActivityIndicator color={colors.accent} style={styles.demo} />
           ) : null}
+
+          {/* A política precisa estar ao alcance ANTES da conta existir. Ela já
+              estava no app, mas só nas configurações e na tela do WhatsApp —
+              ou seja, só depois de entrar. Ler depois de consentir é o avesso
+              da ordem que a LGPD pede. */}
+          <Pressable
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+            style={styles.politica}
+            hitSlop={8}
+          >
+            <Text style={styles.politicaTexto}>Como cuidamos dos seus dados</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
       </SafeAreaView>
@@ -589,5 +601,14 @@ const styles = StyleSheet.create({
     color: colors.foregroundSubtle,
     textAlign: 'center',
     marginTop: 4,
+  },
+
+  politica: { alignSelf: 'center', marginTop: 20, paddingVertical: 6 },
+  politicaTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.foregroundSubtle,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
 });

@@ -44,7 +44,7 @@ export default function PrivacyPolicy({ navigation }: Props) {
           </Text>
         </View>
 
-        <Text style={styles.updated}>Última atualização: agosto de 2026</Text>
+        <Text style={styles.updated}>Última atualização: setembro de 2026</Text>
 
         <Section title="O que a gente guarda">
           <P>• Seu nome e número de WhatsApp, para te entregar a semente diária.</P>
@@ -57,17 +57,23 @@ export default function PrivacyPolicy({ navigation }: Props) {
 
         <Section title="Quando você grava um áudio">
           <P>
-            Na Abertura, você pode falar em vez de escrever. Quem transforma a sua fala em texto não
-            é o Grão: é o serviço de voz do próprio navegador do seu celular, do Google, se você usa
-            Chrome, ou da Apple, se usa Safari.
+            Você pode falar em vez de escrever, e o caminho do áudio é diferente conforme onde você
+            está. Vale a pena saber qual é qual.
           </P>
           <P>
-            Na prática, isso significa que o áudio passa pelos servidores dessa empresa antes de
-            virar texto. Até nós chega só o texto: o Grão nunca recebe nem guarda a gravação.
+            • <Text style={styles.forte}>No aplicativo</Text>, quem transforma a sua fala em texto é
+            o serviço de voz do próprio navegador do seu celular: do Google, se você usa Chrome, ou
+            da Apple, se usa Safari. O áudio passa pelos servidores dessa empresa antes de virar
+            texto, e até nós chega só o texto. O Grão não recebe nem guarda a gravação.
           </P>
           <P>
-            Preferindo não usar a voz, é só tocar em "Prefiro escrever". A experiência é a mesma, e
-            aí nada de áudio sai do seu aparelho.
+            • <Text style={styles.forte}>No WhatsApp</Text>, é diferente, e a gente prefere dizer
+            com todas as letras: o áudio que você manda chega até o Grão. A gente baixa esse áudio
+            do WhatsApp e envia para um serviço de transcrição, que devolve o texto. Guardamos o
+            texto; a gravação não fica com a gente depois disso.
+          </P>
+          <P>
+            Nos dois casos, preferindo não usar a voz, é só escrever. A experiência é a mesma.
           </P>
         </Section>
 
@@ -95,11 +101,51 @@ export default function PrivacyPolicy({ navigation }: Props) {
           <P>• Retirar o consentimento quando quiser.</P>
         </Section>
 
+        <Section title="Quem mais encosta nos seus dados">
+          <P>
+            O Grão é feito de peças de outras empresas, e não dá para te contar o que guardamos sem
+            te contar por onde isso passa. São estas, e nenhuma outra:
+          </P>
+          <P>
+            • <Text style={styles.forte}>Supabase</Text> guarda o banco de dados, em São Paulo. É
+            onde o seu histórico fica.
+          </P>
+          <P>
+            • <Text style={styles.forte}>Render</Text> roda o servidor do Grão, nos Estados Unidos.
+          </P>
+          <P>
+            • <Text style={styles.forte}>Anthropic</Text> é a inteligência que lê o que você conta e
+            escolhe a semente, também nos Estados Unidos.
+          </P>
+          <P>
+            • <Text style={styles.forte}>Meta</Text> entrega a mensagem no seu WhatsApp, e um
+            serviço de transcrição converte o seu áudio em texto.
+          </P>
+          <P>
+            • <Text style={styles.forte}>Asaas</Text> processa o pagamento de quem assina, no
+            Brasil. O seu cartão e o seu CPF vão direto para eles; o Grão não guarda nenhum dos
+            dois.
+          </P>
+          <P>
+            Parte desses serviços fica fora do Brasil, o que a LGPD chama de transferência
+            internacional. Nenhum deles usa o que você conta para outra coisa que não seja entregar
+            a sua semente.
+          </P>
+        </Section>
+
         <Section title="Segurança">
           <P>
-            Seus dados ficam protegidos em servidores no Brasil, com acesso restrito. As conversas
-            com a nossa inteligência acontecem por canais seguros, e a chave que dá acesso a essa
-            inteligência nunca fica no seu celular.
+            O acesso ao banco é restrito e passa só pelo nosso servidor: o aplicativo no seu celular
+            não fala direto com o banco. Cada pedido ao servidor precisa provar quem você é, e as
+            chaves que dão acesso à inteligência e ao pagamento nunca ficam no seu aparelho.
+          </P>
+        </Section>
+
+        <Section title="Por quanto tempo guardamos">
+          <P>
+            Enquanto a sua conta existir. Você pode pedir a exclusão a qualquer momento nas
+            configurações, e aí apagamos o seu cadastro, o seu histórico, o que você contou e a sua
+            identidade de login — tudo de uma vez, sem cópia guardada.
           </P>
         </Section>
 
@@ -177,6 +223,12 @@ const styles = StyleSheet.create({
     color: colors.foregroundMuted,
     lineHeight: 24,
     marginBottom: 6,
+  },
+
+  /** O nome da empresa dentro do parágrafo, para a lista ser varrida de relance. */
+  forte: {
+    fontFamily: fonts.sansMedium,
+    color: colors.foreground,
   },
 
   verseWrap: {

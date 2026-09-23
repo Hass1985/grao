@@ -5,7 +5,7 @@
 // guardado para reler. Quem decide isso é o SERVIDOR, pela mesma regra do
 // paywall: o app não tem como saber, e não deveria.
 
-import { API_URL, getUserId } from './aiClient';
+import { API_URL, getUserId, apiFetch } from './aiClient';
 
 export interface RespostaGuardada {
   ok: boolean;
@@ -21,7 +21,7 @@ export async function responderHoje(texto: string): Promise<RespostaGuardada | n
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/resposta/${userId}`, {
+    const res = await apiFetch(`/resposta/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texto }),
@@ -46,8 +46,8 @@ export async function respostaDoDia(data?: string): Promise<string | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(
-      data ? `${API_URL}/resposta/${userId}/${data}` : `${API_URL}/resposta/${userId}`);
+    const res = await apiFetch(
+      data ? `/resposta/${userId}/${data}` : `/resposta/${userId}`);
     if (!res.ok) return null;
     const j = await res.json();
     return j.texto ?? null;

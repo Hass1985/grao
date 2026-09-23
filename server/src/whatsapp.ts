@@ -588,8 +588,15 @@ export function registerWhatsAppRoutes(app: Express) {
         await pool.query(`UPDATE users SET phone_e164 = $2 WHERE id = $1`, [userId, e164]);
       }
 
+      // consent_at entra junto: quem chega aqui marcou a caixa que autoriza o
+      // Grão a usar o que ela compartilha, inclusive sobre fé e momento. A
+      // coluna existia desde o começo e nunca tinha sido escrita — 0 de 24
+      // cadastros tinham data de consentimento no dia da revisão de segurança.
+      // Para dado sensível, a LGPD pede consentimento específico, e um
+      // consentimento que não fica registrado não serve de prova de nada.
       await pool.query(
         `UPDATE users SET wa_opt_in_at = coalesce(wa_opt_in_at, now()),
+                          consent_at = coalesce(consent_at, now()),
                           delivery_time = coalesce($2::time, delivery_time),
                           timezone = coalesce($3, timezone)
           WHERE id = $1`, [idFinal, horario, timezone ?? null]);

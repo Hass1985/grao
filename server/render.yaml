@@ -33,6 +33,25 @@ services:
         sync: false          # connection string do Supabase (Session pooler)
       - key: GRAO_API_TOKEN
         sync: false          # segredo dos endpoints internos (cron, orquestrador)
+      # O painel /admin tem o PRÓPRIO segredo desde a revisão de segurança de
+      # 22/09/2026. Antes ele caía para GRAO_API_TOKEN, ou seja, o token que o
+      # orquestrador usa para disparar entregas também abria a tela que lista
+      # pessoas, telefones e sinais de risco. Sem esta variável o painel
+      # responde 503 e diz exatamente isso. Gere com: openssl rand -base64 32
+      - key: GRAO_ADMIN_TOKEN
+        sync: false
+      # desligado | observando | exigindo — ver server/src/identidade.ts.
+      # O padrão do código é `observando`: confere quem chamou, registra quem
+      # chegou sem identidade e deixa passar. Vire para `exigindo` só depois de
+      # o aplicativo novo estar publicado e o log ficar limpo por um ou dois
+      # dias, senão quem está com a versão antiga na tela quebra de uma vez.
+      - key: AUTH_ROTAS
+        value: observando
+      # Chave que pode tudo no projeto do Supabase. Usada em um único lugar:
+      # apagar a identidade (e-mail, telefone, senha) quando a pessoa exclui a
+      # conta. Sem ela a exclusão acontece pela metade e o log avisa.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: WA_ACCESS_TOKEN
         sync: false          # token do usuário do sistema (Meta)
       - key: WA_APP_SECRET
@@ -49,8 +68,13 @@ services:
         value: claude-opus-4-8
       - key: GRAO_BRAIN_MODEL
         value: claude-haiku-4-5-20251001
+      # Domínios que podem chamar a API pelo navegador, separados por vírgula.
+      # Hoje é só o Netlify; quando o domínio próprio entrar, ele vem junto na
+      # mesma linha. Sem a variável o servidor libera qualquer origem e avisa
+      # no log — deixado assim de propósito, para nunca derrubar o app por uma
+      # variável esquecida.
       - key: CORS_ORIGINS
-        sync: false          # ex.: https://dapper-smakager-388102.netlify.app
+        sync: false          # https://dapper-smakager-388102.netlify.app
       # Transcrição do áudio da troca de sentimento. Qualquer serviço com a
       # interface /audio/transcriptions serve (OpenAI, Groq e vários outros).
       # Sem a chave, o Grão pede o relato por escrito e nada quebra.
@@ -60,3 +84,10 @@ services:
         sync: false          # padrão: https://api.openai.com/v1
       - key: STT_MODEL
         sync: false          # padrão: whisper-1
+      # Para onde vai o aviso quando o detector de risco emocional dispara.
+      # Serve qualquer webhook que aceite JSON: Slack, Discord, Google Chat,
+      # n8n. Sem a variável nada é enviado e o sinal continua só no painel —
+      # que é como estava até 22/09/2026, e é o que não queremos com volume.
+      # O aviso NÃO leva o trecho da fala; ele fica no painel, atrás do token.
+      - key: ALERTA_WEBHOOK_URL
+        sync: false

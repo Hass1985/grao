@@ -12,6 +12,9 @@
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
     "smoke": "tsx scripts/smoke.ts",
+    "seguranca": "tsx scripts/seguranca.ts",
+    "identidade": "tsx scripts/testar-identidade.ts",
+    "alerta": "tsx scripts/testar-alerta.ts",
     "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql && psql \"$DATABASE_URL\" -f db/seed_data.sql",
     "eval:opening": "tsx scripts/eval-opening.ts",
     "content:migrate": "tsx scripts/apply-sql.ts db/migrations/002_content.sql db/passage_pool.sql",
@@ -51,6 +54,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.3.0",
     "jose": "^6.2.12",
     "pg": "^8.12.0"
   },

@@ -4,7 +4,7 @@
 // dias vividos. Os dois vêm juntos porque as duas telas que os mostram — Campo
 // e Loja — precisam dos dois ao mesmo tempo.
 
-import { API_URL, getUserId } from './aiClient';
+import { API_URL, getUserId, apiFetch } from './aiClient';
 
 export interface NivelGrao {
   id: string;
@@ -30,7 +30,7 @@ export async function meusGraos(): Promise<ResumoGraos | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/graos/${userId}`);
+    const res = await apiFetch(`/graos/${userId}`);
     if (!res.ok) return null;
     return (await res.json()) as ResumoGraos;
   } catch {

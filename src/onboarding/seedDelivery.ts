@@ -7,7 +7,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { todaySeed, pastSeeds, Seed, SeedType, EmotionalFamily } from '../data/seeds';
 import { Channel, getProfile } from './profile';
-import { API_URL, getUserId } from './aiClient';
+import { API_URL, getUserId, apiFetch } from './aiClient';
 
 /** Converte a resposta do backend para o formato que as telas usam. */
 function daApi(j: any): Seed {
@@ -147,7 +147,7 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
   if (API_URL) {
     try {
       const userId = await getUserId();
-      const res = await fetch(`${API_URL}/seed/today/${userId}`);
+      const res = await apiFetch(`/seed/today/${userId}`);
       if (res.ok) {
         const j = await res.json();
         const seed = daApi(j);
@@ -211,7 +211,7 @@ export async function devocionalDeHoje(): Promise<
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/devocional/${userId}/hoje`);
+    const res = await apiFetch(`/devocional/${userId}/hoje`);
     if (!res.ok) return null;
     const j = await res.json();
     return { seed: daApi(j), lido: !!j.lido };
@@ -239,7 +239,7 @@ export async function reescolherSementeDeHoje(dados: {
   if (!API_URL) return false;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/seed/today/${userId}/reescolher`, {
+    const res = await apiFetch(`/seed/today/${userId}/reescolher`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ familia: dados.familia ?? undefined, relato: dados.relato ?? undefined }),
@@ -279,7 +279,7 @@ export async function selectSementeTeste(
       // O relato vai no pedido, não no cadastro: é o que a curadoria lê para
       // escolher, e some depois disso. Sem ele, a demonstração testaria a fila
       // do acervo em vez do motor — e é o motor que está em teste.
-      const res = await fetch(`${API_URL}/seed/experimentar/${userId}`, {
+      const res = await apiFetch(`/seed/experimentar/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ family, relato: relato ?? null }),
@@ -316,7 +316,7 @@ export async function confirmarLeitura(): Promise<{ totalLidos: number } | null>
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/devocional/${userId}/lido`, {
+    const res = await apiFetch(`/devocional/${userId}/lido`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -341,7 +341,7 @@ export async function resumoDeLeitura(): Promise<ResumoLeitura | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/devocional/${userId}/resumo`);
+    const res = await apiFetch(`/devocional/${userId}/resumo`);
     if (!res.ok) return null;
     return (await res.json()) as ResumoLeitura;
   } catch {
@@ -359,7 +359,7 @@ export async function avaliarSemente(seedId: string, util: boolean): Promise<voi
   if (!API_URL) return;
   try {
     const userId = await getUserId();
-    await fetch(`${API_URL}/seed/${encodeURIComponent(seedId)}/feedback`, {
+    await apiFetch(`/seed/${encodeURIComponent(seedId)}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, util }),
@@ -379,7 +379,7 @@ export async function sementeTesteDeHoje(): Promise<Seed | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/seed/experimentar/${userId}/hoje`);
+    const res = await apiFetch(`/seed/experimentar/${userId}/hoje`);
     if (!res.ok) return null;
     const real = daApi(await res.json());
     return { ...real, tipo: 'semente', completa: true, bloqueado: null };
@@ -393,7 +393,7 @@ export async function fetchHistoricoTeste(): Promise<Seed[]> {
   if (!API_URL) return [];
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/seed/experimentar/${userId}/historico`);
+    const res = await apiFetch(`/seed/experimentar/${userId}/historico`);
     if (!res.ok) return [];
     const lista = await res.json();
     if (!Array.isArray(lista)) return [];
@@ -414,7 +414,7 @@ export async function fetchHistory(): Promise<Seed[]> {
   if (!API_URL) return pastSeeds;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/seeds/history/${userId}`);
+    const res = await apiFetch(`/seeds/history/${userId}`);
     if (!res.ok) return pastSeeds;
     const lista = await res.json();
     if (!Array.isArray(lista)) return pastSeeds;

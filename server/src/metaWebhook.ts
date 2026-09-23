@@ -19,6 +19,7 @@ import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './what
 import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
+import { avisarRisco } from './alerta.js';
 import { guardarMemorias, memoriasVivas, linhaDeLigacao, registrarUso } from './memoria.js';
 import { cancelarPara } from './cobranca.js';
 import { sendText, sendSeedNotice, markRead, metaConfigurada } from './meta.js';
@@ -251,6 +252,7 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
     void logEvent(userId, 'risco_detectado', {
       nivel: risco.risco, trecho: risco.trecho, origem: 'whatsapp',
     });
+    void avisarRisco(userId, { nivel: risco.risco as any, origem: 'WhatsApp' });
   }
   if (risco.risco === 'grave') {
     const r = await sendText(msg.from, respostaDeCuidado(nome));

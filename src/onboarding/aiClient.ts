@@ -3,6 +3,7 @@
 // o app cai no roteiro local (offline) e continua funcionando no protótipo.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 
 // Defina em .env / app config: EXPO_PUBLIC_GRAO_API_URL=http://SEU_IP:8787
 export const API_URL: string | null =
@@ -42,6 +43,92 @@ export async function setUserId(id: string): Promise<void> {
   await AsyncStorage.setItem(USER_KEY, id);
 }
 
+// ---------------------------------------------------------------------------
+// apiFetch: toda chamada ao backend passa por aqui.
+//
+// O servidor deixou de aceitar o UUID da URL como prova de identidade (ver
+// server/src/identidade.ts). Quem chama precisa mandar o token da sessão do
+// Supabase, e é isso que esta função faz — em um lugar só, porque espalhar o
+// cabeçalho por 27 chamadas é espalhar 27 chances de esquecer uma.
+// ---------------------------------------------------------------------------
+
+/** O access token da sessão atual, ou null em modo demo / deslogado. */
+async function tokenDaSessao(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function comToken(caminho: string, init: RequestInit): Promise<Response> {
+  const token = await tokenDaSessao();
+  return fetch(`${API_URL}${caminho}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
+/**
+ * Uma recusa por identidade que o app consegue consertar sozinho?
+ *
+ * Dois casos, e os dois acontecem na vida real:
+ *
+ *  id_divergente  o aparelho guardou um id que ficou velho. Acontece quando a
+ *                 pessoa entrou em outro celular e os cadastros foram fundidos:
+ *                 o id vencedor é outro. O servidor devolve o id certo junto da
+ *                 recusa, então dá para gravar e repetir na hora.
+ *
+ *  sem_cadastro   logou, mas a conta ainda não foi ligada ao cadastro. Na
+ *                 abertura do app o vínculo é disparado sem esperar resposta,
+ *                 e uma tela rápida chega antes dele. Vincula e repete.
+ *
+ * Devolve o caminho corrigido, ou null quando não há o que consertar.
+ */
+async function corrigirIdentidade(caminho: string, res: Response): Promise<string | null> {
+  let corpo: any = null;
+  try { corpo = await res.clone().json(); } catch { return null; }
+
+  const antigo = await getUserId();
+
+  if (corpo?.codigo === 'id_divergente' && corpo?.userId && corpo.userId !== antigo) {
+    await setUserId(corpo.userId);
+    return caminho.split(antigo).join(corpo.userId);
+  }
+
+  if (corpo?.codigo === 'sem_cadastro') {
+    const token = await tokenDaSessao();
+    if (!token) return null;
+    const ligado = await vincularConta(token);
+    if (!ligado?.userId) return null;
+    return ligado.userId === antigo ? caminho : caminho.split(antigo).join(ligado.userId);
+  }
+
+  return null;
+}
+
+/**
+ * fetch para o backend do Grão, com o token da sessão e um conserto automático.
+ *
+ * `caminho` começa com "/" e já vem com o userId dentro quando a rota pede.
+ * Repete no máximo uma vez: se a segunda também for recusada, alguma coisa está
+ * errada de verdade e insistir só esconderia o problema.
+ */
+export async function apiFetch(caminho: string, init: RequestInit = {}): Promise<Response> {
+  if (!API_URL) throw new Error('API_URL não configurada');
+  const res = await comToken(caminho, init);
+  if (res.status !== 403) return res;
+
+  const corrigido = await corrigirIdentidade(caminho, res);
+  return corrigido ? comToken(corrigido, init) : res;
+}
+
 export interface ApiMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -55,10 +142,8 @@ export interface TurnResponse {
 }
 
 export async function postTurn(userId: string, history: ApiMessage[]): Promise<TurnResponse> {
-  if (!API_URL) throw new Error('API_URL não configurada');
-  const res = await fetch(`${API_URL}/onboarding/turn`, {
+  const res = await apiFetch('/onboarding/turn', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, history }),
   });
   if (!res.ok) throw new Error(`turn falhou: ${res.status}`);
@@ -88,10 +173,8 @@ export async function postOpening(
   source: 'audio' | 'text',
   teste = false
 ): Promise<OpeningResponse> {
-  if (!API_URL) throw new Error('API_URL não configurada');
-  const res = await fetch(`${API_URL}/onboarding/opening`, {
+  const res = await apiFetch('/onboarding/opening', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, name, transcript, source, teste }),
   });
   if (!res.ok) throw new Error(`opening falhou: ${res.status}`);
@@ -122,9 +205,8 @@ export async function linkWhatsApp(
     const fuso = timezone
       || Intl.DateTimeFormat().resolvedOptions().timeZone
       || 'America/Sao_Paulo';
-    const res = await fetch(`${API_URL}/profile/${userId}/whatsapp`, {
+    const res = await apiFetch(`/profile/${userId}/whatsapp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, time, timezone: fuso }),
     });
     if (!res.ok) return null;
@@ -148,9 +230,8 @@ export async function linkWhatsApp(
 export async function escolherPlano(userId: string, plan: 'plantio' | 'anual'): Promise<void> {
   if (!API_URL) return;
   try {
-    await fetch(`${API_URL}/profile/${userId}/plan`, {
+    await apiFetch(`/profile/${userId}/plan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan }),
     });
   } catch {
@@ -176,6 +257,9 @@ export async function vincularConta(
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
+    // fetch cru, não apiFetch, de propósito: esta é a chamada que RESOLVE a
+    // identidade, e ela já recebe o token de quem a chamou. Passar por apiFetch
+    // faria o conserto automático chamar vincularConta de novo, em círculo.
     const res = await fetch(`${API_URL}/auth/vincular`, {
       method: 'POST',
       headers: {

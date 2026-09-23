@@ -39,6 +39,7 @@ import Button from '../components/ui/Button';
 import Reveal from '../components/ui/Reveal';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import { AI_MODE, getUserId, postOpening } from '../onboarding/aiClient';
+import { jaConsentiu, registrarConsentimento } from '../onboarding/consentimento';
 import { setMoment, reescolherSementeDeHoje } from '../onboarding/seedDelivery';
 import { porExtenso } from '../onboarding/assinatura';
 import {
@@ -144,6 +145,8 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
   const [text, setText] = useState('');
   const [textMode, setTextMode] = useState(false);
   const [micNote, setMicNote] = useState<string | null>(null);
+  const [precisaConsentir, setPrecisaConsentir] = useState(false);
+  const [consentiu, setConsentiu] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [responseMsg, setResponseMsg] = useState('');
@@ -197,6 +200,15 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
       .catch(() => {});
   }, []);
 
+  // A caixa de consentimento só aparece para quem ainda não marcou. Começa
+  // escondida de propósito: piscar uma exigência na cara de quem já consentiu,
+  // no instante em que a pessoa abre a tela para desabafar, é ruído no pior
+  // momento possível.
+  useEffect(() => {
+    if (!real) return;
+    jaConsentiu().then((sim) => setPrecisaConsentir(!sim)).catch(() => {});
+  }, [real]);
+
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
@@ -221,7 +233,24 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
     return n ? n.charAt(0).toUpperCase() + n.slice(1) : '';
   };
 
+  /** Enquanto a caixa não for marcada, nada de gravar nem enviar. */
+  const travado = precisaConsentir && !consentiu;
+
+  /**
+   * Marcar a caixa já registra o consentimento, sem esperar o relato.
+   *
+   * De propósito: se a pessoa marcar, começar a falar e desistir no meio, ela
+   * consentiu mesmo assim — e o que ela disser depois, em outro dia, já está
+   * coberto. O contrário obrigaria a marcar de novo a cada tentativa.
+   */
+  const marcarConsentimento = () => {
+    const proximo = !consentiu;
+    setConsentiu(proximo);
+    if (proximo) void registrarConsentimento(real ? 'relato' : 'demonstracao');
+  };
+
   const startRecording = () => {
+    if (travado) return;
     if (!voiceAvailable) {
       setTextMode(true);
       return;
@@ -293,7 +322,7 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
 
   const submitText = () => {
     const t = text.trim();
-    if (t.length < 4) return;
+    if (t.length < 4 || travado) return;
     void submit(t, 'text');
   };
 
@@ -425,6 +454,35 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
               <Text style={styles.hints}>família · trabalho · um sonho · uma dor · uma gratidão</Text>
               {micNote ? <Text style={styles.micNote}>{micNote}</Text> : null}
 
+              {precisaConsentir ? (
+                <View style={styles.consentimento}>
+                  <TouchableOpacity
+                    onPress={marcarConsentimento}
+                    style={styles.caixaWrap}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: consentiu }}
+                    hitSlop={8}
+                  >
+                    <View style={[styles.caixa, consentiu && styles.caixaMarcada]}>
+                      {consentiu ? <Text style={styles.caixaCheck}>✓</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.consentimentoTexto}>
+                    <Text onPress={marcarConsentimento}>
+                      Autorizo o Grão a usar o que eu contar, inclusive sobre a minha fé e o meu
+                      momento, só para escolher a semente certa pra mim.{' '}
+                    </Text>
+                    <Text
+                      style={styles.consentimentoLink}
+                      onPress={() => navigation.navigate('PrivacyPolicy')}
+                    >
+                      Como cuidamos dos seus dados
+                    </Text>
+                    <Text>.</Text>
+                  </Text>
+                </View>
+              ) : null}
+
               {!textMode && voiceAvailable ? (
                 <>
                   <View style={styles.micWrap}>
@@ -436,9 +494,10 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
                     />
                     <Animated.View style={{ transform: [{ scale: pulseScale }] }}>
                       <TouchableOpacity
-                        style={styles.micBtn}
+                        style={[styles.micBtn, travado && styles.micBtnTravado]}
                         onPress={startRecording}
-                        activeOpacity={0.85}
+                        activeOpacity={travado ? 1 : 0.85}
+                        disabled={travado}
                         accessibilityLabel="Gravar áudio"
                       >
                         <MicIcon />
@@ -461,7 +520,7 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
                   />
                   <Button
                     title="Enviar"
-                    disabled={text.trim().length < 4}
+                    disabled={text.trim().length < 4 || travado}
                     onPress={submitText}
                     variant="dark"
                     uppercase
@@ -682,6 +741,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...(shadows.md as object),
   },
+  /** Apagado, não escondido: a pessoa precisa ver o que vai destravar. */
+  micBtnTravado: { opacity: 0.35 },
+
+  consentimento: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 20,
+    marginBottom: 4,
+    paddingHorizontal: space.sm,
+    maxWidth: 420,
+  },
+  caixaWrap: { paddingTop: 2 },
+  caixa: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.foregroundSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  caixaMarcada: { backgroundColor: colors.accent, borderColor: colors.accent },
+  caixaCheck: { color: '#fff', fontSize: 13, lineHeight: 16, fontFamily: fonts.sansMedium },
+  consentimentoTexto: {
+    flex: 1,
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.foregroundMuted,
+  },
+  consentimentoLink: { color: colors.accent, textDecorationLine: 'underline' },
   micBtnRecording: {
     width: 96,
     height: 96,

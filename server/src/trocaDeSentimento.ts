@@ -22,6 +22,7 @@ import { selectSeedForUser } from './seedSelector.js';
 import { formatSeed } from './whatsapp.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
+import { avisarRisco } from './alerta.js';
 import { sendText } from './meta.js';
 import { transcreverAudioDoWhatsapp, transcricaoConfigurada } from './transcricao.js';
 
@@ -190,6 +191,7 @@ export async function receberRelato(
     void logEvent(userId, 'risco_detectado', {
       nivel: risco.risco, trecho: risco.trecho, origem: 'troca_de_sentimento',
     });
+    void avisarRisco(userId, { nivel: risco.risco as any, origem: 'troca de sentimento' });
   }
   if (risco.risco === 'grave') {
     const cuidado = respostaDeCuidado(estado.nome);

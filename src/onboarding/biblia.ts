@@ -4,7 +4,7 @@
 // servir a consulta de alguns, e corrigir um versículo errado exigiria uma
 // publicação nova para chegar em quem já instalou.
 
-import { API_URL } from './aiClient';
+import { API_URL, apiFetch } from './aiClient';
 
 export interface LivroBiblia {
   numero: number;
@@ -53,7 +53,7 @@ export function partesDaReferencia(
 export async function livrosDaBiblia(): Promise<LivroBiblia[]> {
   if (!API_URL) return [];
   try {
-    const res = await fetch(`${API_URL}/biblia/livros`);
+    const res = await apiFetch(`/biblia/livros`);
     if (!res.ok) return [];
     const j = await res.json();
     return Array.isArray(j.livros) ? j.livros : [];
@@ -68,7 +68,7 @@ export async function capituloDaBiblia(
 ): Promise<CapituloBiblia | null> {
   if (!API_URL) return null;
   try {
-    const res = await fetch(`${API_URL}/biblia/${encodeURIComponent(livro)}/${capitulo}`);
+    const res = await apiFetch(`/biblia/${encodeURIComponent(livro)}/${capitulo}`);
     if (!res.ok) return null;
     return (await res.json()) as CapituloBiblia;
   } catch {
@@ -79,7 +79,7 @@ export async function capituloDaBiblia(
 export async function buscarNaBiblia(termo: string): Promise<AchadoBiblia[]> {
   if (!API_URL) return [];
   try {
-    const res = await fetch(`${API_URL}/biblia/busca?q=${encodeURIComponent(termo)}`);
+    const res = await apiFetch(`/biblia/busca?q=${encodeURIComponent(termo)}`);
     if (!res.ok) return [];
     const j = await res.json();
     return Array.isArray(j.resultados) ? j.resultados : [];

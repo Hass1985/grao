@@ -5,7 +5,7 @@
 // nunca pagou nada. Anunciar uma cobrança que não existe é o tipo de erro que
 // destrói confiança de uma vez só.
 
-import { API_URL, getUserId } from './aiClient';
+import { API_URL, getUserId, apiFetch } from './aiClient';
 
 export interface SituacaoAssinatura {
   completo: boolean;
@@ -23,7 +23,7 @@ export async function minhaAssinatura(): Promise<SituacaoAssinatura | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/assinatura/${userId}`);
+    const res = await apiFetch(`/assinatura/${userId}`);
     if (!res.ok) return null;
     return (await res.json()) as SituacaoAssinatura;
   } catch {
@@ -59,7 +59,7 @@ export interface ConfigCobranca {
 export async function configuracaoDeCobranca(): Promise<ConfigCobranca | null> {
   if (!API_URL) return null;
   try {
-    const res = await fetch(`${API_URL}/assinatura/config`);
+    const res = await apiFetch(`/assinatura/config`);
     if (!res.ok) return null;
     return (await res.json()) as ConfigCobranca;
   } catch {
@@ -82,7 +82,7 @@ export async function assinar(dados: {
   if (!API_URL) return { ok: false, erro: 'Sem conexão com o servidor agora.' };
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/assinatura/${userId}`, {
+    const res = await apiFetch(`/assinatura/${userId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plano: dados.plano, cpf: dados.cpf, email: dados.email }),
@@ -172,7 +172,7 @@ export async function minhasPreferencias(): Promise<Preferencias | null> {
   if (!API_URL) return null;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/profile/${userId}/preferencias`);
+    const res = await apiFetch(`/profile/${userId}/preferencias`);
     if (!res.ok) return null;
     return (await res.json()) as Preferencias;
   } catch {
@@ -186,7 +186,7 @@ export async function salvarHorario(horario: string): Promise<boolean> {
   try {
     const userId = await getUserId();
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const res = await fetch(`${API_URL}/profile/${userId}/horario`, {
+    const res = await apiFetch(`/profile/${userId}/horario`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ horario, timezone }),
@@ -208,7 +208,7 @@ export async function excluirMinhaConta(): Promise<boolean> {
   if (!API_URL) return false;
   try {
     const userId = await getUserId();
-    const res = await fetch(`${API_URL}/user/${userId}`, { method: 'DELETE' });
+    const res = await apiFetch(`/user/${userId}`, { method: 'DELETE' });
     return res.ok;
   } catch {
     return false;

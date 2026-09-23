@@ -115,6 +115,40 @@ export async function lerToken(token: string): Promise<Conta | null> {
 }
 
 /**
+ * Apaga a identidade no Supabase — e-mail, telefone e senha.
+ *
+ * Sem isto, "excluir conta" apagava tudo que a pessoa VIVEU no Grão (relato,
+ * leitura emocional, diário, entregas) e deixava intacto o cadastro dela em
+ * auth.users. Quem pediu para ser esquecido continuava cadastrado, e ainda
+ * conseguia logar — caindo num app vazio, sem entender por quê.
+ *
+ * Precisa da chave de serviço, que é a chave que pode tudo no projeto. Sem
+ * ela, o resto da exclusão acontece do mesmo jeito e fica registrado o que
+ * sobrou; fingir que apagou seria pior do que não apagar.
+ */
+export async function apagarIdentidade(uid: string): Promise<boolean> {
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!chave || !authConfigurada()) {
+    console.warn(`[auth] identidade ${uid} NÃO apagada — SUPABASE_SERVICE_ROLE_KEY ausente`);
+    return false;
+  }
+  try {
+    const res = await fetch(`${URL_PROJETO()}/auth/v1/admin/users/${encodeURIComponent(uid)}`, {
+      method: 'DELETE',
+      headers: { apikey: chave, Authorization: `Bearer ${chave}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    // 404 conta como sucesso: a identidade não está mais lá, que é o objetivo.
+    if (res.ok || res.status === 404) return true;
+    console.error(`[auth] Supabase recusou apagar ${uid}: ${res.status}`);
+    return false;
+  } catch (e: any) {
+    console.error('[auth] falha ao apagar identidade:', e?.message || e);
+    return false;
+  }
+}
+
+/**
  * Move tudo de um cadastro para outro e apaga o primeiro.
  *
  * Estava escrito duas vezes (na ligação do WhatsApp e agora aqui). Duas cópias

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { runTurn, type ChatMessage } from './anthropic.js';
 import {
   pool,
@@ -22,6 +23,7 @@ import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
+import { registerPrivacidadeRoutes } from './privacidade.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import {
@@ -34,16 +36,74 @@ import {
 import { registerBibliaRoutes } from './biblia.js';
 import { guardarMemorias, linhaDeLigacao, registrarUso } from './memoria.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
+import { avisarRisco } from './alerta.js';
 import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
-import { registerAuthRoutes } from './auth.js';
+import { registerAuthRoutes, apagarIdentidade } from './auth.js';
+import { donoDoUserId, donoNoCorpo, modoAtual } from './identidade.js';
+import { tetoGeral, tetoCaro, tetoAuth, tetoAdmin } from './tetos.js';
 import { estadoDoDia, fecharDia } from './trocaDeSentimento.js';
 
 const app = express();
 
+// O Render põe UM proxy na frente. Sem isto, req.ip é o do proxy: todo mundo
+// dividiria o mesmo teto de requisições, e o limite viraria enfeite. `1` e não
+// `true` de propósito — confiar em toda a cadeia deixaria qualquer um forjar
+// X-Forwarded-For e escolher o próprio balde.
+app.set('trust proxy', 1);
+
+// Cabeçalhos de segurança.
+//
+// A API devolve JSON, onde quase nada disso importa. Quem precisa é o que o
+// servidor entrega como HTML: o painel /admin e a página-ponte do louvor.
+//
+// HSTS diz ao navegador para nunca mais voltar a http neste domínio. Só tem
+// efeito depois do domínio próprio (api.graoapp.com.br) — em onrender.com o
+// cabeçalho vale para o domínio inteiro da Render, que não é nosso, então
+// preload fica de fora de propósito.
+//
+// A CSP aceita inline porque as duas páginas são montadas em uma string só,
+// com <style> e <script> embutidos. O que ela barra é o que interessa: script
+// vindo de fora, iframe de terceiro e formulário apontando para outro lugar.
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      // A ponte do louvor manda a pessoa para o Spotify, o YouTube ou a
+      // Deezer. É um link, não um embed — form-action e frame-src continuam
+      // fechados, e nenhuma dessas páginas carrega nada de lá.
+      frameSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
+  // Cross-Origin-Resource-Policy same-origin bloquearia a imagem de preview
+  // que o WhatsApp busca para o cartão do link. O cartão é o que faz a pessoa
+  // tocar, então aqui vale cross-origin.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  referrerPolicy: { policy: 'no-referrer' },
+  hsts: { maxAge: 15552000, includeSubDomains: true, preload: false },
+  // frame-ancestors já resolve nos navegadores atuais; X-Frame-Options é para
+  // os que ainda não leem CSP. O padrão do helmet é SAMEORIGIN, e nada nosso
+  // precisa ser emoldurado nem por nós mesmos.
+  frameguard: { action: 'deny' },
+}));
+
 // CORS: em produção, restrinja com CORS_ORIGINS (lista separada por vírgula).
-// Sem a variável, libera geral (útil no Trial e no desenvolvimento).
 const origins = process.env.CORS_ORIGINS?.split(',').map((s: string) => s.trim()).filter(Boolean);
+if (!origins?.length && process.env.NODE_ENV === 'production') {
+  // Sem a lista, qualquer site pode chamar a API do navegador de quem o
+  // visita. Como a identidade anda por cabeçalho e não por cookie, isso não
+  // entrega sessão de ninguém — mas é uma porta que não precisa ficar aberta,
+  // e o aviso existe para ela não ficar aberta por esquecimento.
+  console.warn('[cors] CORS_ORIGINS não definida — liberando qualquer origem');
+}
 app.use(cors(origins?.length ? { origin: origins } : undefined));
 // O corpo CRU precisa sobreviver ao parser: a assinatura HMAC que a Meta
 // envia é calculada sobre os bytes originais. Re-serializar o JSON muda
@@ -52,6 +112,14 @@ app.use(express.json({
   limit: '1mb',
   verify: (req: any, _res, buf) => { req.rawBody = buf; },
 }));
+
+// Teto geral, antes de qualquer rota. Ver tetos.ts para o que fica de fora.
+app.use(tetoGeral);
+
+// Toda rota com :userId passa por aqui antes do handler — as de cobranca.ts e
+// whatsapp.ts também, porque registram no mesmo app. Ver identidade.ts: não é
+// uma convenção a ser lembrada rota a rota, é uma trava única.
+app.param('userId', donoDoUserId);
 
 /**
  * Diagnóstico compartilhado por /health e /ready.
@@ -87,6 +155,9 @@ async function diagnose() {
     // O nome do template não é segredo, e é a única forma de conferir de fora
     // se a virada para o v3 chegou ao Render.
     templateDiario: process.env.WA_TEMPLATE_NAME || 'semente_do_dia',
+    // Em qual dos três modos as rotas de usuário estão. Durante a virada é a
+    // pergunta que mais se faz, e ela não tem outra resposta de fora.
+    identidade: modoAtual(),
   };
   // A agenda varre de minuto em minuto. Mais de 5 minutos sem batimento
   // significa que ela parou — e isso não aparece em nenhum outro lugar, porque
@@ -130,7 +201,7 @@ app.get('/ready', async (_req, res) => {
  * resp: { done: false, message } enquanto conversa
  *       { done: true, message, channel, emotionalHint } quando o perfil foi salvo
  */
-app.post('/onboarding/turn', async (req, res) => {
+app.post('/onboarding/turn', tetoCaro, donoNoCorpo, async (req, res) => {
   try {
     const { userId, history } = req.body as { userId: string; history: ChatMessage[] };
     if (!userId || !Array.isArray(history)) {
@@ -195,7 +266,7 @@ app.post('/onboarding/turn', async (req, res) => {
  * A única coisa que continua sendo registrada é risco emocional: se alguém
  * digita sofrimento grave, mesmo "testando", isso precisa aparecer no painel.
  */
-app.post('/onboarding/opening', async (req, res) => {
+app.post('/onboarding/opening', tetoCaro, donoNoCorpo, async (req, res) => {
   try {
     const { userId, name, transcript, source = 'audio', teste = false } = req.body as {
       userId: string; name?: string; transcript: string; source?: string; teste?: boolean;
@@ -216,6 +287,7 @@ app.post('/onboarding/opening', async (req, res) => {
       void logEvent(userId, 'risco_detectado', {
         nivel: risco.risco, trecho: risco.trecho, origem: 'abertura', teste,
       });
+      void avisarRisco(userId, { nivel: risco.risco as any, origem: 'abertura', teste });
     }
     if (risco.risco === 'grave') {
       const cuidado = respostaDeCuidado(name);
@@ -592,7 +664,7 @@ app.get('/seed/today/:userId', async (req, res) => {
  */
 const MAX_TROCAS_DIA = 3;
 
-app.post('/seed/today/:userId/reescolher', async (req, res) => {
+app.post('/seed/today/:userId/reescolher', tetoCaro, async (req, res) => {
   const { familia, relato } = req.body as { familia?: string; relato?: string };
   try {
     const acesso = await acessoDoUsuario(req.params.userId);
@@ -663,7 +735,7 @@ app.post('/seed/today/:userId/reescolher', async (req, res) => {
 // A tela Hoje não muda: quem não assina continua vendo o devocional do dia.
 const MAX_TESTES_DIA = 5;
 
-app.post('/seed/experimentar/:userId', async (req, res) => {
+app.post('/seed/experimentar/:userId', tetoCaro, async (req, res) => {
   if ((process.env.GRAO_TESTE_PAGO ?? '1') === '0') {
     return res.status(404).json({ error: 'demonstração do plano pago desligada' });
   }
@@ -865,6 +937,7 @@ app.post('/resposta/:userId', async (req, res) => {
       void logEvent(userId, 'risco_detectado', {
         nivel: risco.risco, trecho: risco.trecho, origem: 'resposta',
       });
+      void avisarRisco(userId, { nivel: risco.risco as any, origem: 'resposta escrita' });
     }
     if (risco.risco === 'grave') {
       return res.json({
@@ -1150,9 +1223,56 @@ app.get('/profile/:userId/preferencias', async (req, res) => {
 });
 
 // LGPD: exclusão total dos dados do usuário.
-app.delete('/user/:userId', async (req, res) => {
-  await deleteUserData(req.params.userId);
+/**
+ * Consentimento para o dado sensível.
+ *
+ * A LGPD trata convicção religiosa e dado de saúde como sensíveis (art. 5º, II)
+ * e exige consentimento ESPECÍFICO para eles (art. 11) — o aceite genérico de
+ * termos de uso não cobre. O Grão guarda os dois: a tradição religiosa e o que
+ * a pessoa conta sobre o momento dela.
+ *
+ * A coluna consent_at existia desde o começo e nunca tinha sido escrita: na
+ * revisão de 22/09/2026, 0 dos 24 cadastros tinham data. O texto do aceite
+ * também já existia, mas só na tela do WhatsApp, que é pulável e só aparece no
+ * fluxo pago — quem usa o gratuito contava o momento sem nunca ter consentido.
+ *
+ * Agora o aceite acontece na tela do relato, que é onde o dado sensível nasce,
+ * e fica registrado aqui.
+ */
+app.get('/consentimento/:userId', async (req, res) => {
+  const { rows: [u] } = await pool.query(
+    `SELECT consent_at IS NOT NULL AS consentiu FROM users WHERE id = $1`,
+    [req.params.userId]);
+  res.json({ consentiu: !!u?.consentiu });
+});
+
+app.post('/consentimento/:userId', async (req, res) => {
+  // coalesce: o primeiro "sim" é o que vale. Regravar a cada relato apagaria a
+  // data real do consentimento, que é justamente o que precisa ficar provado.
+  await pool.query(
+    `UPDATE users SET consent_at = coalesce(consent_at, now()) WHERE id = $1`,
+    [req.params.userId]);
+  void logEvent(req.params.userId, 'consentimento', { origem: req.body?.origem ?? 'relato' });
   res.json({ ok: true });
+});
+
+/**
+ * Excluir a conta. Agora exige identidade (ver identidade.ts) — antes, um UUID
+ * bastava para apagar o cadastro de qualquer pessoa.
+ *
+ * O auth_uid é lido ANTES do DELETE: depois, a linha não existe mais e não
+ * haveria como saber qual identidade apagar no Supabase.
+ */
+app.delete('/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { rows: [u] } = await pool.query(`SELECT auth_uid FROM users WHERE id = $1`, [userId]);
+
+  await deleteUserData(userId);
+
+  const identidade = u?.auth_uid ? await apagarIdentidade(u.auth_uid) : true;
+  // Devolvido de propósito: a tela de ajustes diz "conta excluída", e se a
+  // identidade sobreviveu isso não é verdade inteira. Melhor o app saber.
+  res.json({ ok: true, identidadeApagada: identidade });
 });
 
 // Imagem do preview e página-ponte do louvor. BASE_URL vem de whatsapp.ts,
@@ -1160,6 +1280,11 @@ app.delete('/user/:userId', async (req, res) => {
 // apontar para o mesmo lugar.
 app.use(express.static('public', { maxAge: '7d' }));
 registerOuvirRoutes(app, BASE_URL);
+
+// A política de privacidade em endereço público. É a URL que a Apple e o
+// Google pedem na publicação, e a que alguém precisa poder abrir ANTES de
+// criar conta.
+registerPrivacidadeRoutes(app);
 
 // Canal WhatsApp. As rotas /whatsapp/inbound|due|opt-in são protegidas por
 // GRAO_API_TOKEN e existem para um orquestrador externo (n8n). O webhook
@@ -1169,12 +1294,16 @@ registerWhatsAppRoutes(app);
 registerMetaWebhookRoutes(app);
 
 // Painel de controle (/admin). Protegido por GRAO_ADMIN_TOKEN.
+// O teto vem antes do register de propósito: middleware montado depois da rota
+// não roda, e o erro seria silencioso — o painel funcionaria, sem teto nenhum.
+app.use('/admin/api', tetoAdmin);
 registerAdminRoutes(app);
 
 // Cobrança pelo Asaas, com Pix. Só entra em ação com ASAAS_API_KEY.
 registerCobrancaRoutes(app);
 
 // Contas (Google, Apple, Facebook, e-mail/senha) via Supabase Auth.
+app.use('/auth', tetoAuth);
 registerAuthRoutes(app);
 
 // A Bíblia para consulta, na Bíblia Livre (domínio público).
