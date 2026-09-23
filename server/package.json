@@ -15,6 +15,8 @@
     "seguranca": "tsx scripts/seguranca.ts",
     "identidade": "tsx scripts/testar-identidade.ts",
     "alerta": "tsx scripts/testar-alerta.ts",
+    "template:alerta": "tsx scripts/criar-template-alerta.ts",
+    "telegram": "tsx scripts/telegram.ts",
     "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql && psql \"$DATABASE_URL\" -f db/seed_data.sql",
     "eval:opening": "tsx scripts/eval-opening.ts",
     "content:migrate": "tsx scripts/apply-sql.ts db/migrations/002_content.sql db/passage_pool.sql",

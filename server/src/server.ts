@@ -158,6 +158,17 @@ async function diagnose() {
     // Em qual dos três modos as rotas de usuário estão. Durante a virada é a
     // pergunta que mais se faz, e ela não tem outra resposta de fora.
     identidade: modoAtual(),
+    // Sem esta, excluir conta deixa a identidade viva no Supabase. A falha é
+    // silenciosa por natureza — a exclusão parece ter funcionado.
+    exclusaoCompleta: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    // Sem nenhum canal, o sinal de risco emocional continua só no painel e
+    // ninguém é avisado. Também é uma falha que não faz barulho: só se
+    // descobre no dia em que alguém precisava ter sido avisado e não foi.
+    alertaDeRisco:
+      !!process.env.ALERTA_WEBHOOK_URL ? 'webhook'
+      : (!!process.env.ALERTA_TELEGRAM_TOKEN && !!process.env.ALERTA_TELEGRAM_CHAT) ? 'telegram'
+      : !!process.env.ALERTA_WHATSAPP ? 'whatsapp'
+      : 'nenhum',
   };
   // A agenda varre de minuto em minuto. Mais de 5 minutos sem batimento
   // significa que ela parou — e isso não aparece em nenhum outro lugar, porque

@@ -65,19 +65,31 @@ async function bater(r: Rota, token?: string): Promise<number | string> {
   console.log(`\nAlvo: ${BASE}`);
   console.log(`Rotas com :userId encontradas no código: ${rotas.length}\n`);
 
-  // Antes de qualquer coisa: em qual modo o servidor está. Um verde obtido com
-  // o modo em "observando" não valeria nada, e um vermelho seria só isso.
+  // Antes de qualquer coisa: em qual modo o servidor está.
+  //
+  // E aqui vale uma parada, não só um aviso. Fora de "exigindo" as rotas
+  // RODAM: duas delas chamam o modelo e outra cria cadastro. Rodar este teste
+  // contra um servidor em "observando" gastaria Opus e deixaria usuários de
+  // mentira no banco — um teste de segurança que faz estrago é um estrago.
+  let modo = '(servidor antigo, sem o campo)';
   try {
     const saude: any = await (await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(15_000) })).json();
-    const modo = saude?.integracoes?.identidade ?? '(servidor antigo, sem o campo)';
-    console.log(`Modo das rotas de usuário: ${modo}`);
-    if (modo !== 'exigindo') {
-      console.log('→ Fora de "exigindo" as recusas abaixo não acontecem. Isto aqui é um ensaio.\n');
-    } else {
-      console.log('');
-    }
+    modo = saude?.integracoes?.identidade ?? modo;
   } catch {
     console.log('Não consegui ler /health — o servidor está no ar?\n');
+    process.exit(1);
+  }
+  console.log(`Modo das rotas de usuário: ${modo}\n`);
+
+  if (modo !== 'exigindo' && process.argv[3] !== '--mesmo-assim') {
+    console.log('Parei aqui de propósito.\n');
+    console.log('Em "' + modo + '" as rotas respondem de verdade, e duas delas chamam o');
+    console.log('modelo. Bater nelas para provar que estão abertas custaria dinheiro e');
+    console.log('sujaria o banco — e a resposta já é conhecida: estão abertas, é para isso');
+    console.log('que serve esse modo.\n');
+    console.log('Vire AUTH_ROTAS para "exigindo" e rode de novo. Se quiser forçar assim');
+    console.log('mesmo, contra um servidor local descartável: npm run seguranca -- ' + BASE + ' --mesmo-assim\n');
+    process.exit(0);
   }
 
   let passou = 0;

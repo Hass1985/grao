@@ -84,10 +84,27 @@ services:
         sync: false          # padrão: https://api.openai.com/v1
       - key: STT_MODEL
         sync: false          # padrão: whisper-1
-      # Para onde vai o aviso quando o detector de risco emocional dispara.
-      # Serve qualquer webhook que aceite JSON: Slack, Discord, Google Chat,
-      # n8n. Sem a variável nada é enviado e o sinal continua só no painel —
-      # que é como estava até 22/09/2026, e é o que não queremos com volume.
-      # O aviso NÃO leva o trecho da fala; ele fica no painel, atrás do token.
+      # AVISO DE RISCO EMOCIONAL — três caminhos, todos opcionais, e o que
+      # estiver configurado é usado. Sem nenhum, o sinal continua só no painel,
+      # que é como estava até 22/09/2026 e é o que não queremos com volume.
+      #
+      # Em qualquer um deles o aviso NÃO leva o trecho da fala: ele é a frase
+      # mais delicada que a pessoa já nos disse e fica no painel, atrás do
+      # token. O aviso leva o necessário para alguém agir.
+      #
+      # 1. Webhook genérico: Slack, Discord, Google Chat, n8n. Os dois
+      #    primeiros são gratuitos para isto.
       - key: ALERTA_WEBHOOK_URL
+        sync: false
+      # 2. Telegram. Gratuito, grupo à parte, e não mistura o aviso com a
+      #    semente — que é o que acontece quando ele vai pelo WhatsApp, já que
+      #    sai do mesmo número. `npm run telegram` descobre o chat_id.
+      - key: ALERTA_TELEGRAM_TOKEN
+        sync: false
+      - key: ALERTA_TELEGRAM_CHAT
+        sync: false
+      # 3. WhatsApp, para os telefones do time em E.164 separados por vírgula.
+      #    Exige o template `alerta_risco` aprovado (npm run template:alerta) e
+      #    cai na MESMA conversa em que a pessoa recebe a própria semente.
+      - key: ALERTA_WHATSAPP
         sync: false

@@ -182,6 +182,32 @@ export function sendSeedNotice(phone: string, partes: { name: string; reference:
   });
 }
 
+/**
+ * Um template qualquer, com variáveis posicionais.
+ *
+ * Existe separado de sendSeedNotice porque não é a semente: é o aviso interno
+ * de risco emocional, que vai para o telefone do time e não para o da pessoa.
+ * Misturar os dois no mesmo lugar acabaria com alguém mexendo no template da
+ * semente para ajustar o alerta — e a semente é o produto.
+ *
+ * Posicional ({{1}}, {{2}}) sempre: este template é nosso, criado por nós, e
+ * não herda a dúvida de nomeação que o da semente carrega.
+ */
+export function sendTemplate(phone: string, nome: string, idioma: string, textos: string[]) {
+  return chamar({
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'template',
+    template: {
+      name: nome,
+      language: { code: idioma },
+      components: textos.length
+        ? [{ type: 'body', parameters: textos.map((text) => ({ type: 'text', text })) }]
+        : [],
+    },
+  });
+}
+
 /** Marca a mensagem como lida — o "visto" azul. Cortesia barata: não custa nada. */
 export async function markRead(messageId: string): Promise<void> {
   if (!metaConfigurada()) return;
