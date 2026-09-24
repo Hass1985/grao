@@ -22,9 +22,6 @@ import BackButton from '../components/ui/BackButton';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import Button from '../components/ui/Button';
 import SeletorHorario, { periodoDoDia } from '../components/SeletorHorario';
-import FamilyIcon from '../components/FamilyIcon';
-import { emotionalFamilies, EmotionalFamily } from '../data/seeds';
-import { setMoment, getMoment } from '../onboarding/seedDelivery';
 import {
   getAvatarUri,
   setAvatarUri,
@@ -59,7 +56,6 @@ import {
   Mail,
   BookOpen,
   Info,
-  Heart,
   type LucideIcon,
 } from '../components/icons';
 
@@ -132,8 +128,6 @@ export default function Settings({ navigation }: Props) {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState('Você');
   const [memberSince, setMemberSince] = useState('');
-  const [moment, setMomentState] = useState<EmotionalFamily | null>(null);
-  const [showFeelings, setShowFeelings] = useState(false);
   const [showNotifOptions, setShowNotifOptions] = useState(false);
   const [selectedTime, setSelectedTime] = useState('07:00');
   const [notifEnabled, setNotifEnabled] = useState(true);
@@ -145,11 +139,10 @@ export default function Settings({ navigation }: Props) {
     useCallback(() => {
       let vivo = true;
       (async () => {
-        const [a, n, m, mom, ass, pref] = await Promise.all([
+        const [a, n, m, ass, pref] = await Promise.all([
           getAvatarUri(),
           getDisplayName(),
           getMemberSince(),
-          getMoment(),
           minhaAssinatura(),
           minhasPreferencias(),
         ]);
@@ -157,7 +150,6 @@ export default function Settings({ navigation }: Props) {
         setAvatar(a);
         setName(n);
         setMemberSince(m);
-        setMomentState(mom as EmotionalFamily | null);
         setAssinatura(ass);
         if (pref?.horario) setSelectedTime(pref.horario);
       })();
@@ -207,12 +199,6 @@ export default function Settings({ navigation }: Props) {
     setEditingName(false);
   };
 
-  const chooseMoment = async (family: EmotionalFamily) => {
-    setMomentState(family);
-    setShowFeelings(false);
-    await setMoment(family);
-  };
-
   const confirmDelete = () => {
     Alert.alert(
       'Excluir minha conta',
@@ -233,10 +219,6 @@ export default function Settings({ navigation }: Props) {
       ]
     );
   };
-
-  const momentLabel = moment
-    ? emotionalFamilies.find((f) => f.id === moment)?.label ?? 'Deixe o Grão sentir por você'
-    : 'Deixe o Grão sentir por você';
 
   const switchTrack = {
     false: colors.casca12,
@@ -286,47 +268,15 @@ export default function Settings({ navigation }: Props) {
             </Pressable>
           </View>
 
-          <Section title="Meu momento">
-            {showFeelings ? (
-              <View style={styles.feelingsGrid}>
-                {emotionalFamilies.map((f) => {
-                  const selected = moment === f.id;
-                  return (
-                    <Pressable
-                      key={f.id}
-                      style={({ pressed }) => [
-                        styles.feelingChip,
-                        selected && styles.feelingChipSelected,
-                        pressed && { opacity: 0.9 },
-                      ]}
-                      onPress={() => chooseMoment(f.id)}
-                    >
-                      <FamilyIcon
-                        family={f.id}
-                        size={17}
-                        color={selected ? colors.accent : colors.foregroundMuted}
-                      />
-                      <Text
-                        style={[
-                          styles.feelingLabel,
-                          selected && styles.feelingLabelSelected,
-                        ]}
-                      >
-                        {f.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <Row
-                icon={Heart}
-                label={momentLabel}
-                onPress={() => setShowFeelings(true)}
-                last
-              />
-            )}
-          </Section>
+          {/* A seção "Meu momento" saiu daqui.
+
+              Era a mesma escolha manual de sentimento que já tinha saído da
+              tela Hoje: uma grade de chips onde a pessoa dizia como estava.
+              O momento agora vem do RELATO — a pessoa conta, o cérebro lê, e
+              a semente sai dali. Manter o atalho no perfil deixava dois
+              caminhos disputando a mesma informação, e o que fosse tocado por
+              último ganhava. Um produto que promete entender o momento não
+              pede para a pessoa preencher o momento num formulário. */}
 
           {/* O que aparece aqui vem do servidor, não do código.
               Antes dizia "Plantio · R$ 19,90/mês · renovação automática" para
@@ -703,34 +653,6 @@ const styles = StyleSheet.create({
     color: '#B33A2B',
   },
 
-  feelingsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-  },
-  feelingChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  feelingChipSelected: {
-    backgroundColor: colors.surfaceAccent,
-  },
-  feelingLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.foreground,
-  },
-  feelingLabelSelected: {
-    color: colors.accent,
-  },
 
   optionsList: {
     paddingHorizontal: 12,

@@ -30,17 +30,54 @@ import { pool } from './db.js';
  */
 export type Modo = 'desligado' | 'observando' | 'exigindo';
 
+const MODOS = ['desligado', 'observando', 'exigindo'] as const;
+
 export function modoAtual(): Modo {
   const v = (process.env.AUTH_ROTAS ?? '').trim().toLowerCase();
-  return v === 'desligado' || v === 'exigindo' ? v : 'observando';
+  return (MODOS as readonly string[]).includes(v) ? (v as Modo) : 'observando';
+}
+
+/**
+ * O valor está escrito de um jeito que o código não reconhece?
+ *
+ * Antes, qualquer coisa que não fosse exatamente "desligado" ou "exigindo"
+ * virava "observando" em silêncio. Quem digitasse `exigir`, `Exigindo ` com
+ * espaço sobrando ou `exigndo` teria um servidor aberto achando que fechou —
+ * e a única pista seria o /health contradizendo o painel do Render, que é
+ * exatamente o tipo de coisa que se lê como "ainda está subindo o deploy".
+ *
+ * Um interruptor de segurança que erra para o lado inseguro tem que gritar.
+ */
+export function problemaNoModo(): string | null {
+  const bruto = process.env.AUTH_ROTAS;
+  if (bruto === undefined || bruto === '') return null;
+  const v = bruto.trim().toLowerCase();
+  if ((MODOS as readonly string[]).includes(v)) return null;
+  return `AUTH_ROTAS="${bruto}" não é um modo válido — valendo "observando". ` +
+         `Use desligado, observando ou exigindo.`;
 }
 
 function bearer(req: Request): string {
   return (req.header('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
 }
 
-/** O cadastro desta conta do Supabase, ou null se ela nunca foi vinculada. */
+/**
+ * O cadastro desta identidade, ou null se ela nunca foi vinculada.
+ *
+ * Lê de `user_identities`, não de `users.auth_uid`: uma pessoa pode entrar por
+ * Google hoje e por telefone amanhã, e as duas portas precisam chegar no mesmo
+ * cadastro. Ver 026_identidades.sql.
+ *
+ * O fallback para a coluna antiga fica enquanto ela existir. Não é zelo
+ * excessivo: se a migração não tiver rodado num ambiente, sem ele TODA rota de
+ * usuário passaria a responder "conta não vinculada" — o app inteiro para, e o
+ * sintoma não apontaria para a causa.
+ */
 async function cadastroDaConta(uid: string): Promise<string | null> {
+  const { rows: [i] } = await pool.query(
+    `SELECT user_id FROM user_identities WHERE auth_uid = $1`, [uid]);
+  if (i?.user_id) return i.user_id;
+
   const { rows: [u] } = await pool.query(
     `SELECT id FROM users WHERE auth_uid = $1`, [uid]);
   return u?.id ?? null;

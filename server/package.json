@@ -14,6 +14,8 @@
     "smoke": "tsx scripts/smoke.ts",
     "seguranca": "tsx scripts/seguranca.ts",
     "identidade": "tsx scripts/testar-identidade.ts",
+    "unificar": "tsx scripts/unificar-cadastros.ts",
+    "sincronia": "tsx scripts/verificar-sincronia.ts",
     "alerta": "tsx scripts/testar-alerta.ts",
     "template:alerta": "tsx scripts/criar-template-alerta.ts",
     "telegram": "tsx scripts/telegram.ts",

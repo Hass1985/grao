@@ -99,15 +99,26 @@ export async function estadoDoDia(userId: string): Promise<EstadoDoDia> {
   };
 }
 
-/** Marca o dia como fechado, registrando por qual porta. */
+/**
+ * Marca o dia como fechado, registrando por qual porta.
+ *
+ * Só a entrega MAIS RECENTE do dia, não todas. Antes daqui saía um UPDATE sem
+ * recorte, que carimbava toda linha do dia com a porta do último gesto —
+ * reescrevendo a história de entregas que não saíram por ali. No painel isso
+ * aparecia como "a pessoa trocou duas vezes hoje" quando ela tinha trocado
+ * uma, e a entrega anterior só estava no mesmo dia.
+ */
 export async function fecharDia(userId: string, porta: string): Promise<void> {
   await pool.query(
-    `UPDATE seed_deliveries d
+    `UPDATE seed_deliveries
         SET planted = true, porta = $2
-       FROM users u
-      WHERE d.user_id = $1 AND u.id = d.user_id
-        AND (d.delivered_at AT TIME ZONE coalesce(u.timezone,'America/Sao_Paulo'))::date
-          = (now() AT TIME ZONE coalesce(u.timezone,'America/Sao_Paulo'))::date`,
+      WHERE id = (
+        SELECT d.id FROM seed_deliveries d
+          JOIN users u ON u.id = d.user_id
+         WHERE d.user_id = $1
+           AND (d.delivered_at AT TIME ZONE coalesce(u.timezone,'America/Sao_Paulo'))::date
+             = (now() AT TIME ZONE coalesce(u.timezone,'America/Sao_Paulo'))::date
+         ORDER BY d.id DESC LIMIT 1)`,
     [userId, porta]);
 }
 

@@ -73,8 +73,14 @@ services:
       # mesma linha. Sem a variável o servidor libera qualquer origem e avisa
       # no log — deixado assim de propósito, para nunca derrubar o app por uma
       # variável esquecida.
+      #
+      # O site é o fabulous-gumption-4a23a7. Este comentário já trouxe outro
+      # endereço (dapper-smakager-388102), que é um site antigo e parado; em
+      # 23/09/2026 eu tomei aquele exemplo por verdade e passei um bom tempo
+      # verificando o deploy no lugar errado. O valor que vale é o do painel
+      # do Netlify, não o daqui.
       - key: CORS_ORIGINS
-        sync: false          # https://dapper-smakager-388102.netlify.app
+        sync: false          # https://fabulous-gumption-4a23a7.netlify.app
       # Transcrição do áudio da troca de sentimento. Qualquer serviço com a
       # interface /audio/transcriptions serve (OpenAI, Groq e vários outros).
       # Sem a chave, o Grão pede o relato por escrito e nada quebra.

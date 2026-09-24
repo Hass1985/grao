@@ -158,6 +158,18 @@ export async function apagarIdentidade(uid: string): Promise<boolean> {
 export async function fundirUsuarios(de: string, para: string): Promise<void> {
   if (de === para) return;
 
+  // As identidades vão PRIMEIRO, e por um motivo que não é de ordem estética:
+  // `users` tem ON DELETE CASCADE em user_identities. Se a linha do cadastro
+  // de origem for apagada antes, as identidades dele somem junto — e a pessoa
+  // que entrava por aquela porta deixa de conseguir entrar, sem erro nenhum
+  // que aponte para aqui. O ON CONFLICT cobre a identidade que já estiver no
+  // destino (a mesma pessoa vinculada duas vezes).
+  await pool.query(
+    `INSERT INTO user_identities (auth_uid, user_id, provedor, email, telefone, criado_em, visto_em)
+     SELECT auth_uid, $2, provedor, email, telefone, criado_em, visto_em
+       FROM user_identities WHERE user_id = $1
+     ON CONFLICT (auth_uid) DO UPDATE SET user_id = EXCLUDED.user_id`, [de, para]);
+
   await pool.query(`UPDATE conversation_turns SET user_id = $2 WHERE user_id = $1`, [de, para]);
   await pool.query(`UPDATE emotional_readings SET user_id = $2 WHERE user_id = $1`, [de, para]);
   await pool.query(`UPDATE events SET user_id = $2 WHERE user_id = $1`, [de, para]);
@@ -227,8 +239,11 @@ export function registerAuthRoutes(app: Express) {
     if (!conta) return res.status(401).json({ error: 'token inválido' });
 
     try {
+      // Esta identidade já pertence a alguém? Ver 026_identidades.sql: a
+      // pergunta é feita à tabela de identidades, não a users.auth_uid, porque
+      // a mesma pessoa pode ter entrado antes por outra porta.
       const { rows: [daConta] } = await pool.query(
-        `SELECT id FROM users WHERE auth_uid = $1`, [conta.uid]);
+        `SELECT user_id AS id FROM user_identities WHERE auth_uid = $1`, [conta.uid]);
       const { rows: [doAparelho] } = await pool.query(
         `SELECT id FROM users WHERE id = $1`, [userId]);
 
@@ -241,14 +256,32 @@ export function registerAuthRoutes(app: Express) {
         if (doAparelho) { await fundirUsuarios(userId, daConta.id); fundiu = true; }
         idFinal = daConta.id;
       } else if (!daConta) {
-        if (!doAparelho) {
+        // Identidade nova. Antes de criar vínculo, procura um cadastro que já
+        // seja desta pessoa por OUTRA porta — é o caso que partiu o cadastro
+        // do Samir em dois: ele entrou por telefone primeiro e por Google
+        // depois, e nada ligava as duas coisas.
+        //
+        // O e-mail serve de chave porque o Supabase só o entrega verificado.
+        // O telefone é tratado mais abaixo, junto com a regra de assinatura.
+        const { rows: [porEmail] } = conta.email
+          ? await pool.query(
+              `SELECT u.id FROM users u
+                WHERE lower(u.email) = lower($1) AND u.id <> $2
+                ORDER BY u.created_at LIMIT 1`, [conta.email, userId])
+          : { rows: [] as any[] };
+
+        if (porEmail) {
+          if (doAparelho) { await fundirUsuarios(userId, porEmail.id); fundiu = true; }
+          idFinal = porEmail.id;
+        } else if (!doAparelho) {
           await pool.query(`INSERT INTO users (id) VALUES ($1) ON CONFLICT DO NOTHING`, [userId]);
         }
+
         await pool.query(
-          `UPDATE users SET auth_uid = $2,
+          `UPDATE users SET auth_uid = coalesce(auth_uid, $2),
                             email = coalesce($3, email),
                             name = coalesce(name, $4)
-            WHERE id = $1`, [userId, conta.uid, conta.email, conta.nome]);
+            WHERE id = $1`, [idFinal, conta.uid, conta.email, conta.nome]);
       }
 
       // Conta feita pelo telefone: é o MESMO número do WhatsApp. Pode já existir
@@ -284,6 +317,26 @@ export function registerAuthRoutes(app: Express) {
             [idFinal, conta.telefone]);
         }
       }
+
+      // Registra a identidade no cadastro que sobrou.
+      //
+      // Depois de todas as fusões, de propósito: antes disso `idFinal` ainda
+      // podia mudar, e uma identidade apontando para um cadastro que some é
+      // uma pessoa que não consegue mais entrar.
+      //
+      // O ON CONFLICT reaponta em vez de ignorar: se a identidade já existia
+      // num cadastro que acabou de ser fundido para dentro de outro, o lugar
+      // certo dela agora é o sobrevivente.
+      await pool.query(
+        `INSERT INTO user_identities (auth_uid, user_id, provedor, email, telefone, visto_em)
+              VALUES ($1, $2, $3, $4, $5, now())
+         ON CONFLICT (auth_uid) DO UPDATE
+            SET user_id  = EXCLUDED.user_id,
+                provedor = coalesce(EXCLUDED.provedor, user_identities.provedor),
+                email    = coalesce(EXCLUDED.email, user_identities.email),
+                telefone = coalesce(EXCLUDED.telefone, user_identities.telefone),
+                visto_em = now()`,
+        [conta.uid, idFinal, conta.provedor, conta.email, conta.telefone]);
 
       // A lista de cortesias é conferida AQUI, e não no cadastro, porque este é
       // o único ponto em que sabemos ao mesmo tempo quem a pessoa é e qual
@@ -325,9 +378,12 @@ export function registerAuthRoutes(app: Express) {
     const conta = await lerToken(token);
     if (!conta) return res.status(401).json({ error: 'token inválido' });
 
+    // Pela tabela de identidades: quem entrou por uma porta e tem o cadastro
+    // ligado por outra continua sendo a mesma pessoa. Ver 026_identidades.sql.
     const { rows: [u] } = await pool.query(
-      `SELECT id, name, email, phone_e164 IS NOT NULL AS "temWhatsapp"
-         FROM users WHERE auth_uid = $1`, [conta.uid]);
+      `SELECT u.id, u.name, u.email, u.phone_e164 IS NOT NULL AS "temWhatsapp"
+         FROM user_identities i JOIN users u ON u.id = i.user_id
+        WHERE i.auth_uid = $1`, [conta.uid]);
     return res.json({ conta, usuario: u ?? null });
   });
 }

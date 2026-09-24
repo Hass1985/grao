@@ -40,7 +40,7 @@ import { avisarRisco } from './alerta.js';
 import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
 import { registerAuthRoutes, apagarIdentidade } from './auth.js';
-import { donoDoUserId, donoNoCorpo, modoAtual } from './identidade.js';
+import { donoDoUserId, donoNoCorpo, modoAtual, problemaNoModo } from './identidade.js';
 import { tetoGeral, tetoCaro, tetoAuth, tetoAdmin } from './tetos.js';
 import { estadoDoDia, fecharDia } from './trocaDeSentimento.js';
 
@@ -158,6 +158,8 @@ async function diagnose() {
     // Em qual dos três modos as rotas de usuário estão. Durante a virada é a
     // pergunta que mais se faz, e ela não tem outra resposta de fora.
     identidade: modoAtual(),
+    // Só aparece quando alguém escreveu o valor errado. Ver identidade.ts.
+    ...(problemaNoModo() ? { identidadeAviso: problemaNoModo() } : {}),
     // Sem esta, excluir conta deixa a identidade viva no Supabase. A falha é
     // silenciosa por natureza — a exclusão parece ter funcionado.
     exclusaoCompleta: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -636,7 +638,15 @@ app.get('/seed/today/:userId', async (req, res) => {
       }),
       ligacao: await lembrarEmVozAlta(req.params.userId, jaEntregue.family),
       acesso,
-      trocaUsada: estado.porta === 'troca',
+      // O dia fechado é o dia fechado, não importa por qual porta.
+      //
+      // Aqui estava `porta === 'troca'`, e era o que fazia o app e o WhatsApp
+      // discordarem: quem tocava em "Plantar" no WhatsApp fechava o dia com
+      // porta='plantar', e o app continuava oferecendo "Meu sentimento mudou"
+      // para um gesto que o servidor já não honrava. A regra do produto é uma
+      // semente por dia, e as duas portas são alternativas para a MESMA
+      // entrega — depois que uma é usada, a outra não vale mais.
+      trocaUsada: estado.fechado,
     });
   }
 
@@ -704,10 +714,20 @@ app.post('/seed/today/:userId/reescolher', tetoCaro, async (req, res) => {
     // o mesmo gesto: lá, tocar em "Meu sentimento mudou" com o dia fechado
     // ouve que a semente já foi plantada. As duas telas precisam responder a
     // mesma coisa, ou a regra vira uma sugestão.
+    // Dia fechado é dia fechado, por qualquer porta.
+    //
+    // A condição aqui era `fechado && porta === 'troca'`, e o furo era sério:
+    // quem já tinha plantado no WhatsApp (porta='plantar') passava por esta
+    // checagem, gastava outra das 380 e SUBSTITUÍA a semente que já tinha
+    // chegado no celular. Era a divergência de conteúdo entre as duas telas,
+    // não uma inconsistência de botão.
     const estado = await estadoDoDia(req.params.userId);
-    if (estado.fechado && estado.porta === 'troca') {
+    if (estado.fechado) {
       const atual = await getTodaySeed(req.params.userId);
-      return res.json({ trocou: false, motivo: 'a troca de hoje já foi usada', seed: atual });
+      const motivo = estado.porta === 'plantar'
+        ? 'a semente de hoje já foi plantada'
+        : 'a troca de hoje já foi usada';
+      return res.json({ trocou: false, motivo, seed: atual });
     }
 
     const seed = await selectSeedForUser(req.params.userId, familia ?? null, relato ?? null);
@@ -1276,14 +1296,23 @@ app.post('/consentimento/:userId', async (req, res) => {
  */
 app.delete('/user/:userId', async (req, res) => {
   const { userId } = req.params;
-  const { rows: [u] } = await pool.query(`SELECT auth_uid FROM users WHERE id = $1`, [userId]);
+
+  // TODAS as identidades, não só a da coluna antiga: desde 026_identidades.sql
+  // uma pessoa pode ter entrado por Google e por telefone, e apagar só uma
+  // deixaria a outra viva — com a pessoa conseguindo logar de novo, num app
+  // vazio, depois de ter pedido exclusão.
+  const { rows: ids } = await pool.query(
+    `SELECT auth_uid FROM user_identities WHERE user_id = $1
+      UNION
+     SELECT auth_uid FROM users WHERE id = $1 AND auth_uid IS NOT NULL`, [userId]);
 
   await deleteUserData(userId);
 
-  const identidade = u?.auth_uid ? await apagarIdentidade(u.auth_uid) : true;
-  // Devolvido de propósito: a tela de ajustes diz "conta excluída", e se a
+  const resultados = await Promise.all(
+    ids.map((i: any) => apagarIdentidade(i.auth_uid)));
+  // Devolvido de propósito: a tela de ajustes diz "conta excluída", e se alguma
   // identidade sobreviveu isso não é verdade inteira. Melhor o app saber.
-  res.json({ ok: true, identidadeApagada: identidade });
+  res.json({ ok: true, identidadeApagada: resultados.every(Boolean) });
 });
 
 // Imagem do preview e página-ponte do louvor. BASE_URL vem de whatsapp.ts,

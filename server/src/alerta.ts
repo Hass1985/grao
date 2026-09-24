@@ -42,7 +42,7 @@ const PAINEL = () => (process.env.BASE_URL ?? '').replace(/\/+$/, '') + '/admin'
  */
 const NUMEROS = () =>
   (process.env.ALERTA_WHATSAPP ?? '')
-    .split(',').map((s) => s.trim()).filter(Boolean);
+    .split(',').map((s: string) => s.trim()).filter(Boolean);
 
 const TEMPLATE = () => (process.env.ALERTA_TEMPLATE ?? 'alerta_risco').trim();
 const TEMPLATE_LANG = () => (process.env.ALERTA_TEMPLATE_LANG ?? 'pt_BR').trim();
