@@ -41,12 +41,19 @@ services:
       - key: GRAO_ADMIN_TOKEN
         sync: false
       # desligado | observando | exigindo — ver server/src/identidade.ts.
-      # O padrão do código é `observando`: confere quem chamou, registra quem
-      # chegou sem identidade e deixa passar. Vire para `exigindo` só depois de
-      # o aplicativo novo estar publicado e o log ficar limpo por um ou dois
-      # dias, senão quem está com a versão antiga na tela quebra de uma vez.
+      #
+      # sync:false, NÃO value. Isto já quebrou uma vez: em 23/09/2026 a linha
+      # era `value: observando`, e variável com `value` é gerenciada pelo
+      # blueprint. O deploy seguinte sobrescreveu o `exigindo` que estava no
+      # painel e reabriu as 28 rotas de usuário, sem erro nenhum — só o
+      # /health contando a verdade para quem fosse olhar.
+      #
+      # Um interruptor de segurança não pode ter o valor declarado em arquivo
+      # versionado: o estado que vale é o do painel, e o arquivo só descreve
+      # que a variável existe. O padrão do CÓDIGO continua sendo `observando`,
+      # que é o seguro para quem sobe pela primeira vez.
       - key: AUTH_ROTAS
-        value: observando
+        sync: false          # exigindo (em produção, desde 23/09/2026)
       # Chave que pode tudo no projeto do Supabase. Usada em um único lugar:
       # apagar a identidade (e-mail, telefone, senha) quando a pessoa exclui a
       # conta. Sem ela a exclusão acontece pela metade e o log avisa.

@@ -182,6 +182,69 @@ export function sendSeedNotice(phone: string, partes: { name: string; reference:
   });
 }
 
+/** O rótulo do botão único do template de quem plantou pelo aplicativo. */
+export const BOTAO_VER = 'Ver minha semente';
+
+const TEMPLATE_PLANTADA = () =>
+  (process.env.WA_TEMPLATE_PLANTADA ?? 'semente_plantada').trim();
+
+/**
+ * Aviso para quem JÁ plantou pelo aplicativo — um botão só.
+ *
+ * Os dois botões do template normal não servem aqui: plantar já foi feito, e a
+ * troca do dia fechou junto. Mas o botão não pode sumir de vez, e a razão é a
+ * janela de 24h: ela abre quando a PESSOA toca em algo. Sem toque, só caberia
+ * na mensagem o que entra em 1024 caracteres — a oração, a prática e o louvor
+ * ficariam de fora. Com ele, o toque abre a janela e a semente inteira sai em
+ * seguida como texto livre, de graça.
+ */
+export function sendSeedNoticePlantada(phone: string, partes: { name: string; reference: string }) {
+  const campos: Array<[string, string]> = [
+    ['nome', partes.name?.trim() || 'tudo bem'],
+    ['referencia', partes.reference],
+  ];
+  const posicional = process.env.WA_TEMPLATE_POSITIONAL === 'true';
+  const parameters = campos.map(([nome, text]) =>
+    posicional ? { type: 'text', text } : { type: 'text', parameter_name: nome, text });
+
+  return chamar({
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'template',
+    template: {
+      name: TEMPLATE_PLANTADA(),
+      language: { code: TEMPLATE_LANG() },
+      components: [{ type: 'body', parameters }],
+    },
+  });
+}
+
+/** A mesma coisa na janela aberta: interativa, um botão, sem custo de template. */
+export function sendSeedNoticePlantadaInteractive(
+  phone: string,
+  partes: { name: string; reference: string },
+) {
+  const nome = partes.name?.trim();
+  const corpo = [
+    `${nome ? nome + ', sua' : 'Sua'} semente de hoje já está plantada 🌱`,
+    '',
+    `Ela foi escolhida para o seu momento, e hoje traz ${partes.reference}.`,
+    '',
+    'Toque abaixo para ler.',
+  ].join('\n');
+
+  return chamar({
+    messaging_product: 'whatsapp',
+    to: phone,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: corpo },
+      action: { buttons: [{ type: 'reply', reply: { id: 'ver', title: BOTAO_VER } }] },
+    },
+  });
+}
+
 /**
  * Um template qualquer, com variáveis posicionais.
  *

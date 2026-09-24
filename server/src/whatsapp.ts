@@ -11,9 +11,12 @@ import type { Express, Request, Response, NextFunction } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './brain.js';
-import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
+import { selectSeedForUser, getOrSelectTodaySeed, getTodaySeed, type SelectedSeed } from './seedSelector.js';
 import { estadoDoDia } from './trocaDeSentimento.js';
-import { sendText, sendSeedNotice, sendSeedNoticeInteractive, metaConfigurada } from './meta.js';
+import {
+  sendText, sendSeedNotice, sendSeedNoticeInteractive,
+  sendSeedNoticePlantada, metaConfigurada,
+} from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 import { paraPrompt, type Memoria } from './memoria.js';
 import { fundirUsuarios } from './auth.js';
@@ -242,27 +245,62 @@ export async function entregarSemente(
   // A semente do dia pode JÁ ter sido escolhida pelo app. Nesse caso mandamos
   // a mesma: app e WhatsApp precisam mostrar a mesma coisa, e sortear outra
   // aqui gastaria duas das 380 no mesmo dia.
-  // Dia já fechado não recebe anúncio.
+  // Dia já fechado: a semente vai INTEIRA, sem botões.
   //
-  // Desde que o app ganhou o botão Plantar, quem planta às 6h no celular já
-  // consumiu a semente do dia. Mandar o aviso às 7h ofereceria dois botões que
-  // o servidor recusa em seguida — botão que existe só para dizer não é pior
-  // do que botão nenhum, porque ensina a pessoa que o produto não sabe o que
-  // ela acabou de fazer. E ainda custaria um template.
+  // Quem plantou no app às 6h já consumiu a semente do dia, mas continua tendo
+  // direito a recebê-la no WhatsApp — é o canal dela, e o registro fica na
+  // conversa. O que não pode aparecer é botão: "Plantar" e "Meu sentimento
+  // mudou" seriam recusados em seguida, e botão que existe só para dizer não
+  // ensina a pessoa que o produto não sabe o que ela acabou de fazer.
   //
-  // Vale para a troca também: quem contou o momento pelo app já recebeu a
-  // semente que o relato escolheu.
+  // A ressalva é da Meta, não nossa: texto livre só sai com a janela de 24h
+  // aberta, e ela abre quando a PESSOA escreve ou toca em algo. Quem plantou
+  // no app não tocou em nada aqui, então na maioria das vezes a janela está
+  // fechada — e fora dela só passa template aprovado, que tem os botões e não
+  // comporta a semente completa. Nesse caso a entrega fica para quando houver
+  // um template sem botões (ver ALERTA/TEMPLATE no render.yaml).
+  const aberta = !!u.janela_aberta;
+
   const jaFechado = await estadoDoDia(u.id);
   if (jaFechado.fechado) {
-    void logEvent(u.id, 'wa_anuncio_pulado', { motivo: 'dia já fechado', porta: jaFechado.porta });
-    return { ok: true, erro: undefined, seedId: undefined };
+    const deHoje = await getTodaySeed(u.id);
+    if (!deHoje) return { ok: true };
+
+    // Janela aberta: manda a semente inteira de uma vez, sem pedir toque
+    // nenhum. Fazer a pessoa tocar para ver o que já dava para entregar seria
+    // cerimônia. Fechada: só template passa, e vai o de um botão — o toque
+    // abre a janela e a semente completa sai logo atrás, de graça.
+    const r = aberta
+      ? await sendText(
+          u.phone_e164,
+          formatSeed(deHoje, u.name ?? null, (await acessoDoUsuario(u.id)).completo))
+      : await sendSeedNoticePlantada(u.phone_e164, {
+          name: u.name ?? '', reference: deHoje.reference,
+        });
+
+    if (!r.ok) {
+      // Template ainda não aprovado devolve 132001. Não é falha nossa nem da
+      // pessoa: a semente está no app, onde ela acabou de plantar.
+      void logEvent(u.id, 'wa_entrega_adiada',
+        { motivo: r.erro, porta: jaFechado.porta, aberta });
+      return { ok: false, erro: r.erro };
+    }
+
+    await pool.query(
+      `UPDATE seed_deliveries d SET sent_wa_at = now()
+         FROM users u
+        WHERE d.user_id = $1 AND u.id = d.user_id
+          AND (d.delivered_at AT TIME ZONE u.timezone)::date
+            = (now() AT TIME ZONE u.timezone)::date`, [u.id]);
+    void logEvent(u.id, 'seed_delivered',
+      { seedId: deHoje.id, source: origem, semBotoes: true, porta: jaFechado.porta });
+    return { ok: true, seedId: deHoje.id };
   }
 
   const escolha = await getOrSelectTodaySeed(u.id);
   if (!escolha) return { ok: false, erro: 'sem semente disponível' };
   const { seed, jaExistia } = escolha;
 
-  const aberta = !!u.janela_aberta;
   const r = aberta
     ? await sendSeedNoticeInteractive(u.phone_e164, {
         name: u.name ?? '', reference: seed.reference,

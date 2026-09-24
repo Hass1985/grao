@@ -19,6 +19,7 @@
     "retencao": "tsx scripts/retencao.ts",
     "alerta": "tsx scripts/testar-alerta.ts",
     "template:alerta": "tsx scripts/criar-template-alerta.ts",
+    "template:plantada": "tsx scripts/criar-template-plantada.ts",
     "telegram": "tsx scripts/telegram.ts",
     "db:init": "psql \"$DATABASE_URL\" -f db/schema.sql && psql \"$DATABASE_URL\" -f db/seed_data.sql",
     "eval:opening": "tsx scripts/eval-opening.ts",

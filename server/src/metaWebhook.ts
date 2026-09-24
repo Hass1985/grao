@@ -14,7 +14,7 @@ import type { Express, Request, Response } from 'express';
 import crypto from 'node:crypto';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
-import { selectSeedForUser } from './seedSelector.js';
+import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
 import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
@@ -88,6 +88,11 @@ interface MsgMeta {
 function portaTocada(msg: MsgMeta): 'plantar' | 'troca' | null {
   const id = msg.interactive?.button_reply?.id?.trim().toLowerCase();
   if (id === 'plantar' || id === 'troca') return id;
+  // 'ver' é o botão único de quem plantou pelo aplicativo. Leva ao mesmo
+  // caminho do Plantar — que, com o dia já fechado, reentrega a semente em
+  // vez de recusar. Explícito aqui mesmo caindo no mesmo lugar pelo rótulo:
+  // quem ler depois precisa encontrar o terceiro botão listado, não deduzi-lo.
+  if (id === 'ver') return 'plantar';
 
   const rotulo = (msg.button?.text || msg.button?.payload
     || msg.interactive?.button_reply?.title || '').trim().toLowerCase();
@@ -116,13 +121,32 @@ async function processarBotao(msg: MsgMeta, userId: string): Promise<void> {
     return;
   }
 
-  // A partir daqui é o botão Plantar. Se o dia já fechou por outra porta —
-  // pela troca, ou porque a semente saiu direto na janela aberta — o toque não
-  // entrega uma segunda semente.
+  // A partir daqui é o botão Plantar — ou o "Ver minha semente", que é o botão
+  // único do template de quem plantou pelo aplicativo.
+  //
+  // Dia já fechado NÃO é mais motivo para recusar. Antes era: o toque ouvia
+  // "a semente de hoje já foi plantada" e acabava ali. Isso fazia sentido
+  // quando plantar só existia aqui, mas virou grosseria no dia em que o app
+  // ganhou a própria porta — a pessoa planta no celular às 6h, recebe a
+  // mensagem às 7h, toca para ver, e leva um não.
+  //
+  // Reentregar é barato e idempotente: getTodaySeed devolve a MESMA semente,
+  // nenhuma das 380 é consumida, a porta registrada não muda, e dentro da
+  // janela de 24h a mensagem é gratuita. O que o toque faz, nesse caso, é
+  // exatamente o que ele promete: mostrar a semente.
   const jaFechado = await estadoDoDia(userId);
   if (jaFechado.fechado) {
-    await responderForaDeFluxo(userId, msg.from);
-    void logEvent(userId, 'plantar_recusado', { motivo: 'dia já fechado', porta: jaFechado.porta });
+    const deHoje = await getTodaySeed(userId);
+    if (!deHoje) { await responderForaDeFluxo(userId, msg.from); return; }
+
+    const completo = (await acessoDoUsuario(userId)).completo;
+    const perfilAtual = await getProfile(userId);
+    const r = await sendText(msg.from,
+      formatSeed(deHoje, perfilAtual ? null : undefined, completo));
+    if (!r.ok) { console.error(`[wa] falha ao reentregar a semente: ${r.erro}`); return; }
+
+    void logEvent(userId, 'seed_reentregue',
+      { seedId: deHoje.id, porta: jaFechado.porta, origem: 'whatsapp_botao' });
     return;
   }
 
