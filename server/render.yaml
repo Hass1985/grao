@@ -114,3 +114,15 @@ services:
       #    cai na MESMA conversa em que a pessoa recebe a própria semente.
       - key: ALERTA_WHATSAPP
         sync: false
+      # RETENÇÃO — quanto tempo cada coisa fica. Ver src/retencao.ts. Os
+      # padrões do código já valem; estas variáveis existem para ajustar sem
+      # deploy, e qualquer mudança aqui precisa descer para o texto da
+      # política em /privacidade, que declara os prazos para quem usa.
+      - key: RETENCAO_TRECHO_DIAS
+        value: "30"
+      - key: RETENCAO_FALA_DIAS
+        value: "365"
+      - key: RETENCAO_LEITURA_DIAS
+        value: "365"
+      - key: RETENCAO_EVENTOS_DIAS
+        value: "180"

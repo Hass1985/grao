@@ -13,7 +13,7 @@ import {
   Easing,
   ActivityIndicator,
 } from 'react-native';
-import { BookOpen, Mic, Share2 } from '../components/icons';
+import { BookOpen, Mic, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
@@ -27,7 +27,7 @@ import AppHeader from '../components/ui/AppHeader';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
-import { selectTodaySeed, getMoment, confirmarLeitura } from '../onboarding/seedDelivery';
+import { selectTodaySeed, getMoment, confirmarLeitura, plantarSementeDeHoje } from '../onboarding/seedDelivery';
 import { minhaAssinatura } from '../onboarding/assinatura';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -75,6 +75,15 @@ export default function Hoje({ navigation }: { navigation: any }) {
    * WhatsApp, num aparelho que este app nem viu.
    */
   const [trocaUsada, setTrocaUsada] = useState(false);
+  /**
+   * A semente de hoje já foi aberta.
+   *
+   * Vem do servidor, nunca do aparelho: o dia pode ter sido fechado pelo
+   * WhatsApp, num celular que este app nem viu. É o mesmo campo que faz o
+   * botão "Meu sentimento mudou" sumir, e o que espelha as duas pontas.
+   */
+  const [plantada, setPlantada] = useState(true);
+  const [plantando, setPlantando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
   const [ligacao, setLigacao] = useState<string | null>(null);
@@ -88,12 +97,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
 
   const loadSeed = React.useCallback(async () => {
     try {
-      const { seed: next, lido: jaLido, ligacao: lembranca, trocaUsada: trocada } =
-        await selectTodaySeed();
+      const { seed: next, lido: jaLido, ligacao: lembranca, trocaUsada: trocada,
+              plantada: plantadaApi } = await selectTodaySeed();
       setSeed(next);
       setLido(!!jaLido);
       setLigacao(lembranca ?? null);
       setTrocaUsada(!!trocada);
+      setPlantada(!!plantadaApi);
       momentoCarregado.current = await getMoment();
     } catch {
       setSeed(todaySeed);
@@ -148,6 +158,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
           setLido(!!dados.lido);
           setLigacao(dados.ligacao ?? null);
           setTrocaUsada(!!dados.trocaUsada);
+          setPlantada(!!dados.plantada);
           momentoCarregado.current = agora;
         } else {
           setSeed(todaySeed);
@@ -187,6 +198,24 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const abrirCapitulo = referencia
     ? () => navigation.navigate('Biblia', { livro: referencia.livro, capitulo: referencia.capitulo })
     : undefined;
+
+  /**
+   * Planta a semente de hoje.
+   *
+   * Otimista com um porém: a tela abre a semente ANTES de a rede responder,
+   * porque a pessoa acabou de tocar e não deve esperar Oregon para ver o que
+   * já está na mão dela. Mas se o servidor recusar, volta — senão ela leria a
+   * semente com o dia aberto, o WhatsApp mandaria o aviso de novo mais tarde,
+   * e as duas pontas voltariam a discordar pela porta dos fundos.
+   */
+  const plantar = async () => {
+    if (plantando) return;
+    setPlantando(true);
+    setPlantada(true);
+    const ok = await plantarSementeDeHoje();
+    if (!ok) setPlantada(false);
+    setPlantando(false);
+  };
 
   const share = async () => {
     const message = seed.compartilhavel?.trim();
@@ -278,7 +307,12 @@ export default function Hoje({ navigation }: { navigation: any }) {
               <View style={styles.hero}>
                 <Text style={styles.dateLine}>{dateLine}</Text>
                 <Text style={styles.heroTitle}>
-                  {seed.title || seed.reference || 'Semente de hoje'}
+                  {/* Antes de plantar, só a referência — como no WhatsApp.
+                      O título já é o conteúdo: mostrá-lo aqui entregaria a
+                      semente e deixaria o botão sem nada para abrir. */}
+                  {!plantada
+                    ? (seed.reference || 'Sua semente chegou')
+                    : (seed.title || seed.reference || 'Semente de hoje')}
                 </Text>
                 <Text style={styles.sectionEyebrow}>Devocional diário</Text>
               </View>
@@ -293,10 +327,48 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 </View>
               ) : null}
 
+              {/* O ANÚNCIO, enquanto a semente não foi plantada.
+
+                  No WhatsApp plantar sempre foi um ato: chega o aviso com a
+                  referência, a pessoa toca, a semente abre. No app ela já
+                  aparecia aberta — não havia o que plantar, e por isso o dia
+                  nunca fechava por aqui. Quem usava só o aplicativo nunca
+                  plantou nada: dos 19 plantios registrados até 23/09/2026,
+                  todos vieram do WhatsApp.
+
+                  Agora é a mesma porta nos dois lugares, e fechar o dia de um
+                  lado apaga os botões do outro. */}
+              {isSemente && !plantada ? (
+                <View style={styles.anuncio}>
+                  <Text style={styles.anuncioTexto}>
+                    Sua semente de hoje está pronta, escolhida para o seu momento.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={plantar}
+                    disabled={plantando}
+                    style={[styles.plantarBtn, plantando && styles.plantarBtnOcupado]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Plantar a semente de hoje"
+                    activeOpacity={0.85}
+                  >
+                    {plantando ? (
+                      <ActivityIndicator color={colors.white} size="small" />
+                    ) : (
+                      <>
+                        <Sprout size={18} color={colors.white} strokeWidth={2.2} />
+                        <Text style={styles.plantarTexto}>Plantar</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               {/* Ouvir vale mais aqui do que na Bíblia: é o público que não
                   tem e-mail e cansa a vista que mais pediu isso. A ordem é a
                   da leitura — versículo, referência, reflexão — e as partes
                   pagas só entram quando existem. */}
+              {plantada ? (
+              <>
               <OuvirTexto
                 trechos={[
                   seed.title || '',
@@ -344,6 +416,8 @@ export default function Hoje({ navigation }: { navigation: any }) {
               {/* Responder é o que alimenta a memória. Sem obrigação e sem
                   contador: quem não escreve não perde nada. */}
               <Responder />
+              </>
+              ) : null}
 
               {/* A porta do produto pago, que faltava.
                   Quem assina recebe a semente escolhida para o SEU momento, e
@@ -536,6 +610,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.foregroundMuted,
   },
+  /* O anúncio: o que aparece antes de plantar. Respira mais que o resto da
+     tela de propósito — é uma pausa curta antes do conteúdo, não um cartão. */
+  anuncio: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: space.lg,
+    gap: 22,
+  },
+  anuncioTexto: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    lineHeight: 24,
+    color: colors.foregroundMuted,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  plantarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minWidth: 190,
+    minHeight: 52,
+    paddingHorizontal: 30,
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+    ...(shadows.md as object),
+  },
+  plantarBtnOcupado: { opacity: 0.75 },
+  plantarTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.base,
+    color: colors.white,
+    letterSpacing: 0.3,
+  },
+
   otherLink: {
     alignItems: 'center',
     justifyContent: 'center',

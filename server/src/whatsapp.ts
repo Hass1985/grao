@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE, registrarFalhaDoCerebro } from './brain.js';
 import { selectSeedForUser, getOrSelectTodaySeed, type SelectedSeed } from './seedSelector.js';
+import { estadoDoDia } from './trocaDeSentimento.js';
 import { sendText, sendSeedNotice, sendSeedNoticeInteractive, metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 import { paraPrompt, type Memoria } from './memoria.js';
@@ -241,6 +242,22 @@ export async function entregarSemente(
   // A semente do dia pode JÁ ter sido escolhida pelo app. Nesse caso mandamos
   // a mesma: app e WhatsApp precisam mostrar a mesma coisa, e sortear outra
   // aqui gastaria duas das 380 no mesmo dia.
+  // Dia já fechado não recebe anúncio.
+  //
+  // Desde que o app ganhou o botão Plantar, quem planta às 6h no celular já
+  // consumiu a semente do dia. Mandar o aviso às 7h ofereceria dois botões que
+  // o servidor recusa em seguida — botão que existe só para dizer não é pior
+  // do que botão nenhum, porque ensina a pessoa que o produto não sabe o que
+  // ela acabou de fazer. E ainda custaria um template.
+  //
+  // Vale para a troca também: quem contou o momento pelo app já recebeu a
+  // semente que o relato escolheu.
+  const jaFechado = await estadoDoDia(u.id);
+  if (jaFechado.fechado) {
+    void logEvent(u.id, 'wa_anuncio_pulado', { motivo: 'dia já fechado', porta: jaFechado.porta });
+    return { ok: true, erro: undefined, seedId: undefined };
+  }
+
   const escolha = await getOrSelectTodaySeed(u.id);
   if (!escolha) return { ok: false, erro: 'sem semente disponível' };
   const { seed, jaExistia } = escolha;

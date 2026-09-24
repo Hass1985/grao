@@ -79,6 +79,13 @@ export interface SeedSelection {
   seed: Seed;
   /** A pessoa já contou o momento hoje — a porta da troca fechou até amanhã. */
   trocaUsada?: boolean;
+  /**
+   * A semente de hoje já foi plantada, por qualquer porta e em qualquer
+   * plataforma: o botão Plantar do app, o do WhatsApp, ou a troca de
+   * sentimento em um dos dois. Enquanto for false a tela mostra o anúncio; a
+   * partir de true, a semente inteira.
+   */
+  plantada?: boolean;
   /** Devocional do dia já confirmado como lido (só no plano gratuito). */
   lido?: boolean;
   /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
@@ -154,6 +161,14 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
         return {
           seed,
           trocaUsada: !!j.trocaUsada,
+          // O dia já fechou, por qualquer porta e em qualquer plataforma. É o
+          // que faz a tela Hoje mostrar o anúncio com o botão Plantar ou a
+          // semente inteira — e o que espelha o WhatsApp de verdade.
+          //
+          // Sem servidor (demonstração) a semente aparece aberta: não há o que
+          // sincronizar, e esconder o conteúdo atrás de um botão que não grava
+          // nada seria cerimônia vazia.
+          plantada: API_URL ? !!j.plantada : true,
           family: (j.family as EmotionalFamily) || family,
           source: j.reason?.source ?? source,
           channel: (j.reason?.preferredType === 'oração'
@@ -195,6 +210,15 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
     family,
     source,
     channel,
+    // Escolha local: a rede caiu, ou não há backend neste build. Aqui a
+    // semente vem aberta.
+    //
+    // Sem isto a tela mostraria o anúncio com um botão Plantar que não tem
+    // como funcionar — o toque iria ao servidor que acabou de não responder,
+    // voltaria falhando, e a pessoa ficaria batendo num botão que reverte
+    // sozinho, sem nada na tela explicando por quê. Com a rede fora, mostrar
+    // o que dá para mostrar é melhor do que oferecer um gesto impossível.
+    plantada: true,
   };
 }
 
@@ -232,6 +256,29 @@ export async function devocionalDeHoje(): Promise<
  * Silenciosa de propósito: quem chama já vai recarregar a tela em seguida, e
  * uma falha aqui no máximo mantém a semente que já estava lá.
  */
+/**
+ * Planta a semente de hoje pelo aplicativo.
+ *
+ * O mesmo gesto do botão "Plantar" do WhatsApp, e com o mesmo efeito: fecha o
+ * dia nas duas pontas. Antes disto, plantar só existia lá — no app a semente
+ * já aparecia aberta, e quem usava só o aplicativo nunca plantava nada.
+ *
+ * Devolve true quando o dia ficou fechado, inclusive se já estava: dois toques
+ * seguidos, ou o app aberto em dois aparelhos, não são erro.
+ */
+export async function plantarSementeDeHoje(): Promise<boolean> {
+  if (!API_URL) return true;   // demonstração: abre a semente sem servidor
+  try {
+    const userId = await getUserId();
+    const res = await apiFetch(`/seed/today/${userId}/plantar`, { method: 'POST' });
+    if (!res.ok) return false;
+    const j = await res.json();
+    return !!j.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function reescolherSementeDeHoje(dados: {
   familia?: EmotionalFamily | null;
   relato?: string | null;

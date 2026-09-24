@@ -142,10 +142,25 @@ export default function PrivacyPolicy({ navigation }: Props) {
         </Section>
 
         <Section title="Por quanto tempo guardamos">
+          <P>Enquanto a sua conta existir, com dois prazos que correm sozinhos:</P>
           <P>
-            Enquanto a sua conta existir. Você pode pedir a exclusão a qualquer momento nas
-            configurações, e aí apagamos o seu cadastro, o seu histórico, o que você contou e a sua
-            identidade de login — tudo de uma vez, sem cópia guardada.
+            • <Text style={styles.forte}>Um ano</Text> para o que você conta e para a leitura do seu
+            momento. O que o Grão aprendeu com aquilo continua — é o que faz ele lembrar de você —,
+            mas o texto bruto é apagado.
+          </P>
+          <P>
+            • <Text style={styles.forte}>Trinta dias</Text> para o trecho de uma mensagem que acione
+            o nosso cuidado com sinais de sofrimento grave. Ele fica esse tempo para alguém
+            conseguir te acolher; depois é apagado, e resta só o registro de que houve o sinal.
+          </P>
+          <P>
+            O seu diário, as sementes que você plantou e os dias que você viveu ficam enquanto a
+            conta existir — eles são o seu histórico, e o produto existe para você poder reler.
+          </P>
+          <P>
+            Você pode pedir a exclusão a qualquer momento nas configurações, e aí apagamos o seu
+            cadastro, o seu histórico, o que você contou e a sua identidade de login — tudo de uma
+            vez, sem cópia guardada.
           </P>
         </Section>
 

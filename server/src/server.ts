@@ -638,6 +638,12 @@ app.get('/seed/today/:userId', async (req, res) => {
       }),
       ligacao: await lembrarEmVozAlta(req.params.userId, jaEntregue.family),
       acesso,
+      // `plantada` diz se o dia já fechou, por qualquer porta e em qualquer
+      // plataforma. É o que permite ao app mostrar o anúncio com o botão
+      // Plantar enquanto a semente não foi aberta, e a semente inteira depois
+      // — o mesmo gesto que o WhatsApp sempre teve.
+      plantada: estado.fechado,
+      porta: estado.porta,
       // O dia fechado é o dia fechado, não importa por qual porta.
       //
       // Aqui estava `porta === 'troca'`, e era o que fazia o app e o WhatsApp
@@ -1254,6 +1260,43 @@ app.get('/profile/:userId/preferencias', async (req, res) => {
 });
 
 // LGPD: exclusão total dos dados do usuário.
+/**
+ * Plantar a semente pelo aplicativo.
+ *
+ * Até 23/09/2026 plantar era um gesto exclusivo do WhatsApp: os 19 plantios do
+ * banco vieram todos de lá. No app a semente já aparecia aberta, sem ato
+ * nenhum — e por isso o caminho inverso da sincronia não existia: não havia o
+ * que refletir no WhatsApp, porque não acontecia nada no app.
+ *
+ * Agora é a mesma porta, com o mesmo efeito: fecha o dia, some com "Meu
+ * sentimento mudou" nas DUAS pontas, e entra no Campo como semente plantada.
+ */
+app.post('/seed/today/:userId/plantar', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const acesso = await acessoDoUsuario(userId);
+    if (!acesso.completo) return res.status(403).json({ error: 'sem acesso ao motor' });
+
+    const semente = await getTodaySeed(userId);
+    if (!semente) return res.status(404).json({ error: 'sem semente hoje' });
+
+    // Já fechado: responde ok em vez de erro. Dois toques rápidos, ou o app
+    // abrindo em dois aparelhos, não são abuso — e um erro na cara de quem
+    // plantou duas vezes seria castigar a pessoa pela latência da rede.
+    const estado = await estadoDoDia(userId);
+    if (estado.fechado) {
+      return res.json({ ok: true, jaEstava: true, porta: estado.porta, seed: semente });
+    }
+
+    await fecharDia(userId, 'app');
+    void logEvent(userId, 'seed_planted', { seedId: semente.id, family: semente.family, source: 'app' });
+    return res.json({ ok: true, jaEstava: false, porta: 'app', seed: semente });
+  } catch (err: any) {
+    console.error('[plantar]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao plantar a semente.' });
+  }
+});
+
 /**
  * Consentimento para o dado sensível.
  *

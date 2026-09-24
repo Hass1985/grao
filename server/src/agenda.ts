@@ -27,6 +27,7 @@ import { entregarSemente } from './whatsapp.js';
 import { metaConfigurada } from './meta.js';
 import { TEM_ACESSO_SQL } from './acesso.js';
 import { avisarCobrancasProximas } from './cobranca.js';
+import { faxinaDiaria } from './retencao.js';
 
 /** De quanto em quanto tempo a agenda acorda. */
 const INTERVALO_MS = 60_000;
@@ -207,6 +208,18 @@ export function iniciarAgenda(): void {
     return;
   }
   console.log(`[agenda] varrendo a cada ${INTERVALO_MS / 1000}s`);
+
+  // A faxina de retenção, uma vez por dia. Ver retencao.ts.
+  //
+  // .unref() de propósito, ao contrário do timer da entrega: apagar dado velho
+  // é importante, mas não é motivo para segurar o processo de pé. Se ele for
+  // encerrar, que encerre — a faxina de amanhã pega o que faltou, porque o
+  // critério é a idade do dado, não a data da última execução.
+  //
+  // A primeira roda um minuto depois de subir, e não na virada de nenhum dia:
+  // assim um deploy já aplica a política, em vez de esperar até amanhã.
+  setTimeout(() => { void faxinaDiaria(); }, 60_000).unref?.();
+  setInterval(() => { void faxinaDiaria(); }, 24 * 3_600_000).unref?.();
 
   // O aviso de cobrança de 24h roda de hora em hora, na mesma agenda. Não
   // precisa de precisão de minuto: o que importa é sair no dia anterior, com
