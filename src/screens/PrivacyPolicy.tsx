@@ -61,19 +61,19 @@ export default function PrivacyPolicy({ navigation }: Props) {
             está. Vale a pena saber qual é qual.
           </P>
           <P>
-            • <Text style={styles.forte}>No aplicativo</Text>, quem transforma a sua fala em texto é
-            o serviço de voz do próprio navegador do seu celular: do Google, se você usa Chrome, ou
-            da Apple, se usa Safari. O áudio passa pelos servidores dessa empresa antes de virar
-            texto, e até nós chega só o texto. O Grão não recebe nem guarda a gravação.
+            • <Text style={styles.forte}>No navegador</Text>, quem transforma a sua fala em texto é
+            o serviço de voz do próprio navegador: do Google, se você usa Chrome, ou da Apple, se
+            usa Safari. O áudio passa pelos servidores dessa empresa antes de virar texto, e até nós
+            chega só o texto.
           </P>
           <P>
-            • <Text style={styles.forte}>No WhatsApp</Text>, é diferente, e a gente prefere dizer
-            com todas as letras: o áudio que você manda chega até o Grão. A gente baixa esse áudio
-            do WhatsApp e envia para um serviço de transcrição, que devolve o texto. Guardamos o
-            texto; a gravação não fica com a gente depois disso.
+            • <Text style={styles.forte}>No aplicativo do celular e no WhatsApp</Text>, é diferente,
+            e a gente prefere dizer com todas as letras: o áudio chega até o Grão. A gente envia
+            esse arquivo para um serviço de transcrição, que devolve o texto. Guardamos o texto; a
+            gravação não fica com a gente depois disso.
           </P>
           <P>
-            Nos dois casos, preferindo não usar a voz, é só escrever. A experiência é a mesma.
+            Em qualquer um deles, preferindo não usar a voz, é só escrever. A experiência é a mesma.
           </P>
         </Section>
 

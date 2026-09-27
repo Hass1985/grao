@@ -22,7 +22,10 @@ const PORTA = 4555;
   const destino = process.argv[2];
   if (destino) {
     process.env.ALERTA_WEBHOOK_URL = destino;
-    process.env.BASE_URL = process.env.BASE_URL || 'https://grao-backend.onrender.com';
+    // PUBLIC_BASE_URL, o mesmo nome que o servidor lê. A versão anterior deste
+  // script definia BASE_URL — um nome que só existia aqui — e com isso o link
+  // do painel saía certo no teste e quebrado em produção.
+  process.env.PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://api.graoapp.com.br';
     const { avisarRisco } = await import('../src/alerta.js');
     const { rows } = await pool.query(
       `SELECT id FROM users WHERE name IS NOT NULL ORDER BY created_at LIMIT 1`);
@@ -45,7 +48,10 @@ const PORTA = 4555;
   await new Promise<void>((ok) => servidor.listen(PORTA, ok));
 
   process.env.ALERTA_WEBHOOK_URL = `http://localhost:${PORTA}/`;
-  process.env.BASE_URL = process.env.BASE_URL || 'https://grao-backend.onrender.com';
+  // PUBLIC_BASE_URL, o mesmo nome que o servidor lê. A versão anterior deste
+  // script definia BASE_URL — um nome que só existia aqui — e com isso o link
+  // do painel saía certo no teste e quebrado em produção.
+  process.env.PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://api.graoapp.com.br';
 
   // Importado DEPOIS da variável: o módulo lê a URL a cada chamada, mas deixar
   // explícito evita que alguém "melhore" isso para uma constante de topo e o

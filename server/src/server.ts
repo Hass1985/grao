@@ -24,6 +24,7 @@ import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerPrivacidadeRoutes } from './privacidade.js';
+import { transcreverBytes, transcricaoConfigurada } from './transcricao.js';
 import { registerAdminRoutes } from './admin.js';
 import { acessoDoUsuario, limitarSemente } from './acesso.js';
 import {
@@ -39,6 +40,7 @@ import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
 import { avisarRisco } from './alerta.js';
 import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
+import { PLANOS } from './asaas.js';
 import { registerAuthRoutes, apagarIdentidade } from './auth.js';
 import { donoDoUserId, donoNoCorpo, modoAtual, problemaNoModo } from './identidade.js';
 import { tetoGeral, tetoCaro, tetoAuth, tetoAdmin } from './tetos.js';
@@ -489,6 +491,36 @@ app.get('/profile/:userId/moment', async (req, res) => {
 });
 
 /**
+ * Como a pessoa quer ser chamada.
+ *
+ * Existe porque o nome só morava no aparelho, em AsyncStorage. Quem entrava
+ * noutro celular, trocava de navegador ou limpava os dados era recebido pela
+ * tela "Sua conta está pronta. Como você gosta de ser chamado?" — depois de
+ * meses usando o Grão. Um produto que promete lembrar de você perguntando o
+ * seu nome pela terceira vez é a pior primeira impressão possível.
+ *
+ * O nome do WhatsApp não é sobrescrito por um vazio: quem chegou pelo telefone
+ * já tem nome, e um app recém-instalado mandando string vazia apagaria isso.
+ */
+app.patch('/profile/:userId/nome', async (req, res) => {
+  try {
+    const nome = String((req.body as { nome?: string })?.nome ?? '').trim();
+    if (nome.length < 2 || nome.length > 60) {
+      return res.status(400).json({ error: 'nome deve ter entre 2 e 60 caracteres' });
+    }
+    await ensureUser(req.params.userId);
+    const { rowCount } = await pool.query(
+      `UPDATE users SET name = $2 WHERE id = $1`, [req.params.userId, nome]);
+    if (!rowCount) return res.status(404).json({ error: 'usuário não encontrado' });
+    void logEvent(req.params.userId, 'nome_definido', { chars: nome.length });
+    return res.json({ ok: true, nome });
+  } catch (err: any) {
+    console.error('[nome]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao salvar o nome.' });
+  }
+});
+
+/**
  * Plano escolhido no fim do onboarding.
  *
  * Não cobra nada: não há gateway ligado. Registra a INTENÇÃO e abre os 7 dias
@@ -499,7 +531,18 @@ app.get('/profile/:userId/moment', async (req, res) => {
  * Quando entrar um Stripe/Asaas, é aqui que a assinatura passa a nascer com
  * provider preenchido, e o webhook dele só precisa atualizar `status`.
  */
-const PRECOS: Record<string, number> = { plantio: 1990, anual: 19900 };
+/**
+ * Os preços vêm de PLANOS, não de uma cópia aqui.
+ *
+ * Eram números escritos à mão — `{ plantio: 1990, anual: 19900 }` — e viraram
+ * mentira no dia em que a mensalidade subiu para R$ 29,90: o gateway cobrava
+ * um valor e `subscriptions.price_cents` guardava outro, que é o número que o
+ * painel soma para calcular receita. Dois lugares para o mesmo preço é um
+ * lugar a mais.
+ */
+const PRECOS: Record<string, number> = Object.fromEntries(
+  Object.entries(PLANOS).map(([id, p]) => [id, Math.round(p.valor * 100)]),
+);
 app.post('/profile/:userId/plan', async (req, res) => {
   const { plan } = req.body as { plan?: string };
   if (!plan || !(plan in PRECOS)) {
@@ -1242,15 +1285,98 @@ app.patch('/profile/:userId/horario', async (req, res) => {
   }
 });
 
+/**
+ * A foto do perfil.
+ *
+ * Três rotas, todas sob `/profile/:userId/` de propósito: é o prefixo que faz
+ * `app.param('userId')` valer, e com ele a foto de alguém não é servida sem
+ * token — nem para quem tiver o UUID na mão.
+ *
+ * Isso obriga o app a buscar a imagem com o cabeçalho de identidade, em vez de
+ * apontar uma `<Image>` para a URL. É o preço certo a pagar: foto de perfil de
+ * um app de fé é dado pessoal, e uma URL adivinhável é uma URL que vaza.
+ *
+ * Os bytes vêm crus, como no áudio. Multipart exigiria uma dependência nova
+ * para transportar um arquivo só.
+ */
+app.put('/profile/:userId/foto',
+  tetoCaro,
+  express.raw({ type: ['image/*'], limit: '3mb' }),
+  async (req, res) => {
+    try {
+      const bytes = req.body as Buffer;
+      if (!Buffer.isBuffer(bytes) || !bytes.length) {
+        return res.status(400).json({ error: 'corpo vazio — mande os bytes da imagem' });
+      }
+      const mime = (req.header('content-type') || 'image/jpeg').split(';')[0].trim();
+      await ensureUser(req.params.userId);
+      const { rows: [u] } = await pool.query(
+        `UPDATE users SET avatar = $2, avatar_mime = $3, avatar_updated_at = now()
+          WHERE id = $1 RETURNING avatar_updated_at`,
+        [req.params.userId, bytes, mime]);
+      if (!u) return res.status(404).json({ error: 'usuário não encontrado' });
+      void logEvent(req.params.userId, 'foto_trocada', { bytes: bytes.length, mime });
+      return res.json({ ok: true, fotoEm: u.avatar_updated_at });
+    } catch (err: any) {
+      console.error('[foto]', err?.message || err);
+      return res.status(500).json({ error: 'Falha ao salvar a foto.' });
+    }
+  });
+
+app.get('/profile/:userId/foto', async (req, res) => {
+  try {
+    const { rows: [u] } = await pool.query(
+      `SELECT avatar, avatar_mime, avatar_updated_at FROM users WHERE id = $1`,
+      [req.params.userId]);
+    if (!u?.avatar) return res.status(404).json({ error: 'sem foto' });
+    // Privado e revalidável: o cache é do aparelho de quem pediu, nunca de um
+    // intermediário, e o carimbo permite o app perguntar "mudou?" sem baixar.
+    return res
+      .set('Cache-Control', 'private, max-age=0, must-revalidate')
+      .set('Last-Modified', new Date(u.avatar_updated_at).toUTCString())
+      .type(u.avatar_mime || 'image/jpeg')
+      .send(u.avatar);
+  } catch (err: any) {
+    console.error('[foto]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao ler a foto.' });
+  }
+});
+
+app.delete('/profile/:userId/foto', async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE users SET avatar = NULL, avatar_mime = NULL, avatar_updated_at = NULL
+        WHERE id = $1`, [req.params.userId]);
+    void logEvent(req.params.userId, 'foto_removida', {});
+    return res.json({ ok: true });
+  } catch (err: any) {
+    console.error('[foto]', err?.message || err);
+    return res.status(500).json({ error: 'Falha ao remover a foto.' });
+  }
+});
+
 /** O horário e as preferências que a tela de ajustes precisa mostrar. */
 app.get('/profile/:userId/preferencias', async (req, res) => {
   try {
     const { rows: [u] } = await pool.query(
-      `SELECT to_char(delivery_time, 'HH24:MI') horario,
+      `SELECT to_char(delivery_time, 'HH24:MI') horario, name nome,
+              avatar_updated_at "fotoEm", created_at "membroDesde",
               (wa_opt_in_at IS NOT NULL AND phone_e164 IS NOT NULL) "whatsappLigado"
          FROM users WHERE id = $1`, [req.params.userId]);
     return res.json({
       horario: u?.horario ?? null,
+      // O nome vai junto porque é aqui que o app pergunta "eu já te conheço?".
+      // Uma chamada a mais na abertura é uma chance a mais de a tela do nome
+      // aparecer antes da resposta chegar.
+      nome: u?.nome ?? null,
+      // Só o CARIMBO da foto, não a foto. Com ele o app compara com o que tem
+      // guardado e decide se precisa baixar — na maioria das aberturas, não
+      // precisa, e a tela de perfil não paga o download de novo.
+      fotoEm: u?.fotoEm ?? null,
+      // A data real de entrada. O app mostrava "membro desde" a partir da
+      // primeira abertura NAQUELE aparelho, então o notebook dizia que a
+      // pessoa tinha chegado hoje.
+      membroDesde: u?.membroDesde ?? null,
       whatsappLigado: !!u?.whatsappLigado,
     });
   } catch (err: any) {
@@ -1260,6 +1386,51 @@ app.get('/profile/:userId/preferencias', async (req, res) => {
 });
 
 // LGPD: exclusão total dos dados do usuário.
+/**
+ * Áudio do aplicativo → texto.
+ *
+ * Existe porque gravar voz simplesmente NÃO FUNCIONA no aplicativo nativo. A
+ * tela do relato usava `window.SpeechRecognition`, que é do navegador: no iOS
+ * e no Android a linha se desliga sozinha e a pessoa cai no modo escrito, sem
+ * microfone e sem aviso. Num produto cuja promessa é "me conta como você
+ * está, pode ser por áudio", isso seria publicar outra coisa.
+ *
+ * O corpo vem CRU, não em multipart. Multipart exigiria mais uma dependência
+ * no servidor para resolver um problema que não temos: aqui é sempre um
+ * arquivo só, sem campos ao lado. `express.raw` já entrega o Buffer.
+ *
+ * Fica ANTES de app.use(express.json()) na prática porque o tipo não casa —
+ * o parser de JSON ignora corpo de áudio e passa adiante.
+ */
+app.post(
+  '/transcrever/:userId',
+  tetoCaro,
+  express.raw({ type: ['audio/*', 'application/octet-stream'], limit: '8mb' }),
+  async (req, res) => {
+    try {
+      if (!transcricaoConfigurada()) {
+        return res.status(503).json({ error: 'transcrição não configurada' });
+      }
+      const bytes = req.body as Buffer;
+      if (!Buffer.isBuffer(bytes) || !bytes.length) {
+        return res.status(400).json({ error: 'corpo vazio — mande o áudio como corpo cru' });
+      }
+
+      const texto = await transcreverBytes(bytes, req.header('content-type') || 'audio/m4a');
+      // null aqui não é erro do servidor: é áudio mudo, curto demais ou o
+      // serviço fora do ar. Quem chamou oferece o modo escrito, que é o mesmo
+      // caminho do WhatsApp quando a transcrição falha.
+      if (!texto) return res.json({ texto: null });
+
+      void logEvent(req.params.userId, 'audio_transcrito',
+        { chars: texto.length, bytes: bytes.length, origem: 'app' });
+      return res.json({ texto });
+    } catch (err: any) {
+      console.error('[transcrever]', err?.message || err);
+      return res.status(500).json({ error: 'Falha ao transcrever o áudio.' });
+    }
+  });
+
 /**
  * Plantar a semente pelo aplicativo.
  *

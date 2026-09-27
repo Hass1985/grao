@@ -165,6 +165,12 @@ export function porExtenso(iso: string | null): string {
 
 export interface Preferencias {
   horario: string | null;
+  /** Como a pessoa quer ser chamada, do lado do servidor. */
+  nome: string | null;
+  /** Carimbo da última troca de foto. Só o carimbo — a imagem vem por fora. */
+  fotoEm: string | null;
+  /** `users.created_at`: a entrada de verdade, não a deste aparelho. */
+  membroDesde: string | null;
   whatsappLigado: boolean;
 }
 
@@ -177,6 +183,27 @@ export async function minhasPreferencias(): Promise<Preferencias | null> {
     return (await res.json()) as Preferencias;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Guarda no servidor como a pessoa quer ser chamada.
+ *
+ * O nome morava só no aparelho. Trocar de celular, de navegador, ou limpar os
+ * dados fazia o Grão perguntar de novo a quem já tinha respondido meses antes.
+ */
+export async function salvarNome(nome: string): Promise<boolean> {
+  if (!API_URL) return false;
+  try {
+    const userId = await getUserId();
+    const res = await apiFetch(`/profile/${userId}/nome`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

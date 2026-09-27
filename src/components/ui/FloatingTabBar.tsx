@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Sprout, CalendarDays, BookOpen, BookMarked, Store, type LucideIcon,
 } from '../icons';
@@ -33,6 +34,18 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
       pointerEvents="box-none"
       style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) }]}
     >
+      {/* O texto que passa por trás era o problema.
+
+          A pilha era translúcida (72%) sobre a página, então uma linha clara
+          de versículo cruzando atrás dela apagava os ícones no meio do
+          movimento — a barra sumia justamente enquanto a pessoa rolava, que é
+          quando ela olha para lá. São duas correções: o conteúdo se dissolve
+          no fundo antes de chegar na barra, e a barra deixa de ser vidro. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[colors.backgroundFade, colors.background]}
+        style={styles.veu}
+      />
       <View style={styles.pill}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -91,13 +104,23 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     backgroundColor: 'transparent',
   },
+  /** O degradê sobe acima da barra: a dissolvência precisa de altura. */
+  veu: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: -34,
+  },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceSolid,
+    // Opaco, não mais translúcido. `backgroundElevated` é um degrau acima do
+    // fundo da página, então a barra se destaca sem precisar de moldura forte.
+    backgroundColor: colors.backgroundElevated,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     paddingHorizontal: 6,
     paddingVertical: 6,
     gap: 2,

@@ -47,7 +47,7 @@ export function ambienteDoAsaas(): 'sandbox' | 'producao' | 'desligado' {
 }
 
 export const PLANOS = {
-  plantio: { valor: 19.9, ciclo: 'MONTHLY' as const, nome: 'Grão · Plantio (mensal)' },
+  plantio: { valor: 29.9, ciclo: 'MONTHLY' as const, nome: 'Grão · Plantio (mensal)' },
   anual: { valor: 199.0, ciclo: 'YEARLY' as const, nome: 'Grão · Anual' },
 };
 export type Plano = keyof typeof PLANOS;

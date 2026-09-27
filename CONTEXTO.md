@@ -70,7 +70,34 @@ mantidos fora daqui. Alterar `server/` cria conflito.
 
 ## O que o app chama
 
-Base: `EXPO_PUBLIC_GRAO_API_URL` (produção: `https://grao-backend.onrender.com`).
+Base: `EXPO_PUBLIC_GRAO_API_URL` (produção: `https://api.graoapp.com.br`).
+
+O endereço da hospedagem (`grao-backend.onrender.com`) ainda responde, mas não
+é mais o que o app usa: ele fica gravado dentro do aplicativo instalado, e um
+endereço emprestado só se troca com uma versão nova na loja. Nos builds
+nativos o valor vem das variáveis do EAS, por ambiente — `.env` é ignorado
+pelo git e nunca chega na máquina que compila.
+
+### O perfil mora no cadastro, não no aparelho
+
+`GET /profile/:userId/preferencias` devolve `horario`, `nome`, `fotoEm`,
+`membroDesde` e `whatsappLigado`. É a chamada que responde "o que este aparelho
+ainda não sabe sobre esta pessoa".
+
+| Rota | Para quê |
+|---|---|
+| `PATCH /profile/:userId/nome` | como a pessoa quer ser chamada |
+| `PUT /profile/:userId/foto` | bytes crus da imagem (`Content-Type: image/*`) |
+| `GET /profile/:userId/foto` | os mesmos bytes de volta |
+| `DELETE /profile/:userId/foto` | tira a foto |
+
+AsyncStorage continua guardando os três, mas como **cache**: ele faz a tela
+abrir rápido e funcionar sem rede. `sincronizarPerfil()` compara o carimbo
+`fotoEm` com o que está guardado e só baixa a imagem quando ela mudou.
+
+A foto não é servida por URL pública de propósito. Estando sob `/profile/:userId/`,
+ela passa pela trava de identidade — uma URL adivinhável seria uma URL que vaza,
+e foto de perfil num app de fé é dado pessoal.
 
 ### `GET /seed/today/:userId` — a tela Hoje
 
@@ -186,6 +213,7 @@ sobe a versão anterior, e já aconteceu.
 
 ## Preços
 
-R$ 19,90/mês (Plantio) e R$ 199,00/ano (Anual), com 7 dias grátis e a primeira
-cobrança no 8º dia. Cobrança por **Pix**, não pela loja de aplicativos: parte
+R$ 29,90/mês (Plantio) e R$ 199,00/ano (Anual), com 7 dias grátis e a primeira
+cobrança no 8º dia. Os valores vivem em `server/src/asaas.ts` e chegam à tela
+por `GET /assinatura/config`: nenhuma tela escreve preço à mão. Cobrança por **Pix**, não pela loja de aplicativos: parte
 relevante do público não tem cartão de crédito.

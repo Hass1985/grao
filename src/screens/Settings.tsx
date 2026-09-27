@@ -30,6 +30,7 @@ import {
   getMemberSince,
   initialsFrom,
   setDevocionalOptIn,
+  sincronizarPerfil,
 } from '../onboarding/userProfile';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -130,6 +131,8 @@ export default function Settings({ navigation }: Props) {
   const [memberSince, setMemberSince] = useState('');
   const [showNotifOptions, setShowNotifOptions] = useState(false);
   const [selectedTime, setSelectedTime] = useState('07:00');
+  /** null enquanto não se sabe: evita piscar a tela errada na abertura. */
+  const [waLigado, setWaLigado] = useState<boolean | null>(null);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [music, setMusic] = useState(true);
   const [editingName, setEditingName] = useState(false);
@@ -139,12 +142,17 @@ export default function Settings({ navigation }: Props) {
     useCallback(() => {
       let vivo = true;
       (async () => {
-        const [a, n, m, ass, pref] = await Promise.all([
+        // O cadastro vem primeiro: sem isto, a tela leria o cache do aparelho
+        // e mostraria o perfil vazio de quem pôs a foto noutro celular.
+        const [ass, pref] = await Promise.all([minhaAssinatura(), minhasPreferencias()]);
+        if (!vivo) return;
+        await sincronizarPerfil(pref);
+        if (!vivo) return;
+
+        const [a, n, m] = await Promise.all([
           getAvatarUri(),
           getDisplayName(),
           getMemberSince(),
-          minhaAssinatura(),
-          minhasPreferencias(),
         ]);
         if (!vivo) return;
         setAvatar(a);
@@ -152,6 +160,7 @@ export default function Settings({ navigation }: Props) {
         setMemberSince(m);
         setAssinatura(ass);
         if (pref?.horario) setSelectedTime(pref.horario);
+        setWaLigado(pref ? pref.whatsappLigado : null);
       })();
       return () => { vivo = false; };
     }, [])
@@ -335,6 +344,23 @@ export default function Settings({ navigation }: Props) {
           </Section>
 
           <Section title="Notificações">
+            {/* Sem WhatsApp ligado, não existe horário para escolher.
+
+                A tela mostrava o seletor para todo mundo. Uma das sócias
+                escolheu 07:00, saiu convencida de que ia receber, e nunca
+                recebeu nada: o número dela nunca tinha sido informado. Deixar
+                alguém configurar a entrega de um canal que não existe é pior
+                do que não oferecer a opção — a pessoa vai esperar. */}
+            {waLigado === false ? (
+              <Row
+                icon={MessageCircle}
+                label="Ligar o WhatsApp"
+                value="A semente ainda não chega no seu WhatsApp"
+                onPress={() => navigation.navigate('EntregaWhatsApp')}
+                last
+              />
+            ) : (
+              <>
             <Row
               icon={MessageCircle}
               label="Receber a semente no WhatsApp"
@@ -375,6 +401,8 @@ export default function Settings({ navigation }: Props) {
                   last
                 />
               ))}
+              </>
+            )}
           </Section>
 
           <Section title="Conteúdo">

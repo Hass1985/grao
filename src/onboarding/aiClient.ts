@@ -53,7 +53,7 @@ export async function setUserId(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** O access token da sessão atual, ou null em modo demo / deslogado. */
-async function tokenDaSessao(): Promise<string | null> {
+export async function tokenDaSessao(): Promise<string | null> {
   if (!supabase) return null;
   try {
     const { data } = await supabase.auth.getSession();

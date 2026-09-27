@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.hass1985.grao",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "O Grão usa o microfone para você contar seu momento falando, em vez de escrever.",
+        "NSPhotoLibraryUsageDescription": "O Grão usa suas fotos apenas para você escolher uma imagem de perfil."
       }
     },
     "android": {
@@ -26,7 +28,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.hass1985.grao",
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -40,7 +46,14 @@
     },
     "plugins": [
       "expo-font",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Grão usa suas fotos apenas para você escolher uma imagem de perfil."
+        }
+      ],
+      "expo-audio"
     ],
     "extra": {
       "eas": {

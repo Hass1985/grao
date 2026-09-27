@@ -82,7 +82,7 @@ if (!/^\d{6,}:[A-Za-z0-9_-]{30,}$/.test(token)) {
     const r = await mandarNoTelegram(
       '⚠️ Sinal de risco emocional (em demonstração)\n' +
       'Maria Clara · ••••4321 · nível atenção · veio de WhatsApp\n' +
-      'O que foi dito está no painel: ' + (process.env.BASE_URL ?? 'https://grao-backend.onrender.com') + '/admin');
+      'O que foi dito está no painel: ' + (process.env.PUBLIC_BASE_URL ?? 'https://api.graoapp.com.br') + '/admin');
     console.log(r.ok
       ? '\nMandei. Confira o grupo — é assim que o aviso vai chegar.\n'
       : `\nNão chegou: ${r.erro}\n`);

@@ -21,6 +21,7 @@ import { TEM_ACESSO_SQL, acessoDoUsuario } from './acesso.js';
 import { paraPrompt, type Memoria } from './memoria.js';
 import { fundirUsuarios } from './auth.js';
 import { normalizePhone } from './telefone.js';
+import { BASE_URL } from './base.js';
 
 const client = new Anthropic();
 const REPLY_MODEL = process.env.GRAO_BRAIN_MODEL || 'claude-haiku-4-5-20251001';
@@ -141,17 +142,10 @@ export async function resolveUserByPhone(phone: string, name?: string): Promise<
  * Formatação: *negrito* e _itálico_ são o que o WhatsApp entende; nada de
  * markdown de cabeçalho, que aparece cru para o usuário.
  */
-/**
- * URL pública do backend. Vai dentro do link do louvor e da og:image que o
- * rastreador do WhatsApp busca de fora — por isso não pode ser localhost.
- *
- * O padrão aponta para o Render de hoje, então a variável só passa a importar
- * quando o backend mudar de endereço. Definida aqui e importada pelos outros
- * módulos: duas cópias desta linha divergiriam no dia da mudança, e o link da
- * música continuaria mandando todo mundo para o endereço antigo.
- */
-export const BASE_URL = () =>
-  (process.env.PUBLIC_BASE_URL || 'https://grao-backend.onrender.com').replace(/\/+$/, '');
+// Mora em base.ts desde que o aviso de risco saiu com o link quebrado por
+// causa de uma segunda cópia com outro nome de variável. Continua exportada
+// daqui porque server.ts, admin.ts e ouvir.ts a importam deste módulo.
+export { BASE_URL };
 
 export function formatSeed(
   seed: SelectedSeed,

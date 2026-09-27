@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator,
 } from 'react-native';
+import { Send } from './icons';
 import { responderHoje, respostaDoDia } from '../onboarding/resposta';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -84,30 +85,44 @@ export default function Responder({
 
   if (somenteLeitura) return null;
 
+  const vazio = !texto.trim();
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.rotulo}>O que isso mexeu em você?</Text>
-      <TextInput
-        style={styles.campo}
-        placeholder="Uma frase basta. Ninguém mais lê isto."
-        placeholderTextColor={colors.foregroundSubtle}
-        value={texto}
-        onChangeText={setTexto}
-        multiline
-        editable={!salvando}
-        maxLength={2000}
-      />
-      <Pressable
-        onPress={enviar}
-        disabled={!texto.trim() || salvando}
-        style={[styles.botao, (!texto.trim() || salvando) && styles.botaoOff]}
-      >
-        {salvando ? (
-          <ActivityIndicator color={colors.accent} size="small" />
-        ) : (
-          <Text style={styles.botaoTexto}>Guardar</Text>
-        )}
-      </Pressable>
+      <Text style={styles.rotulo}>Como essa semente falou com você?</Text>
+      {/* O envio mora DENTRO do campo, no canto de baixo à direita.
+
+          Era um botão "Guardar" solto embaixo do card, e ele empurrava o resto
+          da página para baixo só para existir. Com o ícone no canto, o gesto
+          fica onde a mão já está — é o mesmo lugar de todo aplicativo de
+          mensagem, que é exatamente o que a pessoa acha que está fazendo. */}
+      <View style={styles.cartao}>
+        <TextInput
+          style={styles.campo}
+          placeholder="Uma frase basta."
+          placeholderTextColor={colors.foregroundSubtle}
+          value={texto}
+          onChangeText={setTexto}
+          multiline
+          editable={!salvando}
+          maxLength={2000}
+        />
+        <Pressable
+          onPress={enviar}
+          disabled={vazio || salvando}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Guardar o que escrevi"
+          accessibilityState={{ disabled: vazio || salvando }}
+          style={[styles.enviar, (vazio || salvando) && styles.enviarOff]}
+        >
+          {salvando ? (
+            <ActivityIndicator color={colors.accent} size="small" />
+          ) : (
+            <Send size={17} color={colors.accent} strokeWidth={2} />
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -122,32 +137,36 @@ const styles = StyleSheet.create({
     color: colors.ambarSoft,
     marginBottom: 12,
   },
-  campo: {
+  cartao: {
     ...glassCard,
     borderRadius: 20,
+    // Espaço em baixo à direita para o ícone não sentar sobre a última linha
+    // do que a pessoa escreveu.
+    paddingBottom: 46,
+  },
+  campo: {
     paddingHorizontal: 18,
-    paddingVertical: 16,
-    minHeight: 92,
+    paddingTop: 16,
+    paddingBottom: 4,
+    minHeight: 76,
     textAlignVertical: 'top',
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,
     lineHeight: 24,
     color: colors.palha,
   },
-  botao: {
-    alignSelf: 'flex-start',
-    marginTop: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 22,
+  enviar: {
+    position: 'absolute',
+    right: 12,
+    bottom: 10,
+    width: 38,
+    height: 38,
     borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surfaceAccent,
   },
-  botaoOff: { opacity: 0.45 },
-  botaoTexto: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-  },
+  enviarOff: { opacity: 0.4 },
   guardado: {
     fontFamily: fonts.serif,
     fontSize: 18,

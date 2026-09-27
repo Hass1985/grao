@@ -18,10 +18,22 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
+        {/* Marca à esquerda, pessoa à direita.
+
+            Estava invertido. Em português se lê da esquerda para a direita, e
+            o canto esquerdo é onde todo aplicativo põe quem ele é — o canto
+            direito é onde se põe quem está usando. Inverter os dois fazia o
+            Grão parecer o visitante da própria tela. */}
         <View style={styles.row}>
-          <View style={styles.side}>
-            <ProfileButton onPress={onProfilePress} size={36} />
-          </View>
+          <TouchableOpacity
+            onPress={onLogoPress}
+            disabled={!onLogoPress}
+            hitSlop={10}
+            accessibilityLabel="Grão"
+            style={styles.side}
+          >
+            <GraoSymbol size={logoSize} color={colors.ambarSoft} filled={false} />
+          </TouchableOpacity>
 
           <View style={styles.center}>
             <Text style={styles.title} numberOfLines={1}>
@@ -34,15 +46,9 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
             ) : null}
           </View>
 
-          <TouchableOpacity
-            onPress={onLogoPress}
-            disabled={!onLogoPress}
-            hitSlop={10}
-            accessibilityLabel="Grão"
-            style={styles.side}
-          >
-            <GraoSymbol size={logoSize} color={colors.ambarSoft} filled={false} />
-          </TouchableOpacity>
+          <View style={styles.side}>
+            <ProfileButton onPress={onProfilePress} size={36} />
+          </View>
         </View>
       </View>
     </View>

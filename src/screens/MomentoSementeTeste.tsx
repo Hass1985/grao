@@ -40,6 +40,8 @@ import Reveal from '../components/ui/Reveal';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import { AI_MODE, getUserId, postOpening } from '../onboarding/aiClient';
 import { jaConsentiu, registrarConsentimento } from '../onboarding/consentimento';
+import { useAudioRecorder, RecordingPresets, AudioModule } from 'expo-audio';
+import { transcreverAudio } from '../onboarding/audio';
 import { setMoment, reescolherSementeDeHoje } from '../onboarding/seedDelivery';
 import { porExtenso } from '../onboarding/assinatura';
 import {
@@ -166,7 +168,19 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
     !NATIVE && typeof window !== 'undefined'
       ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       : null;
-  const voiceAvailable = !!SR;
+
+  /**
+   * O gravador do aplicativo nativo.
+   *
+   * No navegador quem ouve é o próprio navegador, que transcreve ao vivo e de
+   * graça. No celular isso não existe: grava-se um arquivo e o servidor
+   * transcreve depois — o mesmo caminho do áudio do WhatsApp.
+   *
+   * Antes disto, `voiceAvailable` era falso no nativo e a tela caía no modo
+   * escrito sem microfone e sem explicação, num produto que promete ouvir.
+   */
+  const gravador = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const voiceAvailable = NATIVE ? true : !!SR;
 
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -226,6 +240,19 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
       /* ignore */
     }
     recRef.current = null;
+
+    // O gravador nativo também para aqui, e isso não é detalhe: esta função é
+    // chamada por "Cancelar" e pela saída da tela. Sem ela, quem desistisse no
+    // meio deixaria o microfone aberto gravando um arquivo que ninguém iria
+    // buscar — com o indicador de gravação aceso no alto do celular, o que é a
+    // pior coisa que um app que pede confiança pode fazer.
+    if (NATIVE) {
+      try {
+        if (gravador.isRecording) void gravador.stop();
+      } catch {
+        /* já parado */
+      }
+    }
   };
 
   const firstName = () => {
@@ -249,12 +276,42 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
     if (proximo) void registrarConsentimento(real ? 'relato' : 'demonstracao');
   };
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (travado) return;
     if (!voiceAvailable) {
       setTextMode(true);
       return;
     }
+
+    // NATIVO: grava um arquivo. Não há transcrição ao vivo, então a tela da
+    // gravação mostra só o tempo — e o texto chega depois, do servidor.
+    if (NATIVE) {
+      doneRef.current = false;
+      setSeconds(0);
+      try {
+        const permissao = await AudioModule.requestRecordingPermissionsAsync();
+        if (!permissao.granted) {
+          setTextMode(true);
+          setMicNote('Sem acesso ao microfone por aqui. Escreve pra mim do seu jeito.');
+          return;
+        }
+        await gravador.prepareToRecordAsync();
+        gravador.record();
+        setPhase('recording');
+        timerRef.current = setInterval(() => {
+          setSeconds((s) => {
+            if (s + 1 >= MAX_SECONDS) void finishRecording();
+            return s + 1;
+          });
+        }, 1000);
+      } catch (e: any) {
+        console.warn('[audio] não consegui gravar:', e?.message ?? e);
+        setTextMode(true);
+        setMicNote('Não consegui iniciar a gravação. Escreve pra mim do seu jeito.');
+      }
+      return;
+    }
+
     finalRef.current = '';
     setLiveTranscript('');
     setSeconds(0);
@@ -304,9 +361,48 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
     }
   };
 
-  const finishRecording = () => {
+  /** O que dizer quando o áudio não virou texto, sem culpar a pessoa. */
+  const pedirPorEscrito = (nota: string) => {
+    setPhase('share');
+    setTextMode(true);
+    setMicNote(nota);
+  };
+
+  const finishRecording = async () => {
     if (doneRef.current) return;
     doneRef.current = true;
+
+    // NATIVO: para de gravar, sobe o arquivo e espera o texto.
+    //
+    // A tela entra em `thinking` durante a subida de propósito. É a mesma
+    // espera que já existe depois de escrever, com a mesma animação — e sem
+    // ela a pessoa ficaria olhando o cronômetro parado sem saber se o Grão
+    // ouviu. Falhar aqui não perde o relato: ela reconta por escrito.
+    if (NATIVE) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      try {
+        await gravador.stop();
+      } catch { /* já parado */ }
+
+      const uri = gravador.uri;
+      if (!uri) {
+        pedirPorEscrito('Não consegui guardar o áudio. Escreve pra mim do seu jeito.');
+        return;
+      }
+
+      setPhase('thinking');
+      const texto = await transcreverAudio(uri);
+      if (!texto || texto.trim().length < 8) {
+        pedirPorEscrito(
+          texto === null
+            ? 'Não consegui ouvir esse áudio. Me conta por escrito?'
+            : 'Ficou curtinho e eu não quis arriscar entender errado. Tenta de novo, ou escreve pra mim.');
+        return;
+      }
+      void submit(texto.trim(), 'audio');
+      return;
+    }
+
     stopEverything();
     const transcript = (finalRef.current || liveTranscript).trim();
     if (transcript.length < 8) {
@@ -559,9 +655,14 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
                 </View>
               </View>
               <Text style={styles.recHint}>Estou te ouvindo…</Text>
-              <Text style={styles.liveTranscript} numberOfLines={6}>
-                {liveTranscript || ' '}
-              </Text>
+              {/* A transcrição ao vivo é do navegador. No celular o texto só
+                  existe depois, quando o servidor devolve — mostrar uma área
+                  vazia esperando palavras que não vêm pareceria travamento. */}
+              {NATIVE ? null : (
+                <Text style={styles.liveTranscript} numberOfLines={6}>
+                  {liveTranscript || ' '}
+                </Text>
+              )}
               <Button title="Concluir" onPress={finishRecording} variant="dark" uppercase />
               <TouchableOpacity
                 onPress={() => {

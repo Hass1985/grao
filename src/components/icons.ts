@@ -31,6 +31,7 @@ export { default as Mic } from 'lucide-react-native/dist/esm/icons/mic';
 export { default as Music2 } from 'lucide-react-native/dist/esm/icons/music-2';
 export { default as Pause } from 'lucide-react-native/dist/esm/icons/pause';
 export { default as Play } from 'lucide-react-native/dist/esm/icons/play';
+export { default as Send } from 'lucide-react-native/dist/esm/icons/send';
 export { default as Share2 } from 'lucide-react-native/dist/esm/icons/share-2';
 export { default as Shield } from 'lucide-react-native/dist/esm/icons/shield';
 export { default as Smartphone } from 'lucide-react-native/dist/esm/icons/smartphone';

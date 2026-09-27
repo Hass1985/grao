@@ -37,7 +37,7 @@ import { space } from '../theme/spacing';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 import { useAuth } from '../auth/AuthContext';
 import { getUserId, setUserId, linkWhatsApp } from '../onboarding/aiClient';
-import { porExtenso } from '../onboarding/assinatura';
+import { porExtenso, minhasPreferencias } from '../onboarding/assinatura';
 
 type Props = {
   navigation: any;
@@ -58,6 +58,11 @@ export default function EntregaWhatsApp({ navigation, route }: Props) {
   const trialAte = route?.params?.trialAte;
 
   const [telefone, setTelefone] = useState('');
+  // 07:00 é só o ponto de partida de quem nunca escolheu. Quem já escolheu tem
+  // o próprio horário carregado abaixo: esta tela chamava linkWhatsApp com o
+  // valor do seletor, e voltar por aqui reescrevia o horário da pessoa para
+  // 07:00 sem avisar — e sem deixar registro, porque este caminho não grava
+  // evento nenhum, ao contrário do seletor dos ajustes.
   const [horario, setHorario] = useState('07:00');
   const [consentiu, setConsentiu] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -74,6 +79,14 @@ export default function EntregaWhatsApp({ navigation, route }: Props) {
     // máscara brasileira do campo.
     setTelefone(mascararTelefone(d.startsWith('55') ? d.slice(2) : d));
   }, [user]);
+
+  useEffect(() => {
+    let vivo = true;
+    minhasPreferencias()
+      .then((p) => { if (vivo && p?.horario) setHorario(p.horario); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
 
   const digitos = telefone.replace(/\D/g, '');
   const podeSeguir = digitos.length >= 10 && consentiu && !salvando;

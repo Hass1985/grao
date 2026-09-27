@@ -18,7 +18,7 @@ manter tabela de mapeamento nem inventar identificadores.
    endpoints respondem **503** — falham fechados de propósito, porque abertos
    exporiam a conversa e o telefone de todos os usuários.
 2. No n8n, crie as credenciais/variáveis:
-   - `GRAO_API` — `https://grao-backend.onrender.com`
+   - `GRAO_API` — `https://api.graoapp.com.br`
    - `GRAO_TOKEN` — o mesmo valor do `GRAO_API_TOKEN`
    - `WA_PHONE_ID` e `WA_TOKEN` — do WhatsApp Business (Meta Cloud API)
 

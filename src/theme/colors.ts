@@ -44,6 +44,9 @@ export const colors = {
   accentSoft: '#D89A55',
   accentForeground: '#FFFFFF',
 
+  /** O mesmo `background`, sem opacidade: a ponta transparente de um degradê. */
+  backgroundFade: 'rgba(42, 28, 12, 0)',
+
   border: 'rgba(237, 224, 198, 0.22)',
   borderStrong: 'rgba(237, 224, 198, 0.34)',
   hairline: 'rgba(237, 224, 198, 0.16)',

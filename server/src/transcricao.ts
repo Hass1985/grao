@@ -90,17 +90,24 @@ function extensaoDe(mime: string): string {
 }
 
 /**
- * Áudio do WhatsApp → texto em português.
+ * Bytes de áudio → texto em português.
+ *
+ * Separado de `transcreverAudioDoWhatsapp` porque a origem deixou de ser uma
+ * só. O aplicativo nativo também grava áudio, e ali não há mídia da Meta para
+ * baixar: os bytes chegam direto do celular. O que as duas pontas
+ * compartilham é daqui para baixo.
  *
  * `language: pt` não é detalhe: sem dizer o idioma, um "oi" solitário ou um
  * trecho com ruído de fundo é transcrito como inglês ou espanhol, e o motor
  * emocional recebe uma frase sem sentido.
  */
-export async function transcreverAudioDoWhatsapp(mediaId: string): Promise<string | null> {
+export async function transcreverBytes(
+  bytes: Buffer,
+  mime: string,
+): Promise<string | null> {
   if (!transcricaoConfigurada()) return null;
-
-  const midia = await baixarMidia(mediaId);
-  if (!midia) return null;
+  if (!bytes?.length || bytes.length > MAX_BYTES) return null;
+  const midia = { bytes, mime };
 
   try {
     const forma = new FormData();
@@ -131,4 +138,17 @@ export async function transcreverAudioDoWhatsapp(mediaId: string): Promise<strin
     console.error('[transcricao] falha ao transcrever:', e?.message || e);
     return null;
   }
+}
+
+/**
+ * Áudio do WhatsApp → texto.
+ *
+ * Duas pernas: baixar a mídia da Meta e transcrever. A segunda é compartilhada
+ * com o aplicativo, que grava no próprio celular e não passa pela Meta.
+ */
+export async function transcreverAudioDoWhatsapp(mediaId: string): Promise<string | null> {
+  if (!transcricaoConfigurada()) return null;
+  const midia = await baixarMidia(mediaId);
+  if (!midia) return null;
+  return transcreverBytes(midia.bytes, midia.mime);
 }

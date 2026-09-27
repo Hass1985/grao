@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { glassCard } from '../../theme/glass';
 import { webScreenFill, webScroll } from '../../theme/webScreen';
 import { space } from '../../theme/spacing';
 import { getUserId, escolherPlano } from '../../onboarding/aiClient';
+import { configuracaoDeCobranca, emReais } from '../../onboarding/assinatura';
 import Button from '../../components/ui/Button';
 import BackButton from '../../components/ui/BackButton';
 import StepProgress from '../../components/ui/StepProgress';
@@ -29,7 +30,7 @@ const plans = [
     id: 'plantio',
     label: 'Plantio',
     badge: 'Mais escolhido',
-    price: 'R$ 19,90',
+    price: 'R$ 29,90',
     period: '/mês',
     detail: 'Para quem quer crescer na fé com profundidade e continuidade.',
     features: [
@@ -46,21 +47,58 @@ const plans = [
   {
     id: 'anual',
     label: 'Anual',
-    badge: '2 meses de graça',
+    badge: 'Melhor preço',
     price: 'R$ 199,00',
     period: '/ano',
     detail: 'Fidelidade com desconto. A mesma experiência completa, com mais.',
     features: [
       'Tudo do plano Plantio',
-      'Economia de 2 meses por ano',
       'Acesso antecipado a novidades',
     ],
     featured: false,
   },
 ];
 
+/**
+ * Preço e desconto vêm do servidor, do lado de onde a cobrança é criada.
+ *
+ * Esta era a última tela com o valor escrito à mão, e por isso a primeira a
+ * mentir quando o preço mudou: anunciava R$ 19,90 enquanto o gateway passava a
+ * cobrar outro valor. O selo do anual tinha o mesmo defeito em forma de conta
+ * — "2 meses de graça" só era verdade enquanto o anual custasse dez
+ * mensalidades. Agora a economia é calculada dos dois preços que existem.
+ */
+function useCobranca() {
+  const [precos, setPrecos] = useState<Record<string, string>>({});
+  const [desconto, setDesconto] = useState<number | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    configuracaoDeCobranca().then((c) => {
+      if (!vivo || !c) return;
+
+      const mapa: Record<string, string> = {};
+      for (const p of c.planos) mapa[p.id] = emReais(p.valorCentavos);
+      setPrecos(mapa);
+
+      const mes = c.planos.find((p) => p.id === 'plantio')?.valorCentavos;
+      const ano = c.planos.find((p) => p.id === 'anual')?.valorCentavos;
+      if (mes && ano) {
+        const pct = Math.round((1 - ano / (mes * 12)) * 100);
+        setDesconto(pct > 0 ? pct : null);
+      }
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  return { precos, desconto };
+}
+
 export default function Plan({ onFinish, navigation }: Props) {
   const [selected, setSelected] = useState('plantio');
+  const { precos, desconto } = useCobranca();
 
   // Grava a escolha e segue na hora. Não esperamos a resposta: o registro é
   // para o painel, não para a pessoa — deixá-la olhando um botão parado por
@@ -88,6 +126,12 @@ export default function Plan({ onFinish, navigation }: Props) {
         <View style={styles.list}>
           {plans.map((plan) => {
             const isSelected = selected === plan.id;
+            const anual = plan.id === 'anual';
+            const selo = anual && desconto ? `${desconto}% de desconto` : plan.badge;
+            const beneficios =
+              anual && desconto
+                ? [plan.features[0], `Economia de ${desconto}% no ano`, ...plan.features.slice(1)]
+                : plan.features;
             return (
               <TouchableOpacity
                 key={plan.id}
@@ -106,10 +150,10 @@ export default function Plan({ onFinish, navigation }: Props) {
                     <Text style={[styles.planLabel, plan.featured && styles.planLabelFeatured]}>
                       {plan.label}
                     </Text>
-                    {plan.badge && (
+                    {selo && (
                       <View style={[styles.badge, plan.featured && styles.badgeFeatured]}>
                         <Text style={[styles.badgeText, plan.featured && styles.badgeTextFeatured]}>
-                          {plan.badge}
+                          {selo}
                         </Text>
                       </View>
                     )}
@@ -117,7 +161,7 @@ export default function Plan({ onFinish, navigation }: Props) {
 
                   <View style={styles.priceRow}>
                     <Text style={[styles.price, plan.featured && styles.priceFeatured]}>
-                      {plan.price}
+                      {precos[plan.id] ?? plan.price}
                     </Text>
                     <Text style={styles.period}>{plan.period}</Text>
                   </View>
@@ -127,7 +171,7 @@ export default function Plan({ onFinish, navigation }: Props) {
                   <View style={styles.rule} />
 
                   <View style={styles.features}>
-                    {plan.features.map((feature) => (
+                    {beneficios.map((feature) => (
                       <View key={feature} style={styles.featureRow}>
                         <View style={styles.featureDash} />
                         <Text style={styles.featureText}>{feature}</Text>

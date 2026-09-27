@@ -39,6 +39,20 @@ function buildSeedMap(sementes: Seed[]): Record<string, Seed> {
 
 type DayKind = 'planted' | 'open' | 'future' | 'empty';
 
+/**
+ * A marca do dia, distinguível pela FORMA antes da cor.
+ *
+ * Antes plantada e não plantada eram o mesmo broto em dois tons de marrom
+ * parecidos — para separar os dois era preciso comparar um dia com o outro, e
+ * num calendário de trinta quadradinhos ninguém compara. Agora é broto contra
+ * anel vazio: dá para ler de relance, e continua legível para quem não
+ * distingue as duas cores.
+ *
+ * Dia futuro não desenha nada. Ele recebia uma bolinha, o que enchia metade do
+ * mês de marcas que não significavam nada — e como todo dia futuro é futuro, a
+ * bolinha nunca informou coisa alguma. Dia passado sem semente também fica
+ * vazio: a ausência é a informação.
+ */
 function StatusIcon({ kind, size = 16 }: { kind: DayKind; size?: number }) {
   if (kind === 'planted') {
     return (
@@ -52,17 +66,14 @@ function StatusIcon({ kind, size = 16 }: { kind: DayKind; size?: number }) {
   }
   if (kind === 'open') {
     return (
-      <Sprout size={size} color={colors.foregroundMuted} strokeWidth={2} />
+      <Circle
+        size={Math.max(9, Math.round(size * 0.72))}
+        color={colors.foregroundSubtle}
+        strokeWidth={1.9}
+      />
     );
   }
-  return (
-    <Circle
-      size={Math.max(7, Math.round(size * 0.48))}
-      color={colors.foregroundSubtle}
-      fill={colors.foregroundSubtle}
-      strokeWidth={0}
-    />
-  );
+  return null;
 }
 
 export default function Campo({ navigation }: { navigation: any }) {
@@ -103,13 +114,21 @@ export default function Campo({ navigation }: { navigation: any }) {
   const seedMap = buildSeedMap(sementes);
   const plantedCount = Object.values(seedMap).filter((s) => s.planted).length;
 
-  // O gratuito lê devocional e confirma leitura; quem assina recebe semente e
-  // planta. É a mesma tela contando duas histórias, e a palavra errada faz a
-  // pessoa procurar um gesto que não existe no plano dela.
+  // Quem só recebe o devocional vê os números de sequência; quem assina, não.
   const ehDevocional = sementes.length > 0 && sementes.every((s) => s.tipo !== 'semente');
-  const rotulo = ehDevocional
-    ? { feito: 'Lido', aberto: 'Não lido', unidade: plantedCount === 1 ? 'dia lido' : 'dias lidos' }
-    : { feito: 'Plantada', aberto: 'Aberta', unidade: plantedCount === 1 ? 'semente plantada' : 'sementes plantadas' };
+
+  // Plantar é o gesto do Grão, e é a palavra que a legenda usa nos dois planos.
+  //
+  // Havia dois vocabulários aqui: "Lido / Não lido" para quem só recebe o
+  // devocional e "Plantada / Aberta" para quem assina. Além de ninguém
+  // distinguir "Aberta" de "Não lido" olhando, a tela mudava de língua conforme
+  // o dia — bastava uma semente no mês para o calendário inteiro trocar de
+  // palavra. Uma língua só, e é a do produto.
+  const rotulo = {
+    feito: 'Plantada',
+    aberto: 'Não plantada',
+    unidade: plantedCount === 1 ? 'semente plantada' : 'sementes plantadas',
+  };
 
   const cells: Array<number | null> = [
     ...Array(firstDayOfWeek).fill(null),
@@ -309,13 +328,6 @@ export default function Campo({ navigation }: { navigation: any }) {
                 <StatusIcon kind="open" size={13} />
               </View>
               <Text style={styles.legendText}>{rotulo.aberto}</Text>
-            </View>
-            <View style={styles.legendDivider} />
-            <View style={styles.legendItem}>
-              <View style={styles.legendSwatch}>
-                <StatusIcon kind="future" size={13} />
-              </View>
-              <Text style={styles.legendText}>Futuros</Text>
             </View>
           </View>
         </ScrollView>

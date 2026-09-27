@@ -28,9 +28,10 @@
 
 import { pool } from './db.js';
 import { sendTemplate, metaConfigurada } from './meta.js';
+import { PAINEL_URL } from './base.js';
 
 const URL_AVISO = () => (process.env.ALERTA_WEBHOOK_URL ?? '').trim();
-const PAINEL = () => (process.env.BASE_URL ?? '').replace(/\/+$/, '') + '/admin';
+const PAINEL = PAINEL_URL;
 
 /**
  * Os telefones do time, em E.164, separados por vírgula.

@@ -26,11 +26,18 @@ import { space } from '../theme/spacing';
 import { glassCard } from '../theme/glass';
 
 /**
- * A Bíblia para consulta.
+ * A Bíblia para consulta, em três degraus.
  *
- * Três estados na mesma tela — lista de livros, capítulo aberto, resultado de
- * busca — em vez de três telas empilhadas. Quem procura um versículo quer
- * chegar e voltar rápido; cada empilhamento a mais é um toque a mais na saída.
+ * Testamento, livro, capítulo — e o capítulo aberto. Antes o primeiro degrau
+ * não existia: a tela abria com os 66 livros numa lista corrida, dois títulos
+ * de seção perdidos no meio de uma rolagem longa. Procurar Tiago significava
+ * passar por todo o Antigo Testamento, e num celular isso é meia dúzia de
+ * arrastadas antes de a busca sequer começar. Dois botões no topo cortam a
+ * lista pela metade com um toque.
+ *
+ * Tudo continua numa tela só, sem empilhar navegação: quem procura um
+ * versículo quer chegar e voltar rápido, e cada empilhamento é um toque a mais
+ * na saída.
  *
  * O texto vem do servidor a cada capítulo. São ~4 MB de Bíblia: embutir no app
  * pesaria o download inicial de todo mundo para servir a consulta de alguns, e
@@ -39,6 +46,7 @@ import { glassCard } from '../theme/glass';
 export default function Biblia({ navigation, route }: { navigation: any; route?: any }) {
   const [livros, setLivros] = useState<LivroBiblia[]>([]);
   const [aberto, setAberto] = useState<CapituloBiblia | null>(null);
+  const [testamento, setTestamento] = useState<'antigo' | 'novo' | null>(null);
   const [escolhendoCapitulo, setEscolhendoCapitulo] = useState<LivroBiblia | null>(null);
   const [busca, setBusca] = useState('');
   const [achados, setAchados] = useState<AchadoBiblia[] | null>(null);
@@ -50,9 +58,11 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
       .finally(() => setCarregando(false));
   }, []);
 
+  // `escolhendoCapitulo` sobrevive à abertura do capítulo de propósito: é o que
+  // faz o "voltar" cair na grade de capítulos do mesmo livro, e não lá atrás na
+  // lista inteira. Quem está lendo Salmos quase sempre quer o salmo seguinte.
   const abrir = useCallback(async (livro: string, capitulo: number) => {
     setCarregando(true);
-    setEscolhendoCapitulo(null);
     setAchados(null);
     try {
       setAberto(await capituloDaBiblia(livro, capitulo));
@@ -89,15 +99,30 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
     }
   }, [busca]);
 
+  // Um degrau por vez, de volta pelo mesmo caminho da ida.
   const voltar = () => {
     if (aberto) return setAberto(null);
     if (escolhendoCapitulo) return setEscolhendoCapitulo(null);
+    if (testamento) return setTestamento(null);
     if (achados) { setAchados(null); setBusca(''); }
   };
 
-  const emAlgumLugar = !!aberto || !!escolhendoCapitulo || !!achados;
   const antigo = livros.filter((l) => l.antigo);
   const novo = livros.filter((l) => !l.antigo);
+  const daLista = testamento === 'antigo' ? antigo : novo;
+  const nomeDoTestamento = (velho: boolean) =>
+    velho ? 'Antigo Testamento' : 'Novo Testamento';
+
+  const emAlgumLugar = !!aberto || !!escolhendoCapitulo || !!achados || !!testamento;
+
+  /** Para onde o "voltar" leva. Dizer o destino poupa um toque às cegas. */
+  const destinoDoVoltar = aberto
+    ? (escolhendoCapitulo ? `Capítulos de ${escolhendoCapitulo.nome}` : 'Todos os livros')
+    : escolhendoCapitulo
+      ? nomeDoTestamento(escolhendoCapitulo.antigo)
+      : testamento
+        ? 'Antigo e Novo'
+        : 'Limpar busca';
 
   return (
     <ScreenBackground>
@@ -113,6 +138,7 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
             subtitle={
               aberto ? `${aberto.livro} ${aberto.capitulo}`
                 : escolhendoCapitulo ? escolhendoCapitulo.nome
+                : testamento ? nomeDoTestamento(testamento === 'antigo')
                 : achados ? `${achados.length} ${achados.length === 1 ? 'passagem' : 'passagens'}`
                 : 'Consulte quando precisar.'
             }
@@ -123,9 +149,7 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
           {emAlgumLugar ? (
             <Pressable onPress={voltar} style={styles.voltar} hitSlop={8}>
               <ChevronLeft size={16} color={colors.ambarSoft} strokeWidth={2.2} />
-              <Text style={styles.voltarTexto}>
-                {aberto || escolhendoCapitulo ? 'Todos os livros' : 'Limpar busca'}
-              </Text>
+              <Text style={styles.voltarTexto}>{destinoDoVoltar}</Text>
             </Pressable>
           ) : (
             <View style={styles.buscaLinha}>
@@ -223,26 +247,42 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
                 ))}
               </View>
             )
+          ) : testamento ? (
+            /* Segundo degrau: os livros do testamento escolhido, em botões do
+               mesmo feitio da grade de capítulos. */
+            <View style={styles.grade}>
+              {daLista.map((l) => (
+                <Pressable
+                  key={l.numero}
+                  onPress={() => setEscolhendoCapitulo(l)}
+                  style={styles.livroBotao}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${l.nome}, ${l.capitulos} capítulos`}
+                >
+                  <Text style={styles.livroBotaoNome}>{l.nome}</Text>
+                </Pressable>
+              ))}
+            </View>
           ) : (
             <>
-              <Text style={styles.secao}>Antigo Testamento</Text>
-              <View style={styles.livros}>
-                {antigo.map((l) => (
-                  <Pressable key={l.numero} onPress={() => setEscolhendoCapitulo(l)} style={styles.livro}>
-                    <Text style={styles.livroNome}>{l.nome}</Text>
-                    <Text style={styles.livroCaps}>{l.capitulos}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.secao}>Novo Testamento</Text>
-              <View style={styles.livros}>
-                {novo.map((l) => (
-                  <Pressable key={l.numero} onPress={() => setEscolhendoCapitulo(l)} style={styles.livro}>
-                    <Text style={styles.livroNome}>{l.nome}</Text>
-                    <Text style={styles.livroCaps}>{l.capitulos}</Text>
-                  </Pressable>
-                ))}
+              {/* Primeiro degrau. */}
+              <View style={styles.testamentos}>
+                <Pressable
+                  onPress={() => setTestamento('antigo')}
+                  style={styles.testamentoBotao}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.testamentoNome}>Antigo Testamento</Text>
+                  <Text style={styles.testamentoInfo}>{antigo.length} livros</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setTestamento('novo')}
+                  style={styles.testamentoBotao}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.testamentoNome}>Novo Testamento</Text>
+                  <Text style={styles.testamentoInfo}>{novo.length} livros</Text>
+                </Pressable>
               </View>
 
               <Text style={styles.creditos}>
@@ -281,24 +321,33 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', color: colors.ambarSoft,
   },
 
-  secao: {
-    fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.3,
-    textTransform: 'uppercase', color: colors.foregroundSubtle,
-    marginTop: 22, marginBottom: 12,
+  testamentos: { gap: 12, marginTop: 10 },
+  testamentoBotao: {
+    ...glassCard,
+    borderRadius: 18,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+    gap: 4,
   },
-  livros: { gap: 2 },
-  livro: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 13, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: colors.hairline,
+  testamentoNome: {
+    fontFamily: fonts.serifMedium, fontSize: 21, color: colors.palha,
+    letterSpacing: -0.3,
   },
-  livroNome: { fontFamily: fonts.sans, fontSize: fontSizes.base, color: colors.palha },
-  livroCaps: {
-    fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundSubtle,
-    fontVariant: ['tabular-nums'],
+  testamentoInfo: {
+    fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundSubtle,
   },
 
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  /* O nome manda na largura; a altura é a mesma da grade de capítulos, para os
+     dois degraus parecerem o mesmo gesto. */
+  livroBotao: {
+    height: 46, borderRadius: 14, paddingHorizontal: 14,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surfaceSoft,
+  },
+  livroBotaoNome: {
+    fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.palha,
+  },
   capBotao: {
     width: 52, height: 46, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',

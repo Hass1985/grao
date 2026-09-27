@@ -18,10 +18,7 @@ import 'react-native-gesture-handler';
 
 import RootNavigator from './src/navigation';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
-import {
-  hasDisplayName,
-  hasDevocionalOptIn,
-} from './src/onboarding/userProfile';
+import { hasDisplayName, sincronizarPerfil } from './src/onboarding/userProfile';
 import { consumirPosOAuth } from './src/onboarding/authFlow';
 
 SplashScreen.preventAutoHideAsync();
@@ -86,6 +83,15 @@ function AppShell() {
       await consumirPosOAuth();
       limparHashOAuth();
 
+      // O nome é a única porteira, e ele é perguntado UMA vez.
+      //
+      // Havia uma segunda, `hasDevocionalOptIn`, que mandava para a rota
+      // 'ConfirmarDevocional' — uma tela que não existe mais no navegador de
+      // onboarding. Ela nunca disparou porque o opt-in era gravado no mesmo
+      // aparelho, no mesmo instante que o nome, e os dois sumiam juntos. Agora
+      // que o nome sobrevive no servidor, o par se desfez: quem entrasse noutro
+      // celular passaria pelo nome e cairia numa rota inexistente. Sai daqui,
+      // porque a resposta já está dada por quem criou conta num app devocional.
       const named = await hasDisplayName();
       if (!alive) return;
       if (!named) {
@@ -94,15 +100,14 @@ function AppShell() {
         return;
       }
 
-      const optIn = await hasDevocionalOptIn();
-      if (!alive) return;
-      if (!optIn) {
-        setGate({ ready: true, app: false, initialRoute: 'ConfirmarDevocional' });
-        return;
-      }
-
       // Já concluiu onboarding: entra no Hoje.
       setGate({ ready: true, app: true, initialRoute: 'Welcome' });
+
+      // A partir daqui, sem esperar: traz do cadastro a foto, o nome e a data
+      // de entrada que este aparelho ainda não tem. Fica DEPOIS do portão de
+      // propósito — nada que envolva rede pode atrasar a primeira tela, e o
+      // avatar aparece sozinho quando chega, porque ProfileButton escuta.
+      void sincronizarPerfil();
     })();
     return () => {
       alive = false;
