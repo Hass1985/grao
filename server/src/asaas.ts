@@ -240,10 +240,32 @@ export async function aplicarEvento(evento: string, pagamento: any): Promise<str
     return `evento ${evento} registrado, sem efeito no acesso`;
   }
 
-  // O status muda, o next_charge_at NÃO: quem o define é o PAYMENT_CREATED.
+  // CORTESIA NÃO É ASSUNTO DO GATEWAY.
+  //
+  // Isto aqui era um UPDATE sem ressalva, e em 29/09 às 02h ele apagou o
+  // acesso de uma sócia: um PAYMENT_OVERDUE chegou, o status virou 'expirada',
+  // e ela parou de receber a semente. Ninguém percebeu por cinco dias, porque
+  // a falha de uma entrega diária é silêncio — e silêncio é o que um devocional
+  // parece quando está funcionando mal.
+  //
+  // Duas coisas tornam isso pior do que um bug comum. A cobrança está em
+  // homologação, então era uma fatura de MENTIRA vencendo. E a cortesia é uma
+  // decisão humana: alguém escreveu o nome dessa pessoa numa lista. Um aviso
+  // do gateway não tem autoridade para desfazer isso.
+  //
+  // Subir continua valendo: quem tem cortesia e resolve pagar vira assinante
+  // de verdade. O que não vale é descer.
+  const rebaixa = novo !== 'ativa';
   const { rowCount } = await pool.query(
-    `UPDATE subscriptions SET status = $2, updated_at = now() WHERE user_id = $1`,
+    `UPDATE subscriptions SET status = $2, updated_at = now()
+      WHERE user_id = $1${rebaixa ? ` AND status <> 'cortesia'` : ''}`,
     [userId, novo]);
+
+  if (rebaixa && !rowCount) {
+    void logEvent(userId, 'pagamento_evento',
+      { evento, aplicado: false, motivo: 'cortesia preservada' });
+    return `${evento} ignorado — acesso de cortesia preservado`;
+  }
 
   void logEvent(userId, 'pagamento_evento', { evento, aplicado: true, status: novo });
   return rowCount ? `${evento} → ${novo}` : 'assinatura não encontrada';

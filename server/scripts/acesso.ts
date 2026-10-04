@@ -18,8 +18,19 @@ import 'dotenv/config';
 import { pool } from '../src/db.js';
 import { normalizePhone } from '../src/whatsapp.js';
 import { TEM_ACESSO_SQL } from '../src/acesso.js';
+import { PLANOS } from '../src/asaas.js';
 
-const PRECO = { plantio: 1990, anual: 19900 } as const;
+/**
+ * Do mesmo lugar que o gateway cobra.
+ *
+ * Era `{ plantio: 1990, anual: 19900 }` escrito à mão — a quinta cópia do
+ * preço no projeto, e ela ia parar na linha de assinatura de quem recebesse
+ * cortesia por aqui. O preço subiu para R$ 29,90 em setembro e esta não soube.
+ */
+const PRECO = {
+  plantio: Math.round(PLANOS.plantio.valor * 100),
+  anual: Math.round(PLANOS.anual.valor * 100),
+} as const;
 
 async function listar() {
   const { rows } = await pool.query(`
