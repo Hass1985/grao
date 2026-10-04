@@ -12,9 +12,18 @@
 
 import { pool, logEvent } from './db.js';
 import { normalizePhone } from './telefone.js';
+import { PLANOS } from './asaas.js';
 
-/** Preço registrado junto com a cortesia, só para o painel somar direito. */
-const PRECO_PLANTIO = 1990;
+/**
+ * Preço registrado junto com a cortesia, para a linha nascer coerente.
+ *
+ * Era `1990` escrito à mão — a quarta cópia do mesmo preço no projeto, e a
+ * única que sobreviveu à subida para R$ 29,90. Não chegou a mentir para
+ * ninguém: a receita recorrente do painel só soma `trial` e `ativa`, e a tela
+ * de ajustes mostra "Cortesia" em vez do valor. Mas era um número velho
+ * esperando alguém somar errado.
+ */
+const PRECO_PLANTIO = Math.round(PLANOS.plantio.valor * 100);
 
 export interface Identidade {
   email?: string | null;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import { makeRedirectUri } from 'expo-auth-session';
 import type { Session } from '@supabase/supabase-js';
 import Svg, { Path } from 'react-native-svg';
 import { Eye, EyeOff } from '../../components/icons';
+import { appleNativoDisponivel, entrarComApple } from '../../onboarding/apple';
+import { provedoresLigados } from '../../onboarding/provedores';
 import Button from '../../components/ui/Button';
 import CircleBack from '../../components/ui/CircleBack';
 import ScreenBackground from '../../components/ui/ScreenBackground';
@@ -51,7 +53,7 @@ function emPortugues(msg: string | undefined): string {
   const m = (msg ?? '').toLowerCase();
   // Telefone primeiro: estas mensagens também contêm palavras genéricas.
   if (m.includes('phone provider') || m.includes('phone signups') || m.includes('sms'))
-    return 'A entrada por telefone ainda não está ligada no servidor. Use e-mail ou o Google.';
+    return 'A entrada por telefone ainda não está ligada no servidor. Use e-mail, Google ou Apple.';
   if (m.includes('invalid phone')) return 'Esse número não parece certo. Confira o DDD.';
   if (m.includes('token has expired') || m.includes('invalid otp') || m.includes('otp_expired'))
     return 'Código vencido ou errado. Peça um novo.';
@@ -107,6 +109,16 @@ const GoogleIcon = () => (
   </Svg>
 );
 
+/** A maçã oficial, em traço único, para ficar legível no botão escuro. */
+const AppleIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24">
+    <Path
+      d="M17.05 12.54c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.6-.75 3-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.44-3.69zM14.79 5.4c.64-.78 1.07-1.85.95-2.93-.92.04-2.03.61-2.69 1.38-.59.69-1.11 1.79-.97 2.84 1.03.08 2.07-.52 2.71-1.29z"
+      fill="#FFFFFF"
+    />
+  </Svg>
+);
+
 export default function Auth({ navigation }: Props) {
   const { configured, enterDemo, acceptSession, isAuthenticated } = useAuth();
   const [mode, setMode] = useState<Mode>('criar');
@@ -122,7 +134,7 @@ export default function Auth({ navigation }: Props) {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [codigo, setCodigo] = useState('');
 
-  // Se a sessão já existe (ex.: voltou do Google e o gate ainda mostrou Auth),
+  // Se a sessão já existe (ex.: voltou do provedor e o gate ainda mostrou Auth),
   // segue direto para o nome.
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -147,12 +159,50 @@ export default function Auth({ navigation }: Props) {
     navigation.replace('ComoChamar');
   };
 
+  // O botão da Apple aparece em todo lugar; o que muda é o caminho por baixo.
+  //
+  // No iPhone é a folha nativa, com a digital e sem sair do app. Fora dele é o
+  // mesmo OAuth do Google, pelo navegador. Esconder o botão fora do iOS
+  // trancaria para fora quem criou a conta pela Apple e depois abriu o Grão no
+  // computador: essa pessoa não tem senha, porque nunca escolheu uma.
+  const [appleNativo, setAppleNativo] = useState(false);
+  // O botão só aparece quando a Apple está LIGADA no Supabase. Enquanto não
+  // estiver, mostrá-lo levaria a pessoa para fora do app, numa página de erro
+  // em JSON — ver provedores.ts.
+  const [appleLigada, setAppleLigada] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    appleNativoDisponivel().then((d) => { if (vivo) setAppleNativo(d); });
+    provedoresLigados().then((p) => { if (vivo) setAppleLigada(p.apple); });
+    return () => { vivo = false; };
+  }, []);
+
+  const entrarApple = async () => {
+    if (!appleNativo) return oauth('apple');
+
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const r = await entrarComApple();
+      if (r.ok) {
+        await finishWithUser(r.sessao as Session | null, r.userId ?? undefined);
+        return;
+      }
+      // Cancelar não é falha: quem tocou em "Cancelar" na folha da Apple sabe
+      // o que fez, e uma mensagem de erro aqui seria uma repreensão.
+      if (!r.cancelado) setError(r.erro ?? 'Não deu para entrar com a Apple.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const redirectTo = makeRedirectUri({
     scheme: 'grao',
     path: 'auth/callback',
   });
 
-  const oauth = async (provider: 'google') => {
+  const oauth = async (provider: 'google' | 'apple') => {
     if (!supabase) {
       setError('Supabase ainda não está configurado neste build.');
       return;
@@ -161,8 +211,8 @@ export default function Auth({ navigation }: Props) {
     setError(null);
     setInfo(null);
     try {
-      // Ao voltar do Google o app remonta: este flag + a sessão fazem o gate
-      // abrir em ComoChamar, sem refazer a apresentação.
+      // Ao voltar do provedor o app remonta: este flag + a sessão fazem o gate
+      // abrir em ComoChamar, sem refazer a apresentação. Vale para os dois.
       await marcarPosOAuth();
       const { data, error: err } = await supabase.auth.signInWithOAuth({
         provider,
@@ -409,6 +459,27 @@ export default function Auth({ navigation }: Props) {
           <View style={styles.rule} />
 
           <View style={styles.social}>
+            {/* A Apple vem primeiro no iPhone.
+
+                Não é só a regra 4.8 pedindo que ela exista: no aparelho da
+                Apple, é a entrada que custa menos à pessoa — uma digital, sem
+                teclado, sem senha para lembrar depois. Num público que em boa
+                parte é mais velho, esse é o degrau onde o cadastro se perde. */}
+            {appleLigada ? (
+              <Pressable
+                style={[styles.socialBtn, styles.appleBtn, busy && styles.disabled]}
+                onPress={entrarApple}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Continuar com a Apple"
+              >
+                <AppleIcon />
+                <Text style={[styles.socialLabel, styles.appleLabel]}>
+                  Continuar com a Apple
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
               style={[styles.socialBtn, busy && styles.disabled]}
               onPress={() => oauth('google')}
@@ -553,6 +624,13 @@ const styles = StyleSheet.create({
     marginVertical: 28,
   },
   social: { gap: 12 },
+  /* O preto é exigência da Apple: o botão dela tem aparência normatizada, e um
+     botão "parecido" com cor nossa é motivo de observação na revisão. */
+  appleBtn: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
+  },
+  appleLabel: { color: '#FFFFFF' },
   socialBtn: {
     minHeight: 54,
     borderRadius: radius.pill,

@@ -19,7 +19,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "O Grão usa o microfone para você contar seu momento falando, em vez de escrever.",
         "NSPhotoLibraryUsageDescription": "O Grão usa suas fotos apenas para você escolher uma imagem de perfil."
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -53,7 +54,8 @@
           "photosPermission": "O Grão usa suas fotos apenas para você escolher uma imagem de perfil."
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
