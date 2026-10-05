@@ -320,21 +320,30 @@ export async function entregarSemente(
   }
 
   void logEvent(u.id, 'wa_send_failed', { details: r.erro, source: origem });
-  // Desfaz APENAS o que este envio criou. Se a semente já tinha sido escolhida
-  // pelo app, ela é da pessoa: apagar tiraria da tela Hoje uma semente que ela
-  // talvez já tenha lido. Fica gravada, com sent_wa_at nulo, e a próxima
-  // varredura tenta mandar de novo.
-  if (!jaExistia) {
-    try {
-      const { rowCount } = await pool.query(
-        `DELETE FROM seed_deliveries
-          WHERE id = (SELECT max(id) FROM seed_deliveries
-                       WHERE user_id = $1 AND seed_id = $2 AND sent_wa_at IS NULL
-                         AND planted = false)`, [u.id, seed.id]);
-      if (rowCount) console.warn(`[wa] entrega desfeita para ${u.phone_e164} — a semente volta para a fila`);
-    } catch (e: any) {
-      console.error('[wa] erro ao desfazer entrega:', e?.message || e);
-    }
+
+  // A SEMENTE FICA, E A TENTATIVA É CONTADA.
+  //
+  // Aqui o código DESFAZIA a entrega quando o envio falhava, para "não gastar
+  // uma das 380 sementes num envio que não chegou". A intenção era boa e o
+  // efeito foi caro: sem entrega do dia, a varredura do minuto seguinte
+  // escolhia outra semente do zero — curadoria inteira, chamada de IA paga — e
+  // tentava de novo. Medido numa pessoa só, em 24 horas: 192 falhas e 193
+  // curadorias. Uma chamada por minuto durante toda a janela de tolerância,
+  // todo dia, para não entregar nada.
+  //
+  // Guardar a escolha é o contrário de desperdiçá-la: a próxima tentativa
+  // manda a MESMA semente, sem pensar de novo. E a contagem deixa a agenda
+  // desistir em vez de insistir por horas — insistir contra um limite de
+  // frequência da Meta não o contorna, alimenta.
+  try {
+    await pool.query(
+      `UPDATE seed_deliveries d SET wa_tentativas = d.wa_tentativas + 1
+         FROM users u
+        WHERE d.user_id = $1 AND u.id = d.user_id
+          AND (d.delivered_at AT TIME ZONE u.timezone)::date
+            = (now() AT TIME ZONE u.timezone)::date`, [u.id]);
+  } catch (e: any) {
+    console.error('[wa] erro ao contar a tentativa:', e?.message || e);
   }
   return { ok: false, erro: r.erro };
 }

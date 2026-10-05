@@ -57,6 +57,21 @@ const LARGURA_ENTREGA = Number(process.env.GRAO_LARGURA_ENTREGA ?? 8);
 const ATRASO_MAXIMO_HORAS = 3;
 
 /**
+ * Quantas vezes a entrega de um dia é tentada antes de a agenda desistir.
+ *
+ * Sem teto, a varredura tentava de minuto em minuto durante as três horas de
+ * tolerância: 180 tentativas por pessoa, por dia. Numa medição real deu 192
+ * falhas e 193 chamadas de curadoria em 24 horas — para uma pessoa só, e sem
+ * entregar nada.
+ *
+ * Três é o suficiente para atravessar uma instabilidade de rede, e pouco o
+ * bastante para não insistir contra um limite de frequência da Meta, que é o
+ * tipo de recusa que insistir não resolve. O dia perdido volta amanhã no
+ * horário certo; o dinheiro queimado não voltava.
+ */
+const TENTATIVAS_MAXIMAS = Number(process.env.GRAO_TENTATIVAS_WA ?? 3);
+
+/**
  * Trava entre instâncias.
  *
  * Duas cópias do serviço varrendo ao mesmo tempo mandariam a mesma semente
@@ -141,10 +156,12 @@ export async function despacharDevidos(): Promise<ResultadoVarredura> {
             AND NOT EXISTS (
                   SELECT 1 FROM seed_deliveries d
                    WHERE d.user_id = u.id
-                     AND d.sent_wa_at IS NOT NULL
                      AND (d.delivered_at AT TIME ZONE u.timezone)::date
-                       = (now() AT TIME ZONE u.timezone)::date)`,
-        [ATRASO_MAXIMO_HORAS]);
+                       = (now() AT TIME ZONE u.timezone)::date
+                     -- Já entregue, ou já tentada vezes demais hoje.
+                     AND (d.sent_wa_at IS NOT NULL
+                          OR d.wa_tentativas >= $2::int))`,
+        [ATRASO_MAXIMO_HORAS, TENTATIVAS_MAXIMAS]);
 
       let enviadas = 0, falhas = 0;
       const detalhes: string[] = [];
