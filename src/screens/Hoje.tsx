@@ -426,7 +426,15 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   este caminho, contar com as próprias palavras só era possível
                   no WhatsApp ou no primeiro dia de cadastro, e o motor
                   envelhecia junto com aquele retrato. */}
-              {isSemente && !trocaUsada ? (
+              {/* Some assim que a semente é plantada, por qualquer canal.
+                  
+                  A condição era só `!trocaUsada`, que vem do servidor e só
+                  muda na próxima leitura — então quem plantava pelo app
+                  continuava vendo "Meu sentimento mudou" logo abaixo da
+                  semente que acabou de plantar. Oferecer trocar o sentimento
+                  de um dia já encerrado é o app admitindo que não viu o que a
+                  pessoa fez um segundo antes. */}
+              {isSemente && !trocaUsada && !plantada ? (
                 <TouchableOpacity
                   onPress={() => navigation.navigate('MomentoSemente', { real: true })}
                   style={styles.otherLink}

@@ -44,6 +44,16 @@ export const colors = {
   accentSoft: '#D89A55',
   accentForeground: '#FFFFFF',
 
+  /**
+   * Vermelho de ação destrutiva, legível no escuro.
+   *
+   * Era #B33A2B, um tijolo que mede 2.80:1 contra o fundo da tela e 2.38:1
+   * contra o card de vidro — reprovado nos dois, e o efeito era "Sair da
+   * conta" e "Excluir conta" parecendo desabilitados. Este mede 6.48:1 e
+   * 5.51:1: passa em AA nos dois, e continua inconfundivelmente vermelho.
+   */
+  perigo: '#FF7A66',
+
   /** O mesmo `background`, sem opacidade: a ponta transparente de um degradê. */
   backgroundFade: 'rgba(42, 28, 12, 0)',
 

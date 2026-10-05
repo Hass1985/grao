@@ -94,7 +94,7 @@ function Row({
         <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>
           <Icon
             size={16}
-            color={danger ? '#B33A2B' : colors.accent}
+            color={danger ? colors.perigo : colors.accent}
             strokeWidth={2}
           />
         </View>
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     color: colors.foregroundMuted,
   },
   rowDanger: {
-    color: '#B33A2B',
+    color: colors.perigo,
   },
 
 
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   signOutText: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
-    color: '#B33A2B',
+    color: colors.perigo,
   },
   footerMark: {
     alignItems: 'center',

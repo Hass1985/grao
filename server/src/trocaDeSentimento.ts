@@ -18,7 +18,7 @@
 
 import { pool, logEvent, saveTurn, saveReading, setMomentBySystem } from './db.js';
 import { readOpening } from './brain.js';
-import { selectSeedForUser } from './seedSelector.js';
+import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { formatSeed } from './whatsapp.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
@@ -316,8 +316,27 @@ export async function responderForaDeFluxo(
  */
 async function textoDiaFechado(userId: string): Promise<string> {
   const { rows: [u] } = await pool.query(
-    `SELECT to_char(delivery_time, 'HH24:MI') horario FROM users WHERE id = $1`, [userId]);
+    `SELECT to_char(delivery_time, 'HH24:MI') horario, name FROM users WHERE id = $1`, [userId]);
   const quando = u?.horario ? `às ${u.horario}` : 'no seu horário';
+
+  // A SEMENTE VEM JUNTO, E NÃO SÓ O AVISO DE QUE ELA EXISTE.
+  //
+  // Antes a resposta era só "sua semente de hoje já foi plantada, amanhã tem
+  // outra". Quem plantou pelo aplicativo e à noite abriu o WhatsApp ficava
+  // sabendo que havia uma semente e não via nenhuma — a conversa guardava o
+  // aviso e perdia a Palavra, que é a única parte que importa.
+  //
+  // Dá para mandar inteira justamente porque a pessoa TOCOU no botão: o toque
+  // abre a janela de 24h da Meta, e dentro dela texto livre passa. Era a mesma
+  // permissão que o botão "Plantar" já usava; faltava usar aqui.
+  const deHoje = await getTodaySeed(userId);
+  if (deHoje) {
+    const { completo } = await acessoDoUsuario(userId);
+    return `${formatSeed(deHoje, u?.name ?? null, completo)}\n\n` +
+           `Esta é a sua semente de hoje, que você já plantou. ` +
+           `Amanhã, ${quando}, tem uma nova esperando você. 🌱`;
+  }
+
   return `Recebi. Sua semente de hoje já foi plantada. ` +
          `Amanhã, ${quando}, tem uma nova esperando você. 🌱`;
 }

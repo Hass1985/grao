@@ -93,6 +93,19 @@ export default function Campo({ navigation }: { navigation: any }) {
   const [graos, setGraos] = useState<ResumoGraos | null>(null);
   /** Dia que a pessoa tocou no calendário, aberto por cima. */
   const [aberta, setAberta] = useState<Seed | null>(null);
+  /**
+   * Nada é desenhado antes de os números existirem.
+   *
+   * A tela abria com o calendário já montado — a reserva local de sementes faz
+   * ele ter o que mostrar na hora — e só depois, quando a resposta do servidor
+   * chegava, os cartões de sequência e total apareciam ACIMA dele e empurravam
+   * o calendário para baixo. O pulo acontecia sempre, porque o calendário
+   * nunca espera e os números sempre esperam.
+   *
+   * Uma volta só: enquanto carrega, a área dos números é um espaço reservado
+   * da mesma altura. O calendário entra uma vez, no lugar onde vai ficar.
+   */
+  const [carregando, setCarregando] = useState(true);
   const carregar = useCallback(async () => {
     try {
       const [historico, r, g] = await Promise.all([
@@ -103,6 +116,8 @@ export default function Campo({ navigation }: { navigation: any }) {
       setGraos(g);
     } catch {
       /* mantém a reserva */
+    } finally {
+      setCarregando(false);
     }
   }, []);
   useEffect(() => {
@@ -260,7 +275,12 @@ export default function Campo({ navigation }: { navigation: any }) {
               manhã não vê o número zerado às 7h. E quando ela realmente zera, o
               texto convida em vez de cobrar: um devocional que culpa quem
               faltou empurra para longe justamente quem mais precisa voltar. */}
-          {ehDevocional && resumo ? (
+          {carregando ? (
+            <View style={styles.numeros}>
+              <View style={[styles.numeroCard, styles.numeroVazio]} />
+              <View style={[styles.numeroCard, styles.numeroVazio]} />
+            </View>
+          ) : ehDevocional && resumo ? (
             <View style={styles.numeros}>
               <View style={styles.numeroCard}>
                 <Text style={styles.numeroValor}>
@@ -485,6 +505,9 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 16,
   },
+  /* A mesma altura dos cartões cheios: 30 do número, 18 do rótulo, 16 da nota,
+     mais o respiro vertical. É o que impede o calendário de pular. */
+  numeroVazio: { minHeight: 104, opacity: 0.35 },
   numeroCard: {
     ...glassCard,
     flex: 1,

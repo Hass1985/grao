@@ -31,7 +31,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import OuvirTexto from '../components/OuvirTexto';
-import Responder from '../components/Responder';
 import Button from '../components/ui/Button';
 import ScreenBackground from '../components/ui/ScreenBackground';
 import AppHeader from '../components/ui/AppHeader';
@@ -200,7 +199,14 @@ export default function Raiz({ navigation }: { navigation: any }) {
 
               {/* Responder alimenta a memória. Sem obrigação e sem contador:
                   quem não escreve não perde nada. */}
-              <Responder />
+              {/* A Raiz não pergunta nada.
+                  
+                  Aqui mora o devocional diário, que é o mesmo para todo mundo
+                  e é gratuito. "Como essa semente falou com você?" pertence à
+                  semente — a escolhida para o momento daquela pessoa, na tela
+                  Hoje. Perguntar na Raiz convidava a responder a um texto que
+                  não foi escrito para ela, e enchia a memória de respostas a
+                  um estímulo que o motor não escolheu. */}
 
               <TouchableOpacity
                 onPress={() => navigation.navigate('Campo')}
