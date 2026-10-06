@@ -281,3 +281,34 @@ export async function markRead(messageId: string): Promise<void> {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   }).catch(() => { /* nunca deve derrubar o fluxo principal */ });
 }
+
+/**
+ * O número do Grão no WhatsApp, em E.164 sem o "+", para montar um link wa.me.
+ *
+ * Vem da própria Meta e fica em memória: é imutável na prática, e uma variável
+ * de ambiente a mais é uma variável a mais para alguém esquecer de preencher
+ * quando trocar de número — e o sintoma seria um botão que abre uma conversa
+ * com ninguém.
+ *
+ * Devolve null quando não dá para saber. Quem chama esconde o botão, que é
+ * melhor do que oferecer um link quebrado.
+ */
+let numeroEmCache: string | null | undefined;
+
+export async function numeroPublico(): Promise<string | null> {
+  if (numeroEmCache !== undefined) return numeroEmCache;
+  if (!metaConfigurada()) { numeroEmCache = null; return null; }
+  try {
+    const res = await fetch(
+      `${GRAPH}/${PHONE_ID()}?fields=display_phone_number`,
+      { headers: { Authorization: `Bearer ${TOKEN()}` }, signal: AbortSignal.timeout(8000) });
+    const j: any = await res.json();
+    const digitos = String(j?.display_phone_number ?? '').replace(/\D/g, '');
+    numeroEmCache = digitos.length >= 10 ? digitos : null;
+  } catch {
+    // Sem cravar null: uma falha de rede agora não pode esconder o botão para
+    // sempre. `undefined` faz a próxima chamada tentar de novo.
+    return null;
+  }
+  return numeroEmCache;
+}

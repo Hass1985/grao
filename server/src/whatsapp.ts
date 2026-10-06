@@ -697,3 +697,58 @@ export function registerWhatsAppRoutes(app: Express) {
     }
   });
 }
+
+/**
+ * A frase que o botão "Guardar no WhatsApp" deixa pronta no aplicativo.
+ *
+ * Ela é escrita pela PESSOA — o link wa.me só preenche o campo, e quem toca em
+ * enviar é ela. Essa distinção é o produto inteiro deste caminho: é o envio
+ * dela que abre a janela de 24 horas, e é só dentro dessa janela que a semente
+ * inteira pode sair como texto livre. Não existe jeito de abrir a janela do
+ * nosso lado, e não é limitação nossa: a Meta fez essa regra justamente para
+ * impedir que empresas empurrem texto sem que alguém tenha pedido.
+ */
+export const PEDIDO_DA_SEMENTE = 'Quero minha semente de hoje';
+
+/** A mensagem recebida é o pedido vindo do aplicativo? */
+export function ehPedidoDaSemente(texto: string | undefined): boolean {
+  const t = (texto ?? '').trim().toLowerCase().replace(/[.!🌱\s]+$/g, '');
+  return t === PEDIDO_DA_SEMENTE.toLowerCase();
+}
+
+/**
+ * Manda a semente de hoje INTEIRA, agora.
+ *
+ * Só é chamada logo depois de uma mensagem da pessoa, então a janela está
+ * aberta por definição e o texto livre passa.
+ *
+ * Devolve false quando não havia o que mandar — e aí quem chama deixa a
+ * mensagem seguir para o fluxo normal, em vez de engolir uma conversa de
+ * verdade por causa de uma frase parecida.
+ */
+export async function entregarSementeAgora(
+  userId: string,
+  telefone: string,
+): Promise<boolean> {
+  const deHoje = await getTodaySeed(userId);
+  if (!deHoje) return false;
+
+  const { completo } = await acessoDoUsuario(userId);
+  const { rows: [u] } = await pool.query(`SELECT name FROM users WHERE id = $1`, [userId]);
+
+  const r = await sendText(telefone, formatSeed(deHoje, u?.name ?? null, completo));
+  if (!r.ok) {
+    void logEvent(userId, 'wa_entrega_adiada', { motivo: r.erro, origem: 'pedido_do_app' });
+    return false;
+  }
+
+  await pool.query(
+    `UPDATE seed_deliveries d SET sent_wa_at = now()
+       FROM users u
+      WHERE d.user_id = $1 AND u.id = d.user_id
+        AND (d.delivered_at AT TIME ZONE u.timezone)::date
+          = (now() AT TIME ZONE u.timezone)::date`, [userId]);
+  void logEvent(userId, 'seed_delivered',
+    { seedId: deHoje.id, source: 'pedido_do_app', semBotoes: true });
+  return true;
+}

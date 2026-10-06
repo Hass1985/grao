@@ -20,7 +20,7 @@ import {
 } from './db.js';
 import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
 import { readMessage, readOpening, CONFIDENCE_TO_UPDATE } from './brain.js';
-import { registerWhatsAppRoutes, BASE_URL } from './whatsapp.js';
+import { registerWhatsAppRoutes, BASE_URL, PEDIDO_DA_SEMENTE } from './whatsapp.js';
 import { registerMetaWebhookRoutes } from './metaWebhook.js';
 import { registerOuvirRoutes } from './ouvir.js';
 import { registerPrivacidadeRoutes } from './privacidade.js';
@@ -41,6 +41,7 @@ import { avisarRisco } from './alerta.js';
 import { iniciarAgenda, segundosDesdeOBatimento } from './agenda.js';
 import { registerCobrancaRoutes } from './cobranca.js';
 import { PLANOS } from './asaas.js';
+import { numeroPublico } from './meta.js';
 import { registerAuthRoutes, apagarIdentidade } from './auth.js';
 import { donoDoUserId, donoNoCorpo, modoAtual, problemaNoModo } from './identidade.js';
 import { tetoGeral, tetoCaro, tetoAuth, tetoAdmin } from './tetos.js';
@@ -1378,6 +1379,11 @@ app.get('/profile/:userId/preferencias', async (req, res) => {
       // pessoa tinha chegado hoje.
       membroDesde: u?.membroDesde ?? null,
       whatsappLigado: !!u?.whatsappLigado,
+      // O que o botão "Guardar no WhatsApp" precisa para montar o link wa.me.
+      // Null quando não dá para saber o número — e aí o app esconde o botão,
+      // que é melhor do que abrir uma conversa com ninguém.
+      whatsappNumero: await numeroPublico(),
+      pedidoDaSemente: PEDIDO_DA_SEMENTE,
     });
   } catch (err: any) {
     console.error('[preferencias]', err?.message || err);

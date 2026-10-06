@@ -172,6 +172,10 @@ export interface Preferencias {
   /** `users.created_at`: a entrada de verdade, não a deste aparelho. */
   membroDesde: string | null;
   whatsappLigado: boolean;
+  /** Número do Grão no WhatsApp, E.164 sem o "+", para montar o link wa.me. */
+  whatsappNumero: string | null;
+  /** A frase que o link deixa pronta. O servidor a reconhece de volta. */
+  pedidoDaSemente: string | null;
 }
 
 export async function minhasPreferencias(): Promise<Preferencias | null> {

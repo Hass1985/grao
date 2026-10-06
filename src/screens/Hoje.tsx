@@ -12,8 +12,9 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
-import { BookOpen, Mic, Share2, Sprout } from '../components/icons';
+import { BookOpen, MessageCircle, Mic, Share2, Sprout } from '../components/icons';
 import SeedCard from '../components/SeedCard';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
@@ -28,7 +29,7 @@ import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
 import { selectTodaySeed, getMoment, confirmarLeitura, plantarSementeDeHoje } from '../onboarding/seedDelivery';
-import { minhaAssinatura } from '../onboarding/assinatura';
+import { minhaAssinatura, minhasPreferencias } from '../onboarding/assinatura';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { space } from '../theme/spacing';
@@ -83,6 +84,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
    * botão "Meu sentimento mudou" sumir, e o que espelha as duas pontas.
    */
   const [plantada, setPlantada] = useState(true);
+  /**
+   * O que o botão "Guardar no WhatsApp" precisa, ou null quando ele não cabe.
+   *
+   * `jaNoWhatsapp` evita oferecer o que já aconteceu: quem recebeu a semente
+   * no canal hoje não precisa de um atalho para recebê-la de novo.
+   */
+  const [waPref, setWaPref] = useState<{ numero: string; frase: string } | null>(null);
   const [plantando, setPlantando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
@@ -208,6 +216,31 @@ export default function Hoje({ navigation }: { navigation: any }) {
    * semente com o dia aberto, o WhatsApp mandaria o aviso de novo mais tarde,
    * e as duas pontas voltariam a discordar pela porta dos fundos.
    */
+  useEffect(() => {
+    let vivo = true;
+    minhasPreferencias().then((p) => {
+      if (!vivo || !p?.whatsappLigado || !p.whatsappNumero || !p.pedidoDaSemente) return;
+      setWaPref({ numero: p.whatsappNumero, frase: p.pedidoDaSemente });
+    }).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+
+  /**
+   * Abre o WhatsApp com a frase pronta.
+   *
+   * O envio é DELA — o link só preenche o campo. Essa distinção é o caminho
+   * inteiro: é a mensagem dela que abre a janela de 24 horas da Meta, e é só
+   * dentro dessa janela que a semente inteira pode sair como texto livre. Não
+   * existe forma de abrir essa janela do nosso lado, e isso é proposital: a
+   * regra existe para impedir que empresas empurrem texto sem que alguém tenha
+   * pedido.
+   */
+  const guardarNoWhatsapp = () => {
+    if (!waPref) return;
+    const url = `https://wa.me/${waPref.numero}?text=${encodeURIComponent(waPref.frase)}`;
+    Linking.openURL(url).catch(() => {});
+  };
+
   const plantar = async () => {
     if (plantando) return;
     setPlantando(true);
@@ -434,6 +467,22 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   semente que acabou de plantar. Oferecer trocar o sentimento
                   de um dia já encerrado é o app admitindo que não viu o que a
                   pessoa fez um segundo antes. */}
+              {/* Depois de plantar, o atalho para o WhatsApp.
+                  
+                  Quem planta pelo app de manhã só via a semente no WhatsApp no
+                  horário agendado, horas depois — e às vezes nem isso, se a
+                  janela de 24h estivesse fechada e o template esbarrasse no
+                  limite da Meta. Aqui ela chega no momento em que a pessoa
+                  acabou de plantar, que é quando ela ainda se importa. */}
+              {isSemente && plantada && waPref ? (
+                <TouchableOpacity onPress={guardarNoWhatsapp} style={styles.otherLink}>
+                  <MessageCircle size={14} color={colors.ambarSoft} strokeWidth={2} />
+                  <Text style={[styles.otherLinkText, { color: colors.ambarSoft }]}>
+                    Guardar no WhatsApp
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
               {isSemente && !trocaUsada && !plantada ? (
                 <TouchableOpacity
                   onPress={() => navigation.navigate('MomentoSemente', { real: true })}

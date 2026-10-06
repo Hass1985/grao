@@ -15,7 +15,10 @@ import crypto from 'node:crypto';
 import { pool, getProfile, getRecentUserMessages, saveTurn, saveReading, setMomentBySystem, logEvent } from './db.js';
 import { readMessage, CONFIDENCE_TO_UPDATE } from './brain.js';
 import { selectSeedForUser, getTodaySeed } from './seedSelector.js';
-import { resolveUserByPhone, normalizePhone, formatSeed, replyFor } from './whatsapp.js';
+import {
+  resolveUserByPhone, normalizePhone, formatSeed, replyFor,
+  ehPedidoDaSemente, entregarSementeAgora,
+} from './whatsapp.js';
 import { despacharDevidos } from './agenda.js';
 import { acessoDoUsuario } from './acesso.js';
 import { avaliarRisco, respostaDeCuidado } from './seguranca.js';
@@ -223,6 +226,23 @@ async function processarMensagem(msg: MsgMeta, nome: string | null): Promise<voi
   if (msg.type === 'button' || msg.type === 'interactive') {
     await processarBotao(msg, userId);
     return;
+  }
+
+  // O pedido vindo do aplicativo: "Guardar no WhatsApp".
+  //
+  // A pessoa plantou pelo app e tocou num botão que abriu esta conversa com a
+  // frase pronta. O envio DELA é o que acabou de abrir a janela de 24 horas —
+  // três linhas acima —, e é por isso que a semente inteira pode sair agora
+  // como texto livre, sem template e sem ela precisar tocar em mais nada.
+  //
+  // Só vale com a semente do dia já escolhida. Sem isso a frase segue para o
+  // fluxo normal, porque engolir uma conversa de verdade por causa de uma
+  // mensagem parecida é pior do que não reconhecer o atalho.
+  if (msg.type === 'text' && ehPedidoDaSemente(msg.text?.body)) {
+    if (await entregarSementeAgora(userId, msg.from)) {
+      void logEvent(userId, 'message_in', { source: 'whatsapp', pedido_do_app: true });
+      return;
+    }
   }
 
   // Estamos esperando o relato da troca de sentimento? Então esta mensagem é
