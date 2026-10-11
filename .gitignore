@@ -46,3 +46,7 @@ yarn-error.*
 pitch/webapp/
 pitch/Grao_webapp/
 pitch/*.zip
+
+# Guia visual e recortes do redesign — 3,6 MB de imagens de apoio,
+# nao fazem parte do aplicativo.
+tmp/

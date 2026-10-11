@@ -116,7 +116,7 @@ export default function HojeSementeTeste({
   return (
     <ScreenBackground style={webScreenFill}>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" />
 
         <View style={styles.topbar}>
           <CircleBack onPress={() => navigation.goBack()} />

@@ -1,63 +1,78 @@
+/**
+ * Design system 1.0 — planner De Grão em Grão (Guia Visual, set/2026).
+ *
+ * Proporção: 70% claros · 20% neutros · 10% caramelo.
+ * O visual escuro anterior está em `src/theme/legado/` e na branch
+ * `visual/legado-campo-escuro`.
+ */
 export const colors = {
-  // Paleta oficial do site graoapp.com.br
-  ambar: '#C07826',
-  ambarSoft: '#D89A55',
-  ambar08: 'rgba(192, 120, 38, 0.22)',
-  palha: '#F7F0E2',
-  palhaWarm: '#FBF6EC',
-  casca: '#3B2208',
-  cascaDeep: '#241708',
-  peneira: '#EDE0C6',
-  peneiraSoft: 'rgba(237, 224, 198, 0.16)',
+  // Tokens do guia
+  ivory: '#F7F1E7',
+  warmWhite: '#FCFAF6',
+  sand: '#E8DDCD',
+  oat: '#D7C5AD',
+  /** Accent do planner: marrom terra (antes caramelo). */
+  caramel: '#65452F',
+  caramelDark: '#4A3224',
+  earth: '#65452F',
+  charcoal: '#292621',
+  warmGray: '#746E66',
+  mist: '#A79F94',
+
+  // Compatibilidade com o código existente (aliases semânticos)
+  ambar: '#65452F',
+  ambarSoft: '#65452F',
+  ambar08: 'rgba(101, 69, 47, 0.14)',
+  /** Texto principal e títulos (antes era creme no tema escuro). */
+  palha: '#292621',
+  palhaWarm: '#FCFAF6',
+  casca: '#65452F',
+  cascaDeep: '#F7F1E7',
+  peneira: '#E8DDCD',
+  peneiraSoft: 'rgba(232, 221, 205, 0.55)',
   ceu: '#3D6EBD',
   white: '#FFFFFF',
 
-  casca80: 'rgba(59, 34, 8, 0.80)',
-  casca60: 'rgba(59, 34, 8, 0.58)',
-  casca50: 'rgba(59, 34, 8, 0.48)',
-  casca40: 'rgba(59, 34, 8, 0.38)',
-  casca20: 'rgba(59, 34, 8, 0.16)',
-  casca12: 'rgba(59, 34, 8, 0.10)',
-  casca08: 'rgba(59, 34, 8, 0.07)',
+  casca80: 'rgba(101, 69, 47, 0.80)',
+  casca60: 'rgba(101, 69, 47, 0.58)',
+  casca50: 'rgba(101, 69, 47, 0.48)',
+  casca40: 'rgba(101, 69, 47, 0.38)',
+  casca20: 'rgba(101, 69, 47, 0.16)',
+  casca12: 'rgba(101, 69, 47, 0.10)',
+  casca08: 'rgba(101, 69, 47, 0.07)',
 
-  // App: glass marrom claro (mesmo tom dos cards do Hoje)
-  background: '#2A1C0C',
-  backgroundElevated: '#3A2814',
-  surface: 'rgba(72, 48, 24, 0.44)',
-  surfaceSolid: 'rgba(72, 48, 24, 0.72)',
-  surfaceCard: 'rgba(72, 48, 24, 0.44)',
-  surfaceSeed: 'rgba(72, 48, 24, 0.48)',
-  surfaceSeedSoft: 'rgba(72, 48, 24, 0.36)',
-  surfaceSeedNight: '#2A1C0C',
-  surfaceSeedNightSoft: '#3A2814',
-  surfaceMuted: 'rgba(72, 48, 24, 0.32)',
-  surfaceSoft: 'rgba(72, 48, 24, 0.42)',
-  surfaceAccent: 'rgba(192, 120, 38, 0.28)',
-  bubble: 'rgba(72, 48, 24, 0.5)',
+  background: '#F7F1E7',
+  backgroundElevated: '#FCFAF6',
+  surface: '#FCFAF6',
+  surfaceSolid: '#FCFAF6',
+  surfaceCard: '#FCFAF6',
+  surfaceSeed: '#FCFAF6',
+  surfaceSeedSoft: '#F7F1E7',
+  surfaceSeedNight: '#F7F1E7',
+  surfaceSeedNightSoft: '#E8DDCD',
+  surfaceMuted: '#E8DDCD',
+  surfaceSoft: '#FCFAF6',
+  surfaceAccent: 'rgba(101, 69, 47, 0.12)',
+  bubble: '#FCFAF6',
 
-  foreground: '#FBF6EC',
-  foregroundMuted: 'rgba(251, 246, 236, 0.82)',
-  foregroundSubtle: 'rgba(251, 246, 236, 0.58)',
-  foregroundInverse: '#2A1C0C',
+  foreground: '#292621',
+  foregroundMuted: '#746E66',
+  foregroundSubtle: '#A79F94',
+  foregroundInverse: '#FCFAF6',
 
-  accent: '#C07826',
-  accentSoft: '#D89A55',
+  accent: '#65452F',
+  accentSoft: '#4A3224',
   accentForeground: '#FFFFFF',
 
-  /**
-   * Vermelho de ação destrutiva, legível no escuro.
-   *
-   * Era #B33A2B, um tijolo que mede 2.80:1 contra o fundo da tela e 2.38:1
-   * contra o card de vidro — reprovado nos dois, e o efeito era "Sair da
-   * conta" e "Excluir conta" parecendo desabilitados. Este mede 6.48:1 e
-   * 5.51:1: passa em AA nos dois, e continua inconfundivelmente vermelho.
-   */
-  perigo: '#FF7A66',
+  /** Cabeçalho escuro do shell tipo BiblicAI, em tom terra do Grão. */
+  headerBrand: '#65452F',
+  headerBrandSoft: '#7A5638',
 
-  /** O mesmo `background`, sem opacidade: a ponta transparente de um degradê. */
-  backgroundFade: 'rgba(42, 28, 12, 0)',
+  perigo: '#C45C4A',
 
-  border: 'rgba(237, 224, 198, 0.22)',
-  borderStrong: 'rgba(237, 224, 198, 0.34)',
-  hairline: 'rgba(237, 224, 198, 0.16)',
+  backgroundFade: 'rgba(247, 241, 231, 0)',
+
+  border: '#E8DDCD',
+  borderStrong: '#D7C5AD',
+  hairline: 'rgba(215, 197, 173, 0.7)',
 };

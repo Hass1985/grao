@@ -10,6 +10,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase';
 import { vincularConta } from '../onboarding/aiClient';
+import { limparApresentacaoVista } from '../onboarding/authFlow';
+import { limparIndicacaoVista } from '../onboarding/indicacao';
 
 const DEMO_KEY = 'grao.auth.demo.v1';
 
@@ -79,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await AsyncStorage.removeItem(DEMO_KEY);
+    await limparApresentacaoVista();
+    await limparIndicacaoVista();
     setDemo(false);
     if (supabase) {
       await supabase.auth.signOut();

@@ -10,27 +10,34 @@
 // precisar de um ícone novo, acrescente a linha dele aqui: o nome do arquivo é
 // o nome do ícone em minúsculas com hífen (Music2 → music-2).
 
+export { default as Bell } from 'lucide-react-native/dist/esm/icons/bell';
 export { default as BookMarked } from 'lucide-react-native/dist/esm/icons/book-marked';
 export { default as BookOpen } from 'lucide-react-native/dist/esm/icons/book-open';
+export { default as CalendarCheck } from 'lucide-react-native/dist/esm/icons/calendar-check';
 export { default as CalendarDays } from 'lucide-react-native/dist/esm/icons/calendar-days';
 export { default as Camera } from 'lucide-react-native/dist/esm/icons/camera';
 export { default as Check } from 'lucide-react-native/dist/esm/icons/check';
 export { default as ChevronLeft } from 'lucide-react-native/dist/esm/icons/chevron-left';
 export { default as ChevronRight } from 'lucide-react-native/dist/esm/icons/chevron-right';
 export { default as Circle } from 'lucide-react-native/dist/esm/icons/circle';
+export { default as CircleCheck } from 'lucide-react-native/dist/esm/icons/circle-check';
 export { default as Clock } from 'lucide-react-native/dist/esm/icons/clock';
 export { default as CreditCard } from 'lucide-react-native/dist/esm/icons/credit-card';
 export { default as Eye } from 'lucide-react-native/dist/esm/icons/eye';
 export { default as EyeOff } from 'lucide-react-native/dist/esm/icons/eye-off';
+export { default as Feather } from 'lucide-react-native/dist/esm/icons/feather';
+export { default as Flame } from 'lucide-react-native/dist/esm/icons/flame';
 export { default as Heart } from 'lucide-react-native/dist/esm/icons/heart';
 export { default as Info } from 'lucide-react-native/dist/esm/icons/info';
 export { default as Lock } from 'lucide-react-native/dist/esm/icons/lock';
+export { default as LogOut } from 'lucide-react-native/dist/esm/icons/log-out';
 export { default as Mail } from 'lucide-react-native/dist/esm/icons/mail';
 export { default as MessageCircle } from 'lucide-react-native/dist/esm/icons/message-circle';
 export { default as Mic } from 'lucide-react-native/dist/esm/icons/mic';
 export { default as Music2 } from 'lucide-react-native/dist/esm/icons/music-2';
 export { default as Pause } from 'lucide-react-native/dist/esm/icons/pause';
 export { default as Play } from 'lucide-react-native/dist/esm/icons/play';
+export { default as Search } from 'lucide-react-native/dist/esm/icons/search';
 export { default as Send } from 'lucide-react-native/dist/esm/icons/send';
 export { default as Share2 } from 'lucide-react-native/dist/esm/icons/share-2';
 export { default as Shield } from 'lucide-react-native/dist/esm/icons/shield';
@@ -39,6 +46,8 @@ export { default as Sprout } from 'lucide-react-native/dist/esm/icons/sprout';
 export { default as Star } from 'lucide-react-native/dist/esm/icons/star';
 export { default as Store } from 'lucide-react-native/dist/esm/icons/store';
 export { default as Trash2 } from 'lucide-react-native/dist/esm/icons/trash-2';
+export { default as Users } from 'lucide-react-native/dist/esm/icons/users';
+export { default as X } from 'lucide-react-native/dist/esm/icons/x';
 
 // Tipo apenas: some na compilação, não entra no pacote.
 export type { LucideIcon } from 'lucide-react-native';

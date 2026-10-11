@@ -14,7 +14,9 @@ import SeedCard from '../components/SeedCard';
 import OuvirTexto from '../components/OuvirTexto';
 import Responder from '../components/Responder';
 import ScreenBackground from '../components/ui/ScreenBackground';
-import AppHeader from '../components/ui/AppHeader';
+import ProfileButton from '../components/ProfileButton';
+import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
+import HeaderGamificacao from '../components/ui/HeaderGamificacao';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import { pastSeeds, todaySeed, Seed } from '../data/seeds';
 import { fetchHistory, resumoDeLeitura, ResumoLeitura } from '../onboarding/seedDelivery';
@@ -58,7 +60,7 @@ function StatusIcon({ kind, size = 16 }: { kind: DayKind; size?: number }) {
     return (
       <Sprout
         size={size}
-        color={colors.accent}
+        color={colors.earth}
         strokeWidth={2.35}
         fill={colors.ambar08}
       />
@@ -137,7 +139,7 @@ export default function Campo({ navigation }: { navigation: any }) {
   // Havia dois vocabulários aqui: "Lido / Não lido" para quem só recebe o
   // devocional e "Plantada / Aberta" para quem assina. Além de ninguém
   // distinguir "Aberta" de "Não lido" olhando, a tela mudava de língua conforme
-  // o dia — bastava uma semente no mês para o calendário inteiro trocar de
+  // o dia: bastava uma semente no mês para o calendário inteiro trocar de
   // palavra. Uma língua só, e é a do produto.
   const rotulo = {
     feito: 'Plantada',
@@ -161,6 +163,16 @@ export default function Campo({ navigation }: { navigation: any }) {
     if (seed && !seed.planted) return 'open';
     return 'empty';
   };
+
+  // Progresso do mês no header: dias plantados até hoje / dias já decorridos.
+  const plantadosNoMes = Array.from(
+    { length: today.getDate() },
+    (_, i) => i + 1,
+  ).filter((day) => kindForDay(day) === 'planted').length;
+  const progressoMes = Math.min(
+    100,
+    Math.round((plantadosNoMes / Math.max(1, today.getDate())) * 100),
+  );
 
   const renderCell = (day: number | null, index: number) => {
     if (day === null) {
@@ -214,19 +226,37 @@ export default function Campo({ navigation }: { navigation: any }) {
   };
 
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <HeaderCampoFundo>
+          <View style={styles.headerTop}>
+            <ProfileButton onPress={() => navigation.navigate('Settings')} size={36} />
+            <Text style={styles.headerTitulo} numberOfLines={1}>Minha jornada</Text>
+            <HeaderGamificacao
+              navigation={navigation}
+              sequencia={graos?.sequencia ?? resumo?.sequencia ?? 0}
+            />
+          </View>
+          <View style={styles.progressBlock}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressLabel}>Neste mês</Text>
+              <Text style={styles.progressPct}>{progressoMes}%</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progressoMes}%` }]} />
+            </View>
+          </View>
+      </HeaderCampoFundo>
+
+      <View style={styles.sheet}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
         >
-          <AppHeader
-            title="Campo"
-            subtitle={`${plantedCount} ${rotulo.unidade} este mês`}
-            onLogoPress={() => navigation.navigate('Settings')}
-            onProfilePress={() => navigation.navigate('Settings')}
-          />
+          <Text style={styles.heroTitle}>{monthPretty}</Text>
+          <Text style={styles.heroApoio}>
+            {plantadosNoMes} {rotulo.unidade} este mês
+          </Text>
 
           {/* Os grãos e o nível.
               Duas coisas diferentes de propósito: o grão é o retorno de cada
@@ -284,7 +314,7 @@ export default function Campo({ navigation }: { navigation: any }) {
             <View style={styles.numeros}>
               <View style={styles.numeroCard}>
                 <Text style={styles.numeroValor}>
-                  {resumo.sequencia > 0 ? resumo.sequencia : '—'}
+                  {resumo.sequencia > 0 ? resumo.sequencia : '0'}
                 </Text>
                 <Text style={styles.numeroRotulo}>
                   {resumo.sequencia === 0
@@ -319,7 +349,7 @@ export default function Campo({ navigation }: { navigation: any }) {
                 <Text style={styles.yearLabel}>{year}</Text>
               </View>
               <View style={styles.plantedPill}>
-                <Sprout size={12} color={colors.accent} strokeWidth={2.4} fill={colors.ambar08} />
+                <Sprout size={12} color={colors.earth} strokeWidth={2.4} fill={colors.ambar08} />
                 <Text style={styles.plantedPillText}>{plantedCount}</Text>
               </View>
             </View>
@@ -351,6 +381,7 @@ export default function Campo({ navigation }: { navigation: any }) {
             </View>
           </View>
         </ScrollView>
+      </View>
 
         <Modal
           visible={!!aberta}
@@ -418,17 +449,81 @@ export default function Campo({ navigation }: { navigation: any }) {
             </SafeAreaView>
           </ScreenBackground>
         </Modal>
-      </SafeAreaView>
-    </ScreenBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#241708' },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40,
+    marginTop: 10,
+    marginBottom: 18,
+    gap: 10,
+  },
+  headerTitulo: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: fonts.sansSemi,
+    fontSize: 17,
+    color: colors.warmWhite,
+  },
+  progressBlock: { gap: 8 },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: 'rgba(252,250,246,0.75)',
+  },
+  progressPct: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    color: colors.warmWhite,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(252,250,246,0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.warmWhite,
+    borderRadius: 2,
+  },
+  sheet: {
+    flex: 1,
+    marginTop: -16,
+    backgroundColor: '#F4F4F4',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+  },
   safe: { flex: 1 },
   scroll: {
     paddingHorizontal: space.gutter,
+    paddingTop: 28,
   },
-
+  heroTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.earth,
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  heroApoio: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.mist,
+    marginBottom: 10,
+  },
   graosCard: {
     ...glassCard,
     borderRadius: 24,
@@ -461,7 +556,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifMedium,
     fontSize: 24,
     lineHeight: 30,
-    color: colors.accent,
+    color: colors.earth,
     letterSpacing: -0.3,
   },
   trilho: {
@@ -474,7 +569,7 @@ const styles = StyleSheet.create({
   trilhoCheio: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.earth,
   },
   graosApoio: {
     fontFamily: fonts.sans,
@@ -520,7 +615,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifMedium,
     fontSize: 30,
     lineHeight: 34,
-    color: colors.accent,
+    color: colors.earth,
     letterSpacing: -0.5,
   },
   numeroRotulo: {
@@ -582,7 +677,7 @@ const styles = StyleSheet.create({
   plantedPillText: {
     fontFamily: fonts.sansSemi,
     fontSize: 12,
-    color: colors.accent,
+    color: colors.earth,
     letterSpacing: 0.1,
   },
 
@@ -631,10 +726,10 @@ const styles = StyleSheet.create({
   },
   cellToday: {
     borderWidth: 1.5,
-    borderColor: colors.accent,
+    borderColor: colors.earth,
   },
   cellTodayPlanted: {
-    borderColor: colors.accent,
+    borderColor: colors.earth,
     backgroundColor: 'rgba(192, 120, 38, 0.22)',
   },
 
@@ -644,14 +739,14 @@ const styles = StyleSheet.create({
     color: colors.foregroundMuted,
   },
   dayNumberPlanted: {
-    color: colors.accent,
+    color: colors.earth,
     fontFamily: fonts.sansSemi,
   },
   dayNumberFuture: {
     color: colors.foregroundSubtle,
   },
   dayNumberToday: {
-    color: colors.accent,
+    color: colors.earth,
   },
 
   legend: {

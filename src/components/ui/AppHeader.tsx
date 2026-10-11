@@ -13,17 +13,11 @@ type Props = {
   onProfilePress: () => void;
 };
 
-/** Cabeçalho no ritmo do site: marca palha + título claro. */
+/** Cabeçalho leve do planner: ivory, título editorial, accent caramelo. */
 export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress }: Props) {
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
-        {/* Marca à esquerda, pessoa à direita.
-
-            Estava invertido. Em português se lê da esquerda para a direita, e
-            o canto esquerdo é onde todo aplicativo põe quem ele é — o canto
-            direito é onde se põe quem está usando. Inverter os dois fazia o
-            Grão parecer o visitante da própria tela. */}
         <View style={styles.row}>
           <TouchableOpacity
             onPress={onLogoPress}
@@ -32,7 +26,7 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
             accessibilityLabel="Grão"
             style={styles.side}
           >
-            <GraoSymbol size={logoSize} color={colors.ambarSoft} filled={false} />
+            <GraoSymbol size={logoSize} color={colors.earth} filled={false} />
           </TouchableOpacity>
 
           <View style={styles.center}>
@@ -58,9 +52,9 @@ export default function AppHeader({ title, subtitle, onLogoPress, onProfilePress
 const styles = StyleSheet.create({
   bar: {
     marginHorizontal: -space.gutter,
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.ivory,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.sand,
   },
   inner: {
     paddingHorizontal: space.gutter,
@@ -85,15 +79,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.serifMedium,
-    fontSize: 22,
-    lineHeight: 26,
-    color: colors.palha,
-    letterSpacing: -0.4,
+    fontSize: 24,
+    lineHeight: 28,
+    color: colors.charcoal,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontFamily: fonts.sans,
     fontSize: 12,
     lineHeight: 16,
-    color: colors.foregroundMuted,
+    color: colors.warmGray,
   },
 });

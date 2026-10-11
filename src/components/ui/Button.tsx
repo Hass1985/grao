@@ -9,7 +9,6 @@ import {
   Animated,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { radius } from '../../theme/radius';
@@ -24,11 +23,11 @@ type Props = {
   testID?: string;
   variant?: Variant;
   size?: Size;
-  /** Estilo Glorify: rótulo em caixa alta. */
   uppercase?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
+/** CTA do planner: um accent caramelo, raio confortável, sem brilho pesado. */
 export default function Button({
   title,
   onPress,
@@ -45,7 +44,7 @@ export default function Button({
   const pressIn = () => {
     if (disabled) return;
     Animated.spring(scale, {
-      toValue: 0.97,
+      toValue: 0.98,
       useNativeDriver: Platform.OS !== 'web',
       friction: 6,
       tension: 240,
@@ -66,6 +65,7 @@ export default function Button({
   const isOutline = variant === 'outline';
   const isSoft = variant === 'soft';
   const isGhost = variant === 'ghost';
+  const labelClara = (isPrimary || isDark) && !disabled;
 
   const fillSize = compact ? styles.fillSm : styles.fillMd;
   const labelSize = compact ? styles.labelSm : styles.labelMd;
@@ -84,55 +84,32 @@ export default function Button({
           pressed && !disabled && styles.pressed,
         ]}
       >
-        {isPrimary && !disabled ? (
-          <View style={styles.primaryShell}>
-            <LinearGradient
-              colors={['#F0A53A', '#E0891A', '#C46E10']}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0.1, y: 0 }}
-              end={{ x: 0.9, y: 1 }}
-              style={[styles.primaryFill, fillSize]}
-            >
-              <View style={styles.sheen} pointerEvents="none" />
-              <Text
-                style={[
-                  styles.label,
-                  styles.labelPrimary,
-                  labelSize,
-                  uppercase && styles.labelCaps,
-                ]}
-              >
-                {label}
-              </Text>
-            </LinearGradient>
-          </View>
-        ) : (
-          <View
+        <View
+          style={[
+            styles.base,
+            fillSize,
+            isPrimary && !disabled && styles.primary,
+            isDark && !disabled && styles.dark,
+            isOutline && styles.outline,
+            isSoft && styles.soft,
+            isGhost && styles.ghost,
+            disabled && styles.disabled,
+          ]}
+        >
+          <Text
             style={[
-              styles.base,
-              fillSize,
-              isDark && !disabled && styles.dark,
-              isOutline && styles.outline,
-              isSoft && styles.soft,
-              isGhost && styles.ghost,
-              disabled && styles.disabled,
+              styles.label,
+              labelSize,
+              uppercase && styles.labelCaps,
+              labelClara && styles.labelOnPrimary,
+              isOutline && styles.labelOutline,
+              (isSoft || isGhost) && styles.labelMuted,
+              disabled && styles.labelDisabled,
             ]}
           >
-            <Text
-              style={[
-                styles.label,
-                labelSize,
-                uppercase && styles.labelCaps,
-                isDark && !disabled && styles.labelOnDark,
-                isOutline && styles.labelOutline,
-                (isSoft || isGhost) && styles.labelMuted,
-                disabled && styles.labelDisabled,
-              ]}
-            >
-              {label}
-            </Text>
-          </View>
-        )}
+            {label}
+          </Text>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -143,80 +120,49 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   pressed: {
-    opacity: 0.94,
-  },
-  primaryShell: {
-    borderRadius: radius.pill,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#C46E10',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.28,
-        shadowRadius: 16,
-      },
-      android: { elevation: 6 },
-      default: {
-        shadowColor: '#C46E10',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.24,
-        shadowRadius: 16,
-      },
-    }),
-  },
-  primaryFill: {
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  fillMd: {
-    minHeight: 56,
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-  },
-  fillSm: {
-    minHeight: 44,
-    paddingVertical: 11,
-    paddingHorizontal: 20,
-  },
-  sheen: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    right: 16,
-    height: '46%',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    opacity: 0.92,
   },
   base: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.pill,
   },
+  primary: {
+    backgroundColor: colors.earth,
+  },
   dark: {
-    backgroundColor: '#0A0704',
+    backgroundColor: colors.earth,
   },
   outline: {
-    backgroundColor: 'transparent',
+    backgroundColor: colors.warmWhite,
     borderWidth: 1.5,
-    borderColor: colors.palha,
+    borderColor: colors.oat,
   },
   soft: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.sand,
   },
   ghost: {
     backgroundColor: 'transparent',
   },
   disabled: {
-    backgroundColor: 'rgba(247, 240, 226, 0.22)',
+    backgroundColor: colors.sand,
+  },
+  fillMd: {
+    minHeight: 54,
+    paddingVertical: 15,
+    paddingHorizontal: 26,
+  },
+  fillSm: {
+    minHeight: 44,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
   },
   label: {
     fontFamily: fonts.sansSemi,
     letterSpacing: 0.2,
   },
   labelCaps: {
-    letterSpacing: 0.8,
+    letterSpacing: 0.7,
     fontSize: 13,
   },
   labelMd: {
@@ -225,20 +171,17 @@ const styles = StyleSheet.create({
   labelSm: {
     fontSize: 15,
   },
-  labelPrimary: {
+  labelOnPrimary: {
     color: colors.accentForeground,
   },
-  labelOnDark: {
-    color: colors.palha,
-  },
   labelOutline: {
-    color: colors.palha,
+    color: colors.earth,
   },
   labelMuted: {
-    color: colors.palha,
+    color: colors.earth,
     fontFamily: fonts.sansMedium,
   },
   labelDisabled: {
-    color: colors.foregroundSubtle,
+    color: colors.mist,
   },
 });

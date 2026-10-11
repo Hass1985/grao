@@ -18,7 +18,7 @@ export default function BackButton({ onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel="Voltar"
     >
-      <GraoSymbol size={logoSize} color={colors.accent} filled={false} />
+      <GraoSymbol size={logoSize} color={colors.earth} filled={false} />
     </Pressable>
   );
 }

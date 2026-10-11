@@ -1,15 +1,11 @@
-import { Platform, StyleSheet, ViewStyle } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
 import { colors } from './colors';
 
-/** Glass do Hoje: marrom claro translúcido, borda peneira, blur suave. */
-export const glassBlur: ViewStyle =
-  Platform.OS === 'web'
-    ? ({ backdropFilter: 'blur(26px)', WebkitBackdropFilter: 'blur(26px)' } as ViewStyle)
-    : {};
+/** Cards do planner: superfície clara, borda Sand, sem vidro pesado. */
+export const glassBlur: ViewStyle = {};
 
 export const glassCard: ViewStyle = {
-  backgroundColor: colors.surface,
-  borderWidth: StyleSheet.hairlineWidth,
-  borderColor: colors.border,
-  ...glassBlur,
+  backgroundColor: colors.warmWhite,
+  borderWidth: 1,
+  borderColor: colors.sand,
 };

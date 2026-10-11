@@ -1,19 +1,17 @@
 /**
- * Tipografia Grão
+ * Tipografia — Guia Visual Grão
  *
- * Newsreader — voz editorial (títulos, oração, versículo)
- * DM Sans — interface (labels, meta, botões, tabs)
- *
- * Regra: serif carrega significado; sans carrega navegação.
+ * DM Serif Display: editorial (títulos, âncoras emocionais)
+ * Manrope: interface (labels, botões, corpo de UI)
  */
 export const fonts = {
-  serif: 'Newsreader_400Regular',
-  serifMedium: 'Newsreader_500Medium',
-  serifSemi: 'Newsreader_600SemiBold',
-  serifItalic: 'Newsreader_400Regular_Italic',
-  sans: 'DMSans_400Regular',
-  sansMedium: 'DMSans_500Medium',
-  sansSemi: 'DMSans_600SemiBold',
+  serif: 'DMSerifDisplay_400Regular',
+  serifMedium: 'DMSerifDisplay_400Regular',
+  serifSemi: 'DMSerifDisplay_400Regular',
+  serifItalic: 'DMSerifDisplay_400Regular_Italic',
+  sans: 'Manrope_400Regular',
+  sansMedium: 'Manrope_500Medium',
+  sansSemi: 'Manrope_600SemiBold',
 };
 
 export const fontSizes = {
@@ -26,30 +24,29 @@ export const fontSizes = {
   xxxl: 34,
 };
 
-/** Escala semântica — use quando quiser ritmo tipográfico consistente. */
 export const type = {
   display: {
     fontFamily: fonts.serifMedium,
     fontSize: 34,
     lineHeight: 40,
-    letterSpacing: -0.6,
+    letterSpacing: -0.4,
   },
   title: {
     fontFamily: fonts.serifMedium,
     fontSize: 22,
     lineHeight: 28,
-    letterSpacing: -0.35,
+    letterSpacing: -0.25,
   },
   titleSm: {
     fontFamily: fonts.serifMedium,
     fontSize: 18,
     lineHeight: 24,
-    letterSpacing: -0.25,
+    letterSpacing: -0.15,
   },
   body: {
-    fontFamily: fonts.serif,
+    fontFamily: fonts.sans,
     fontSize: 17,
-    lineHeight: 26,
+    lineHeight: 27,
     letterSpacing: -0.1,
   },
   bodySans: {
@@ -60,9 +57,9 @@ export const type = {
   },
   label: {
     fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    lineHeight: 18,
-    letterSpacing: 0.1,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.8,
   },
   meta: {
     fontFamily: fonts.sans,

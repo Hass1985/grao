@@ -7,12 +7,13 @@ import Welcome from '../screens/onboarding/Welcome';
 import Intro from '../screens/onboarding/Intro';
 import Auth from '../screens/onboarding/Auth';
 import ComoChamar from '../screens/onboarding/ComoChamar';
+import CodigoIndicacao from '../screens/onboarding/CodigoIndicacao';
 
 import Hoje from '../screens/Hoje';
 import Campo from '../screens/Campo';
 import Biblia from '../screens/Biblia';
 import Loja from '../screens/Loja';
-import Raiz from '../screens/Raiz';
+import Devocional from '../screens/Devocional';
 import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
@@ -67,7 +68,7 @@ const stackMotion = {
     },
   },
   cardStyleInterpolator: softSlide,
-  cardStyle: { backgroundColor: colors.cascaDeep },
+  cardStyle: { backgroundColor: colors.ivory },
 };
 
 function MainNavigator() {
@@ -82,7 +83,6 @@ function MainNavigator() {
     >
       <Tab.Screen name="Hoje" component={Hoje} />
       <Tab.Screen name="Campo" component={Campo} />
-      <Tab.Screen name="Raiz" component={Raiz} />
       <Tab.Screen name="Biblia" component={Biblia} options={{ title: 'Bíblia' }} />
       <Tab.Screen name="Loja" component={Loja} />
     </Tab.Navigator>
@@ -97,6 +97,7 @@ function AppNavigator() {
       <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <AppStack.Screen name="Credits" component={Credits} />
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
+      <AppStack.Screen name="Devocional" component={Devocional} />
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="Assinar" component={Assinar} />
       <AppStack.Screen name="EntregaWhatsApp" component={EntregaWhatsApp} />
@@ -130,11 +131,14 @@ function OnboardingNavigator({
   return (
     <Stack.Navigator screenOptions={stackMotion} initialRouteName={initialRouteName}>
       <Stack.Screen name="Welcome" component={Welcome} />
-      <Stack.Screen name="Intro" component={Intro} />
       <Stack.Screen name="Auth" component={Auth} />
-      {/* Depois do nome, o app. A tela que pedia para confirmar o devocional
-          diário saiu do caminho: era uma pergunta cuja resposta já estava dada
-          por quem acabou de criar conta num app de devocional. */}
+      {/* Auth → apresentação → indicação → (nome, se faltar) → Hoje. */}
+      <Stack.Screen name="Intro">
+        {(props) => <Intro {...props} onFinish={onFinish} />}
+      </Stack.Screen>
+      <Stack.Screen name="CodigoIndicacao">
+        {(props) => <CodigoIndicacao {...props} onFinish={onFinish} />}
+      </Stack.Screen>
       <Stack.Screen name="ComoChamar">
         {(props) => <ComoChamar {...props} onFinish={onFinish} />}
       </Stack.Screen>

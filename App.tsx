@@ -7,19 +7,18 @@ import { useFonts } from 'expo-font';
 // O índice traz TODOS os pesos e itálicos das duas famílias: 24 arquivos de
 // fonte iam para a pasta publicada para usar 7, uns 2 MB de peso morto no
 // deploy. O app usa quatro Newsreader e três DM Sans, e é isso que sobe.
-import { Newsreader_400Regular } from '@expo-google-fonts/newsreader/400Regular';
-import { Newsreader_500Medium } from '@expo-google-fonts/newsreader/500Medium';
-import { Newsreader_600SemiBold } from '@expo-google-fonts/newsreader/600SemiBold';
-import { Newsreader_400Regular_Italic } from '@expo-google-fonts/newsreader/400Regular_Italic';
-import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
-import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
-import { DMSans_600SemiBold } from '@expo-google-fonts/dm-sans/600SemiBold';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display/400Regular';
+import { DMSerifDisplay_400Regular_Italic } from '@expo-google-fonts/dm-serif-display/400Regular_Italic';
+import { Manrope_400Regular } from '@expo-google-fonts/manrope/400Regular';
+import { Manrope_500Medium } from '@expo-google-fonts/manrope/500Medium';
+import { Manrope_600SemiBold } from '@expo-google-fonts/manrope/600SemiBold';
 import 'react-native-gesture-handler';
 
 import RootNavigator from './src/navigation';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import { hasDisplayName, sincronizarPerfil } from './src/onboarding/userProfile';
-import { consumirPosOAuth } from './src/onboarding/authFlow';
+import { consumirPosOAuth, viuApresentacao } from './src/onboarding/authFlow';
+import { viuIndicacao } from './src/onboarding/indicacao';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,13 +46,11 @@ function AppShell() {
   const { ready: authReady, isAuthenticated } = useAuth();
 
   const [fontsLoaded, fontError] = useFonts({
-    Newsreader_400Regular,
-    Newsreader_500Medium,
-    Newsreader_600SemiBold,
-    Newsreader_400Regular_Italic,
-    DMSans_400Regular,
-    DMSans_500Medium,
-    DMSans_600SemiBold,
+    DMSerifDisplay_400Regular,
+    DMSerifDisplay_400Regular_Italic,
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
   });
 
   const [timedOut, setTimedOut] = useState(false);
@@ -72,10 +69,10 @@ function AppShell() {
     if (!authReady) return;
     let alive = true;
     (async () => {
-      // Sem sessão: splash → apresentação → auth.
+      // Sem sessão: a porta é a autenticação (Google, Apple, e-mail).
       if (!isAuthenticated) {
         if (!alive) return;
-        setGate({ ready: true, app: false, initialRoute: 'Welcome' });
+        setGate({ ready: true, app: false, initialRoute: 'Auth' });
         return;
       }
 
@@ -83,30 +80,30 @@ function AppShell() {
       await consumirPosOAuth();
       limparHashOAuth();
 
-      // O nome é a única porteira, e ele é perguntado UMA vez.
-      //
-      // Havia uma segunda, `hasDevocionalOptIn`, que mandava para a rota
-      // 'ConfirmarDevocional' — uma tela que não existe mais no navegador de
-      // onboarding. Ela nunca disparou porque o opt-in era gravado no mesmo
-      // aparelho, no mesmo instante que o nome, e os dois sumiam juntos. Agora
-      // que o nome sobrevive no servidor, o par se desfez: quem entrasse noutro
-      // celular passaria pelo nome e cairia numa rota inexistente. Sai daqui,
-      // porque a resposta já está dada por quem criou conta num app devocional.
-      const named = await hasDisplayName();
+      const [named, apresentacao, indicacao] = await Promise.all([
+        hasDisplayName(),
+        viuApresentacao(),
+        viuIndicacao(),
+      ]);
       if (!alive) return;
+
+      // Auth → apresentação → indicação → (nome, se faltar) → Hoje.
+      // A apresentação e o código vêm ANTES do atalho por nome: senão quem
+      // já tem conta no Google pula as telas novas e cai direto no Hoje.
+      if (!apresentacao) {
+        setGate({ ready: true, app: false, initialRoute: 'Intro' });
+        return;
+      }
+      if (!indicacao) {
+        setGate({ ready: true, app: false, initialRoute: 'CodigoIndicacao' });
+        return;
+      }
       if (!named) {
-        // Pós-login: vai direto pedir o nome (não refaz Intro).
         setGate({ ready: true, app: false, initialRoute: 'ComoChamar' });
         return;
       }
 
-      // Já concluiu onboarding: entra no Hoje.
-      setGate({ ready: true, app: true, initialRoute: 'Welcome' });
-
-      // A partir daqui, sem esperar: traz do cadastro a foto, o nome e a data
-      // de entrada que este aparelho ainda não tem. Fica DEPOIS do portão de
-      // propósito — nada que envolva rede pode atrasar a primeira tela, e o
-      // avatar aparece sozinho quando chega, porque ProfileButton escuta.
+      setGate({ ready: true, app: true, initialRoute: 'Auth' });
       void sincronizarPerfil();
     })();
     return () => {
@@ -131,7 +128,7 @@ function AppShell() {
   if (!ready) return null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#241708' }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1, backgroundColor: '#F7F1E7' }} onLayout={onLayoutRootView}>
       <RootNavigator
         isOnboarded={gate.app}
         onboardingInitialRoute={gate.initialRoute}

@@ -19,8 +19,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import GraoSymbol from '../components/GraoSymbol';
 import BackButton from '../components/ui/BackButton';
-import ScreenBackground from '../components/ui/ScreenBackground';
-import Button from '../components/ui/Button';
 import SeletorHorario, { periodoDoDia } from '../components/SeletorHorario';
 import {
   getAvatarUri,
@@ -94,7 +92,7 @@ function Row({
         <View style={[styles.rowIcon, danger && styles.rowIconDanger]}>
           <Icon
             size={16}
-            color={danger ? colors.perigo : colors.accent}
+            color={danger ? colors.perigo : colors.earth}
             strokeWidth={2}
           />
         </View>
@@ -230,12 +228,12 @@ export default function Settings({ navigation }: Props) {
   };
 
   const switchTrack = {
-    false: colors.casca12,
-    true: colors.accent,
+    false: '#E0E0E0',
+    true: colors.earth,
   };
 
   return (
-    <ScreenBackground style={webScreenFill}>
+    <View style={[styles.root, webScreenFill]}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <BackButton onPress={() => navigation.goBack()} />
@@ -370,7 +368,7 @@ export default function Settings({ navigation }: Props) {
                   onValueChange={setNotifEnabled}
                   trackColor={switchTrack}
                   thumbColor={colors.white}
-                  ios_backgroundColor={colors.casca12}
+                  ios_backgroundColor="#E0E0E0"
                 />
               }
               last={!notifEnabled}
@@ -379,9 +377,7 @@ export default function Settings({ navigation }: Props) {
               (showNotifOptions ? (
                 <View style={styles.optionsList}>
                   <SeletorHorario valor={selectedTime} onChange={setSelectedTime} />
-                  <Button
-                    title="Pronto"
-                    size="sm"
+                  <Pressable
                     onPress={() => {
                       setShowNotifOptions(false);
                       // Antes o seletor não saía da tela: a pessoa escolhia
@@ -389,8 +385,13 @@ export default function Settings({ navigation }: Props) {
                       // chegando na hora antiga.
                       void salvarHorario(selectedTime);
                     }}
-                    style={{ marginTop: 12 }}
-                  />
+                    style={({ pressed }) => [
+                      styles.ctaPreto,
+                      pressed && { opacity: 0.88 },
+                    ]}
+                  >
+                    <Text style={styles.ctaPretoTexto}>Pronto</Text>
+                  </Pressable>
                 </View>
               ) : (
                 <Row
@@ -415,7 +416,7 @@ export default function Settings({ navigation }: Props) {
                   onValueChange={setMusic}
                   trackColor={switchTrack}
                   thumbColor={colors.white}
-                  ios_backgroundColor={colors.casca12}
+                  ios_backgroundColor="#E0E0E0"
                 />
               }
               last
@@ -474,7 +475,7 @@ export default function Settings({ navigation }: Props) {
           </Pressable>
 
           <View style={styles.footerMark}>
-            <GraoSymbol size={20} color={colors.casca40} filled={false} />
+            <GraoSymbol size={20} color={colors.earth} filled={false} />
             <Text style={styles.footerText}>Uma semente por dia</Text>
           </View>
         </ScrollView>
@@ -502,17 +503,30 @@ export default function Settings({ navigation }: Props) {
                 <Pressable onPress={() => setEditingName(false)} hitSlop={8}>
                   <Text style={styles.modalCancel}>Cancelar</Text>
                 </Pressable>
-                <Button title="Salvar" size="sm" onPress={saveName} />
+                <Pressable
+                  onPress={saveName}
+                  style={({ pressed }) => [
+                    styles.ctaPreto,
+                    styles.ctaPretoCompacto,
+                    pressed && { opacity: 0.88 },
+                  ]}
+                >
+                  <Text style={styles.ctaPretoTexto}>Salvar</Text>
+                </Pressable>
               </View>
             </View>
           </View>
         </Modal>
       </SafeAreaView>
-    </ScreenBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#F4F4F4',
+  },
   safe: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -529,7 +543,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifMedium,
     fontSize: 22,
     lineHeight: 26,
-    color: colors.foreground,
+    color: colors.earth,
     letterSpacing: -0.4,
   },
   scroll: {
@@ -547,7 +561,7 @@ const styles = StyleSheet.create({
     width: 108,
     height: 108,
     borderRadius: 54,
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.warmWhite,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -568,14 +582,14 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.surface,
+    backgroundColor: '#EDEDED',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitialsText: {
     fontFamily: fonts.serifMedium,
     fontSize: 36,
-    color: colors.accent,
+    color: colors.earth,
     letterSpacing: -0.5,
   },
   avatarEdit: {
@@ -585,24 +599,24 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.earth,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.background,
+    borderColor: '#F4F4F4',
     ...(shadows.sm as object),
   },
   profileName: {
     fontFamily: fonts.serifMedium,
     fontSize: 28,
     lineHeight: 34,
-    color: colors.foreground,
+    color: colors.earth,
     letterSpacing: -0.5,
   },
   profileMeta: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
+    color: colors.mist,
     marginTop: 2,
   },
   editPill: {
@@ -610,12 +624,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
   },
   editPillText: {
     fontFamily: fonts.sansMedium,
     fontSize: 13,
-    color: colors.accent,
+    color: colors.earth,
     letterSpacing: 0.1,
   },
 
@@ -623,13 +639,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fonts.serifMedium,
     fontSize: 15,
-    color: colors.foreground,
+    color: colors.earth,
     letterSpacing: -0.2,
     marginBottom: 10,
     marginLeft: 4,
   },
   card: {
     ...glassCard,
+    backgroundColor: colors.warmWhite,
     borderRadius: 28,
     paddingHorizontal: 6,
     overflow: 'hidden',
@@ -643,17 +660,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   rowPressed: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: '#EDEDED',
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.hairline,
+    borderBottomColor: '#E8E8E8',
   },
   rowIcon: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: '#EDEDED',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -668,24 +685,45 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
-    color: colors.foreground,
+    color: colors.earth,
     letterSpacing: -0.1,
   },
   rowValue: {
     fontFamily: fonts.sans,
     fontSize: 12,
     lineHeight: 16,
-    color: colors.foregroundMuted,
+    color: colors.mist,
   },
   rowDanger: {
     color: colors.perigo,
   },
 
-
   optionsList: {
     paddingHorizontal: 12,
     paddingBottom: 16,
     paddingTop: 4,
+  },
+  ctaPreto: {
+    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    borderRadius: radius.pill,
+    backgroundColor: colors.earth,
+  },
+  ctaPretoCompacto: {
+    marginTop: 0,
+    minHeight: 40,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  ctaPretoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 15,
+    color: colors.warmWhite,
+    letterSpacing: 0.2,
   },
 
   signOutBtn: {
@@ -695,7 +733,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 16,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(179, 58, 43, 0.08)',
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 92, 74, 0.35)',
   },
   signOutText: {
     fontFamily: fonts.sansMedium,
@@ -711,19 +751,20 @@ const styles = StyleSheet.create({
   footerText: {
     fontFamily: fonts.serif,
     fontSize: 12,
-    color: colors.foregroundSubtle,
+    color: colors.mist,
     letterSpacing: 0.2,
   },
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(59, 34, 8, 0.45)',
+    backgroundColor: 'rgba(41, 38, 33, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
   modalCard: {
     ...glassCard,
+    backgroundColor: colors.warmWhite,
     width: '100%',
     maxWidth: 360,
     borderRadius: 28,
@@ -734,7 +775,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifMedium,
     fontSize: 22,
     lineHeight: 28,
-    color: colors.foreground,
+    color: colors.earth,
     letterSpacing: -0.4,
     marginBottom: 6,
   },
@@ -742,17 +783,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 13,
     lineHeight: 18,
-    color: colors.foregroundMuted,
+    color: colors.mist,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: '#F4F4F4',
     borderRadius: radius.sm,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,
-    color: colors.foreground,
+    color: colors.earth,
   },
   modalActions: {
     flexDirection: 'row',
@@ -764,6 +805,6 @@ const styles = StyleSheet.create({
   modalCancel: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
-    color: colors.foregroundMuted,
+    color: colors.mist,
   },
 });

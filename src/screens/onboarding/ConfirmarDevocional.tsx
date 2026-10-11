@@ -48,7 +48,7 @@ export default function ConfirmarDevocional({ onFinish }: Props) {
   return (
     <ScreenBackground style={webScreenFill}>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" />
         <View style={styles.inner}>
           <Text style={styles.eyebrow}>Devocional diário</Text>
           <Text style={styles.title}>

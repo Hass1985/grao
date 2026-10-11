@@ -1,13 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Pressable } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Pressable } from 'react-native';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { Seed } from '../data/seeds';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { shadows } from '../theme/shadows';
 import { radius } from '../theme/radius';
-import { glassBlur } from '../theme/glass';
 import Reveal from './ui/Reveal';
 
 interface SeedCardProps {
@@ -174,15 +172,8 @@ export default function SeedCard({
   );
 
   return (
-    <View style={[styles.shell, shadows.md as object]}>
-      {Platform.OS === 'web' ? (
-        <View style={[styles.glass, featured && styles.glassFeatured]}>{content}</View>
-      ) : (
-        <BlurView intensity={featured ? 44 : 36} tint="dark" style={styles.blur}>
-          <View style={[styles.tint, featured && styles.tintFeatured]} />
-          {content}
-        </BlurView>
-      )}
+    <View style={[styles.shell, styles.glass, featured && styles.glassFeatured, shadows.sm as object]}>
+      {content}
     </View>
   );
 }
@@ -190,26 +181,16 @@ export default function SeedCard({
 const styles = StyleSheet.create({
   shell: {
     width: '100%',
-    borderRadius: 28,
+    borderRadius: radius.lg,
     overflow: 'hidden',
-  },
-  blur: {
-    overflow: 'hidden',
-    borderRadius: 28,
-  },
-  tint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.surfaceSoft,
-  },
-  tintFeatured: {
-    backgroundColor: colors.surfaceSeedSoft,
   },
   glass: {
-    backgroundColor: colors.surface,
-    ...glassBlur,
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
   },
   glassFeatured: {
-    backgroundColor: colors.surfaceSoft,
+    backgroundColor: colors.warmWhite,
   },
   inner: {
     paddingHorizontal: 24,
@@ -230,7 +211,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   dot: {
-    color: 'rgba(247, 240, 226, 0.35)',
+    color: colors.oat,
     fontSize: 12,
   },
   passage: {
@@ -258,7 +239,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(247, 240, 226, 0.14)',
+    backgroundColor: colors.sand,
     marginTop: 22,
     marginBottom: 4,
   },
@@ -281,31 +262,19 @@ const styles = StyleSheet.create({
   },
   locked: {
     overflow: 'hidden',
-    backgroundColor: 'rgba(72, 48, 24, 0.28)',
+    backgroundColor: colors.sand,
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 16,
     gap: 10,
-    borderWidth: 0,
-    ...(Platform.OS === 'web'
-      ? ({
-          backdropFilter: 'blur(22px)',
-          WebkitBackdropFilter: 'blur(22px)',
-          boxShadow: '0 10px 28px rgba(36, 23, 8, 0.16)',
-        } as object)
-      : {
-          shadowColor: '#241708',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.2,
-          shadowRadius: 16,
-          elevation: 3,
-        }),
+    borderWidth: 1,
+    borderColor: colors.oat,
   },
   musicBlock: {
     marginTop: 24,
     paddingTop: 20,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(247, 240, 226, 0.14)',
+    borderTopColor: colors.sand,
     gap: 12,
   },
   musicLabel: {

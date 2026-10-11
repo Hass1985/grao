@@ -223,7 +223,7 @@ export async function selectTodaySeed(): Promise<SeedSelection> {
 }
 
 /**
- * A página do devocional anual de hoje, que agora mora na Raiz.
+ * A página do devocional anual de hoje (tela Devocional).
  *
  * Rota própria porque `/seed/today` decide pelo acesso: para quem assina, ela
  * devolve a semente, e o devocional ficaria inalcançável. Ele não é o consolo

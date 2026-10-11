@@ -11,22 +11,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Switch,
+  ImageBackground,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import type { Session } from '@supabase/supabase-js';
 import Svg, { Path } from 'react-native-svg';
-import { Eye, EyeOff } from '../../components/icons';
+import { ChevronLeft, Eye, EyeOff, Lock, Mail } from '../../components/icons';
+import GraoSymbol from '../../components/GraoSymbol';
 import { appleNativoDisponivel, entrarComApple } from '../../onboarding/apple';
 import { provedoresLigados } from '../../onboarding/provedores';
-import Button from '../../components/ui/Button';
-import CircleBack from '../../components/ui/CircleBack';
-import ScreenBackground from '../../components/ui/ScreenBackground';
 import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { radius } from '../../theme/radius';
 import { space } from '../../theme/spacing';
+import { shadows } from '../../theme/shadows';
 import { webScreenFill } from '../../theme/webScreen';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../auth/AuthContext';
@@ -40,6 +40,7 @@ type Props = {
 };
 
 type Mode = 'criar' | 'entrar';
+type Painel = 'porta' | 'email';
 
 /**
  * O Supabase responde em inglês. Sem traduzir, a pessoa que erra a senha lê
@@ -51,7 +52,6 @@ type Mode = 'criar' | 'entrar';
  */
 function emPortugues(msg: string | undefined): string {
   const m = (msg ?? '').toLowerCase();
-  // Telefone primeiro: estas mensagens também contêm palavras genéricas.
   if (m.includes('phone provider') || m.includes('phone signups') || m.includes('sms'))
     return 'A entrada por telefone ainda não está ligada no servidor. Use e-mail, Google ou Apple.';
   if (m.includes('invalid phone')) return 'Esse número não parece certo. Confira o DDD.';
@@ -61,7 +61,7 @@ function emPortugues(msg: string | undefined): string {
   if (m.includes('email not confirmed'))
     return 'Falta confirmar o e-mail. Procure a mensagem que enviamos (veja também o spam).';
   if (m.includes('already registered') || m.includes('already been registered'))
-    return 'Esse e-mail já tem conta. Toque em "Eu já tenho uma conta".';
+    return 'Esse e-mail já tem conta. Toque em "Entrar" abaixo.';
   if (m.includes('password should be')) return 'A senha precisa de pelo menos 8 caracteres.';
   if (m.includes('unable to validate email') || m.includes('invalid format'))
     return 'Esse e-mail não parece válido.';
@@ -75,16 +75,8 @@ function emPortugues(msg: string | undefined): string {
 /**
  * Telefone em E.164, na MESMA regra do servidor (whatsapp.ts, normalizePhone):
  * até 11 dígitos é número brasileiro sem DDI.
- *
- * Tem que ser a mesma string dos dois lados. Se o app gravasse "11987654321" e
- * o servidor "+5511987654321", a conta criada por telefone não encontraria o
- * cadastro do WhatsApp e a mesma pessoa viraria duas no banco: uma recebendo a
- * semente, outra vendo o app vazio.
  */
 function normalizarTelefone(bruto: string): string | null {
-  // O zero da operadora sai primeiro: "011 98765-4321" tem 12 dígitos, escapa
-  // da regra do DDI e viraria +011987654321 — conta com telefone inválido, e a
-  // mesma pessoa digitando certo depois viraria uma segunda conta.
   const digitos = (bruto ?? '').replace(/\D/g, '').replace(/^0+/, '');
   if (digitos.length < 10 || digitos.length > 15) return null;
   return `+${digitos.length <= 11 ? `55${digitos}` : digitos}`;
@@ -109,41 +101,60 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-/** A maçã oficial, em traço único, para ficar legível no botão escuro. */
-const AppleIcon = () => (
+const AppleIcon = ({ color = '#FFFFFF' }: { color?: string }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24">
     <Path
       d="M17.05 12.54c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.83-.81-3.01-.79-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.6-.75 3-.75 1.4 0 1.79.75 3.01.72 1.24-.02 2.03-1.13 2.79-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.44-3.69zM14.79 5.4c.64-.78 1.07-1.85.95-2.93-.92.04-2.03.61-2.69 1.38-.59.69-1.11 1.79-.97 2.84 1.03.08 2.07-.52 2.71-1.29z"
-      fill="#FFFFFF"
+      fill={color}
     />
   </Svg>
 );
 
+/** Preview local: o Site URL do Supabase aponta para o Netlify. */
+function ehPreviewLocal(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return true;
+  // Rede local (Expo web em outro aparelho / IP da máquina).
+  if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(h)) return true;
+  return false;
+}
+
+/** Extrai tokens do retorno do OAuth (hash ou query). */
+function tokensDoRetorno(urlStr: string): { access_token: string; refresh_token: string } | null {
+  try {
+    const url = new URL(urlStr);
+    const params = new URLSearchParams(url.hash.replace(/^#/, '') || url.search);
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (access_token && refresh_token) return { access_token, refresh_token };
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export default function Auth({ navigation }: Props) {
   const { configured, enterDemo, acceptSession, isAuthenticated } = useAuth();
-  const [mode, setMode] = useState<Mode>('criar');
+  const [painel, setPainel] = useState<Painel>('porta');
+  const [mode, setMode] = useState<Mode>('entrar');
   const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  // Telefone que está esperando confirmação por código, quando o Supabase
-  // estiver configurado para exigir.
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [codigo, setCodigo] = useState('');
+  const previewLocal = ehPreviewLocal();
 
-  // Se a sessão já existe (ex.: voltou do provedor e o gate ainda mostrou Auth),
-  // segue direto para o nome.
+  // Sessão pronta: apresentação, depois o app.
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigation.replace('ComoChamar');
+      navigation.replace('Intro');
     }
   }, [isAuthenticated, navigation]);
 
-  // Um campo só para os dois. Boa parte do público mais velho não tem e-mail,
-  // e obrigar a criar um seria barrar justamente quem o Grão quer alcançar.
   const ehEmail = identificador.includes('@');
   const telefone = ehEmail ? null : normalizarTelefone(identificador);
   const identificadorOk = ehEmail ? identificador.trim().length >= 5 : !!telefone;
@@ -151,24 +162,15 @@ export default function Auth({ navigation }: Props) {
   const podeEnviar =
     mode === 'entrar'
       ? identificadorOk && password.length >= 6 && !busy
-      : identificadorOk && passOk && accepted && !busy;
+      : identificadorOk && passOk && !busy;
 
   const finishWithUser = async (session?: Session | null, userId?: string) => {
     if (session) await acceptSession(session);
     else if (userId) await setUserId(userId);
-    navigation.replace('ComoChamar');
+    navigation.replace('Intro');
   };
 
-  // O botão da Apple aparece em todo lugar; o que muda é o caminho por baixo.
-  //
-  // No iPhone é a folha nativa, com a digital e sem sair do app. Fora dele é o
-  // mesmo OAuth do Google, pelo navegador. Esconder o botão fora do iOS
-  // trancaria para fora quem criou a conta pela Apple e depois abriu o Grão no
-  // computador: essa pessoa não tem senha, porque nunca escolheu uma.
   const [appleNativo, setAppleNativo] = useState(false);
-  // O botão só aparece quando a Apple está LIGADA no Supabase. Enquanto não
-  // estiver, mostrá-lo levaria a pessoa para fora do app, numa página de erro
-  // em JSON — ver provedores.ts.
   const [appleLigada, setAppleLigada] = useState(false);
   useEffect(() => {
     let vivo = true;
@@ -189,18 +191,24 @@ export default function Auth({ navigation }: Props) {
         await finishWithUser(r.sessao as Session | null, r.userId ?? undefined);
         return;
       }
-      // Cancelar não é falha: quem tocou em "Cancelar" na folha da Apple sabe
-      // o que fez, e uma mensagem de erro aqui seria uma repreensão.
       if (!r.cancelado) setError(r.erro ?? 'Não deu para entrar com a Apple.');
     } finally {
       setBusy(false);
     }
   };
 
-  const redirectTo = makeRedirectUri({
+  const redirectNativo = makeRedirectUri({
     scheme: 'grao',
     path: 'auth/callback',
   });
+
+  /** Sempre a origem atual no web, para não cair no Site URL (Netlify). */
+  const redirectWeb =
+    Platform.OS === 'web' && typeof window !== 'undefined'
+      ? `${window.location.origin}/`
+      : null;
+
+  const destinoOAuth = redirectWeb || redirectNativo;
 
   const oauth = async (provider: 'google' | 'apple') => {
     if (!supabase) {
@@ -211,60 +219,60 @@ export default function Auth({ navigation }: Props) {
     setError(null);
     setInfo(null);
     try {
-      // Ao voltar do provedor o app remonta: este flag + a sessão fazem o gate
-      // abrir em ComoChamar, sem refazer a apresentação. Vale para os dois.
       await marcarPosOAuth();
+      // skipBrowserRedirect: no web também. Sem isso o Supabase manda para o
+      // Site URL (Netlify) quando o redirect local não está na allowlist, e a
+      // pessoa some do preview. Com a sessão aberta aqui, o retorno precisa
+      // bater com a origem atual (cadastre-a em Redirect URLs no Supabase).
       const { data, error: err } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo:
-            Platform.OS === 'web' && typeof window !== 'undefined'
-              ? window.location.origin
-              : redirectTo,
-          skipBrowserRedirect: Platform.OS !== 'web',
+          redirectTo: destinoOAuth,
+          skipBrowserRedirect: true,
         },
       });
       if (err) throw err;
 
-      if (Platform.OS !== 'web' && data.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-        if (result.type === 'success' && result.url) {
-          const url = new URL(result.url);
-          const params = new URLSearchParams(url.hash.replace(/^#/, '') || url.search);
-          const access_token = params.get('access_token');
-          const refresh_token = params.get('refresh_token');
-          if (access_token && refresh_token) {
-            const { data: sess, error: sessErr } = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
-            if (sessErr) throw sessErr;
-            await finishWithUser(sess.session, sess.session?.user?.id);
-            return;
-          }
-        }
+      if (!data.url) {
+        setError('Não foi possível abrir o provedor. Tente de novo.');
         setBusy(false);
         return;
       }
 
-      if (Platform.OS === 'web') {
-        setInfo('Continue no provedor. Ao voltar, o Grão abre sozinho.');
+      const result = await WebBrowser.openAuthSessionAsync(data.url, destinoOAuth);
+      if (result.type === 'success' && result.url) {
+        const tokens = tokensDoRetorno(result.url);
+        if (tokens) {
+          const { data: sess, error: sessErr } = await supabase.auth.setSession(tokens);
+          if (sessErr) throw sessErr;
+          await finishWithUser(sess.session, sess.session?.user?.id);
+          return;
+        }
       }
+
+      if (result.type === 'dismiss' || result.type === 'cancel') {
+        setBusy(false);
+        return;
+      }
+
+      // Preview local sem localhost nas Redirect URLs: o Google devolve no
+      // Netlify e a sessão não volta para cá.
+      if (previewLocal) {
+        setError(
+          'O Google ainda devolve para o site publicado. No Supabase, em Authentication → URL Configuration → Redirect URLs, acrescente ' +
+            (redirectWeb || 'esta origem') +
+            ' — ou use "Ver apresentação neste computador" abaixo.',
+        );
+      } else {
+        setError('Não deu para concluir o login. Tente de novo.');
+      }
+      setBusy(false);
     } catch (e: any) {
       setError(emPortugues(e?.message));
       setBusy(false);
     }
-    // No web o redirect sai da página; não desliga busy no finally.
   };
 
-  /**
-   * Entrar ou criar conta, por e-mail ou por telefone.
-   *
-   * As duas chamadas do Supabase aceitam `email` OU `phone`; o resto do fluxo é
-   * idêntico. A única diferença de verdade é o que acontece quando não vem
-   * sessão: no e-mail, a confirmação chega por mensagem; no telefone, por um
-   * código digitado aqui mesmo.
-   */
   const entrar = async () => {
     if (!podeEnviar) return;
     if (!supabase) {
@@ -286,7 +294,11 @@ export default function Auth({ navigation }: Props) {
             setConfirmando(telefone);
             setInfo(`Enviamos um código para ${exibirTelefone(telefone)}.`);
           } else {
-            setInfo('Enviamos um e-mail de confirmação. Depois dele, entre por aqui.');
+            setInfo(
+              previewLocal
+                ? 'Enviamos um e-mail de confirmação. Enquanto isso, volte e use "Ver apresentação neste computador" para ver as telas novas.'
+                : 'Enviamos um e-mail de confirmação. Depois dele, entre por aqui.',
+            );
             setMode('entrar');
           }
           return;
@@ -307,7 +319,6 @@ export default function Auth({ navigation }: Props) {
     }
   };
 
-  /** Confirma o telefone com o código de 6 dígitos. */
   const confirmarCodigo = async () => {
     if (!supabase || !confirmando || codigo.replace(/\D/g, '').length < 6) return;
     setBusy(true);
@@ -327,365 +338,667 @@ export default function Auth({ navigation }: Props) {
     }
   };
 
+  const esqueciSenha = async () => {
+    if (!supabase) {
+      setError('Supabase ainda não está configurado neste build.');
+      return;
+    }
+    const email = identificador.trim().toLowerCase();
+    if (!email.includes('@')) {
+      setError('Digite o e-mail da conta para reenviar o acesso.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: destinoOAuth,
+      });
+      if (err) throw err;
+      setInfo('Enviamos um link para redefinir a senha. Confira o e-mail (e o spam).');
+    } catch (e: any) {
+      setError(emPortugues(e?.message));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const demo = async () => {
     setBusy(true);
     try {
       await enterDemo();
-      navigation.replace('ComoChamar');
+      navigation.replace('Intro');
     } finally {
       setBusy(false);
     }
+  };
+
+  const abrirEmail = (proximo: Mode) => {
+    setMode(proximo);
+    setPainel('email');
+    setError(null);
+    setInfo(null);
+    setConfirmando(null);
+    setCodigo('');
+  };
+
+  const voltarPorta = () => {
+    setPainel('porta');
+    setError(null);
+    setInfo(null);
+    setConfirmando(null);
+    setCodigo('');
   };
 
   const switchMode = () => {
     setMode(mode === 'criar' ? 'entrar' : 'criar');
     setError(null);
     setInfo(null);
-    // Sai da espera do código: sem isto o botão continuaria pedindo confirmação
-    // de um cadastro que a pessoa acabou de abandonar.
     setConfirmando(null);
     setCodigo('');
   };
 
+  // -------------------------------------------------------------------------
+  // Porta: logo + Google + Apple + e-mail (fundo de campo).
+  // -------------------------------------------------------------------------
+  if (painel === 'porta') {
+    return (
+      <View style={[styles.rootCampo, webScreenFill]}>
+        <ImageBackground
+          source={require('../../../assets/campo-trigo.jpg')}
+          style={styles.bg}
+          imageStyle={styles.bgImage}
+          resizeMode="cover"
+        >
+          <LinearGradient
+            colors={['rgba(36,23,8,0.55)', 'rgba(28,18,6,0.78)', 'rgba(36,23,8,0.94)']}
+            locations={[0, 0.55, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </ImageBackground>
+
+        <SafeAreaView style={styles.safe}>
+          <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+          <View style={styles.porta}>
+            <View style={styles.portaTopo} />
+
+            <View style={styles.marca}>
+              <GraoSymbol size={64} color={colors.caramel} filled={false} />
+              <Text style={styles.marcaNome}>Grão</Text>
+            </View>
+
+            <View style={styles.portaAcoes}>
+              {error ? <Text style={styles.erroClaro}>{error}</Text> : null}
+              {info ? <Text style={styles.infoClaro}>{info}</Text> : null}
+
+              <Pressable
+                style={[styles.btnGoogle, busy && styles.disabled]}
+                onPress={() => oauth('google')}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Continuar com Google"
+              >
+                <GoogleIcon />
+                <Text style={styles.btnGoogleTexto}>Continuar com Google</Text>
+              </Pressable>
+
+              {appleLigada ? (
+                <Pressable
+                  style={[styles.btnApple, busy && styles.disabled]}
+                  onPress={entrarApple}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continuar com Apple"
+                >
+                  <AppleIcon />
+                  <Text style={styles.btnAppleTexto}>Continuar com Apple</Text>
+                </Pressable>
+              ) : null}
+
+              <View style={styles.ouLinha}>
+                <View style={styles.ouTraco} />
+                <Text style={styles.ouTexto}>ou</Text>
+                <View style={styles.ouTraco} />
+              </View>
+
+              <Pressable
+                onPress={() => abrirEmail('entrar')}
+                disabled={busy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Continuar com e-mail e senha"
+              >
+                <Text style={styles.linkEmail}>Continuar com e-mail e senha</Text>
+              </Pressable>
+
+              {previewLocal ? (
+                <>
+                  <Pressable onPress={demo} style={styles.demoDestaque} disabled={busy}>
+                    <Text style={styles.demoDestaqueTexto}>Ver apresentação neste computador</Text>
+                  </Pressable>
+                  <Text style={styles.demoTexto}>
+                    O Google só volta para cá se {redirectWeb || 'esta origem'} estiver nas Redirect URLs do Supabase.
+                  </Text>
+                </>
+              ) : !configured ? (
+                <Pressable onPress={demo} style={styles.demo} disabled={busy}>
+                  <Text style={styles.demoTexto}>Continuar sem conta</Text>
+                </Pressable>
+              ) : busy ? (
+                <ActivityIndicator color={colors.warmWhite} style={{ marginTop: 16 }} />
+              ) : null}
+            </View>
+
+            <Text style={styles.termosPorta}>
+              Ao continuar, você concorda com nossos{'\n'}
+              <Text
+                style={styles.termosLink}
+                onPress={() => navigation.navigate('PrivacyPolicy')}
+              >
+                Termos de Uso
+              </Text>
+              {' e '}
+              <Text
+                style={styles.termosLink}
+                onPress={() => navigation.navigate('PrivacyPolicy')}
+              >
+                Política de Privacidade
+              </Text>
+            </Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // E-mail e senha: formulário claro no estilo atual do Grão.
+  // -------------------------------------------------------------------------
   return (
-    <ScreenBackground style={webScreenFill}>
+    <View style={[styles.rootClaro, webScreenFill]}>
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
-            contentContainerStyle={styles.scroll}
+            contentContainerStyle={styles.scrollEmail}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-          <CircleBack onPress={() => navigation.goBack()} style={styles.back} />
+            <View style={styles.emailTopo}>
+              <Pressable
+                onPress={voltarPorta}
+                hitSlop={12}
+                style={({ pressed }) => [styles.voltarBtn, pressed && { opacity: 0.7 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Voltar"
+              >
+                <ChevronLeft size={22} color="#000000" strokeWidth={2.2} />
+              </Pressable>
+            </View>
 
-          <Text style={styles.title}>
-            {mode === 'criar' ? 'Junte-se a nós' : 'Bem-vindo de volta'}
-          </Text>
-          <Text style={styles.sub}>
-            {mode === 'criar'
-              ? 'Aproxime-se de Deus com o seu devocional diário.'
-              : 'Entre para receber o que Deus tem para você hoje.'}
-          </Text>
-
-          <Text style={styles.fieldLabel}>E-mail ou telefone</Text>
-          <TextInput
-            style={styles.underline}
-            placeholder=""
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="default"
-            value={identificador}
-            onChangeText={setIdentificador}
-            editable={!busy && !confirmando}
-          />
-          {/* Devolve o número já entendido. Quem digita sem DDD, ou com o 0 da
-              operadora na frente, vê na hora que o Grão leu outra coisa. */}
-          {telefone ? (
-            <Text style={styles.hint}>Vamos usar o número {exibirTelefone(telefone)}.</Text>
-          ) : null}
-
-          <Text style={[styles.fieldLabel, { marginTop: 28 }]}>Senha</Text>
-          <View style={styles.passRow}>
-            <TextInput
-              style={[styles.underline, styles.passInput]}
-              placeholder=""
-              secureTextEntry={!showPass}
-              value={password}
-              onChangeText={setPassword}
-              editable={!busy}
-            />
-            <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={10} style={styles.eye}>
-              {showPass ? (
-                <EyeOff size={20} color={colors.foregroundMuted} strokeWidth={1.8} />
-              ) : (
-                <Eye size={20} color={colors.foregroundMuted} strokeWidth={1.8} />
-              )}
-            </Pressable>
-          </View>
-
-          {mode === 'criar' ? (
-            <View style={styles.terms}>
-              <Switch
-                value={accepted}
-                onValueChange={setAccepted}
-                trackColor={{ false: colors.casca20, true: colors.accentSoft }}
-                thumbColor={accepted ? colors.accent : colors.surface}
-              />
-              <Text style={styles.termsText}>
-                Confirmo que tenho 16 anos ou mais e concordo com os Termos e a Política de Privacidade.
+            <View style={styles.emailMarca}>
+              <GraoSymbol size={56} color={colors.caramel} filled={false} />
+              <Text style={styles.emailTitulo}>
+                {mode === 'entrar' ? 'Entrar' : 'Criar conta'}
+              </Text>
+              <Text style={styles.emailSub}>
+                {mode === 'entrar'
+                  ? 'Acesse sua conta com e-mail e senha'
+                  : 'Crie sua conta com e-mail e senha'}
               </Text>
             </View>
-          ) : (
-            <View style={{ height: 20 }} />
-          )}
 
-          {confirmando ? (
-            <>
-              <Text style={[styles.fieldLabel, { marginTop: 28 }]}>Código recebido</Text>
+            {previewLocal ? (
+              <Text style={styles.avisoLocal}>
+                Preview local: o Google devolve para o Netlify. Use e-mail e senha
+                ou o atalho no fim da tela.
+              </Text>
+            ) : null}
+
+            <View style={styles.campo}>
+              <Mail size={18} color={colors.mist} strokeWidth={1.9} />
               <TextInput
-                style={styles.underline}
-                placeholder=""
-                keyboardType="number-pad"
-                maxLength={6}
-                value={codigo}
-                onChangeText={setCodigo}
+                style={styles.campoInput}
+                placeholder="E-mail"
+                placeholderTextColor={colors.mist}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                value={identificador}
+                onChangeText={setIdentificador}
+                editable={!busy && !confirmando}
+              />
+            </View>
+            {telefone ? (
+              <Text style={styles.hintEscuro}>
+                Vamos usar o número {exibirTelefone(telefone)}.
+              </Text>
+            ) : null}
+
+            <View style={styles.campo}>
+              <Lock size={18} color={colors.mist} strokeWidth={1.9} />
+              <TextInput
+                style={styles.campoInput}
+                placeholder="Senha"
+                placeholderTextColor={colors.mist}
+                secureTextEntry={!showPass}
+                value={password}
+                onChangeText={setPassword}
                 editable={!busy}
               />
-            </>
-          ) : null}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {info ? <Text style={styles.info}>{info}</Text> : null}
-
-          <Button
-            title={
-              confirmando
-                ? 'Confirmar código'
-                : mode === 'criar'
-                  ? 'Criar minha conta'
-                  : 'Entrar'
-            }
-            onPress={confirmando ? confirmarCodigo : entrar}
-            disabled={confirmando ? codigo.replace(/\D/g, '').length < 6 || busy : !podeEnviar}
-            variant="dark"
-            uppercase
-            style={styles.primaryCta}
-          />
-
-          <View style={styles.rule} />
-
-          <View style={styles.social}>
-            {/* A Apple vem primeiro no iPhone.
-
-                Não é só a regra 4.8 pedindo que ela exista: no aparelho da
-                Apple, é a entrada que custa menos à pessoa — uma digital, sem
-                teclado, sem senha para lembrar depois. Num público que em boa
-                parte é mais velho, esse é o degrau onde o cadastro se perde. */}
-            {appleLigada ? (
-              <Pressable
-                style={[styles.socialBtn, styles.appleBtn, busy && styles.disabled]}
-                onPress={entrarApple}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel="Continuar com a Apple"
-              >
-                <AppleIcon />
-                <Text style={[styles.socialLabel, styles.appleLabel]}>
-                  Continuar com a Apple
-                </Text>
+              <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={10}>
+                {showPass ? (
+                  <EyeOff size={18} color={colors.mist} strokeWidth={1.9} />
+                ) : (
+                  <Eye size={18} color={colors.mist} strokeWidth={1.9} />
+                )}
               </Pressable>
+            </View>
+
+            {mode === 'entrar' ? (
+              <Pressable
+                onPress={esqueciSenha}
+                disabled={busy}
+                style={styles.esqueci}
+                hitSlop={8}
+              >
+                <Text style={styles.esqueciTexto}>Esqueci minha senha</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.termosCriar}>
+                Ao criar a conta, você confirma ter 16 anos ou mais e concorda com
+                os Termos e a Política de Privacidade.
+              </Text>
+            )}
+
+            {confirmando ? (
+              <View style={[styles.campo, { marginTop: 12 }]}>
+                <TextInput
+                  style={styles.campoInput}
+                  placeholder="Código recebido"
+                  placeholderTextColor={colors.mist}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={codigo}
+                  onChangeText={setCodigo}
+                  editable={!busy}
+                />
+              </View>
+            ) : null}
+
+            {error ? <Text style={styles.erroEscuro}>{error}</Text> : null}
+            {info ? <Text style={styles.infoEscuro}>{info}</Text> : null}
+
+            <Pressable
+              onPress={confirmando ? confirmarCodigo : entrar}
+              disabled={
+                confirmando
+                  ? codigo.replace(/\D/g, '').length < 6 || busy
+                  : !podeEnviar
+              }
+              style={({ pressed }) => [
+                styles.ctaPreto,
+                (confirmando
+                  ? codigo.replace(/\D/g, '').length < 6 || busy
+                  : !podeEnviar) && styles.disabled,
+                pressed && { opacity: 0.9 },
+              ]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.ctaPretoTexto}>
+                {confirmando
+                  ? 'Confirmar código'
+                  : mode === 'entrar'
+                    ? 'Entrar'
+                    : 'Criar conta'}
+              </Text>
+            </Pressable>
+
+            <View style={styles.emailRodape}>
+              {mode === 'entrar' ? (
+                <Text style={styles.rodapeTexto}>
+                  Não tem uma conta?{' '}
+                  <Text style={styles.rodapeLink} onPress={switchMode}>
+                    Criar conta
+                  </Text>
+                </Text>
+              ) : (
+                <Text style={styles.rodapeTexto}>
+                  Já tem uma conta?{' '}
+                  <Text style={styles.rodapeLink} onPress={switchMode}>
+                    Entrar
+                  </Text>
+                </Text>
+              )}
+            </View>
+
+            {previewLocal ? (
+              <Pressable onPress={demo} style={styles.demoClaro} disabled={busy}>
+                <Text style={styles.demoClaroTexto}>Ver apresentação neste computador</Text>
+              </Pressable>
+            ) : !configured ? (
+              <Pressable onPress={demo} style={styles.demoClaro} disabled={busy}>
+                <Text style={styles.demoClaroTexto}>Continuar sem conta</Text>
+              </Pressable>
+            ) : busy ? (
+              <ActivityIndicator color="#000000" style={{ marginTop: 20 }} />
             ) : null}
 
             <Pressable
-              style={[styles.socialBtn, busy && styles.disabled]}
-              onPress={() => oauth('google')}
-              disabled={busy}
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+              style={styles.politica}
+              hitSlop={8}
             >
-              <GoogleIcon />
-              <Text style={styles.socialLabel}>Continuar com o Google</Text>
+              <Text style={styles.politicaTexto}>Como cuidamos dos seus dados</Text>
             </Pressable>
-          </View>
-
-          <Pressable onPress={switchMode} style={styles.footerLink} disabled={busy}>
-            <Text style={styles.footerLinkText}>
-              {mode === 'criar' ? 'Eu já tenho uma conta' : 'Criar uma conta'}
-            </Text>
-          </Pressable>
-
-          {/* "Continuar sem conta" saiu: entrar agora é obrigatório, inclusive
-              para quem só vai testar — sem conta não existe fusão de cadastro,
-              nem assinatura, e o histórico morre junto com o cache do navegador.
-              Fica de pé apenas onde o Supabase não está configurado, senão um
-              build de desenvolvimento ficaria sem nenhuma porta de entrada. */}
-          {!configured ? (
-            <>
-              <Pressable onPress={demo} style={styles.demo} disabled={busy}>
-                <Text style={styles.demoText}>Continuar sem conta</Text>
-              </Pressable>
-              <Text style={styles.demoHint}>Supabase ainda não configurado neste build.</Text>
-            </>
-          ) : busy ? (
-            <ActivityIndicator color={colors.accent} style={styles.demo} />
-          ) : null}
-
-          {/* A política precisa estar ao alcance ANTES da conta existir. Ela já
-              estava no app, mas só nas configurações e na tela do WhatsApp —
-              ou seja, só depois de entrar. Ler depois de consentir é o avesso
-              da ordem que a LGPD pede. */}
-          <Pressable
-            onPress={() => navigation.navigate('PrivacyPolicy')}
-            style={styles.politica}
-            hitSlop={8}
-          >
-            <Text style={styles.politicaTexto}>Como cuidamos dos seus dados</Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
-    </ScreenBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: 'transparent' },
-  scroll: {
-    paddingHorizontal: space.gutter,
-    paddingBottom: 48,
-    flexGrow: 1,
-  },
-  back: { marginTop: 8, marginBottom: 28 },
-  title: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 34,
-    lineHeight: 40,
-    color: colors.palha,
-    letterSpacing: -0.8,
-    marginBottom: 10,
-  },
-  sub: {
-    fontFamily: fonts.sans,
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.foregroundMuted,
-    marginBottom: 36,
-    maxWidth: 340,
-  },
-  fieldLabel: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 12,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: colors.palha,
-    marginBottom: 10,
-  },
-  underline: {
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.borderStrong,
-    paddingVertical: 10,
-    fontFamily: fonts.sans,
-    fontSize: 17,
-    color: colors.palha,
-  },
-  passRow: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  passInput: {
-    paddingRight: 40,
-  },
-  eye: {
-    position: 'absolute',
-    right: 0,
-    bottom: 10,
-  },
-  terms: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginTop: 28,
-    marginBottom: 8,
-  },
-  termsText: {
+  rootCampo: {
     flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    lineHeight: 19,
-    color: colors.foregroundMuted,
+    backgroundColor: '#241708',
   },
-  error: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: '#E8A598',
-    marginTop: 12,
+  rootClaro: {
+    flex: 1,
+    backgroundColor: '#F4F4F4',
   },
-  info: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.foregroundMuted,
-    marginTop: 12,
+  bg: {
+    ...StyleSheet.absoluteFillObject,
   },
-  hint: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.foregroundSubtle,
-    marginTop: 8,
+  bgImage: {
+    transform: [{ scale: 1.12 }],
   },
-  primaryCta: {
-    marginTop: 28,
+  safe: { flex: 1, backgroundColor: 'transparent' },
+
+  porta: {
+    flex: 1,
+    paddingHorizontal: space.gutter,
+    justifyContent: 'space-between',
+    paddingBottom: 20,
   },
-  rule: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginVertical: 28,
+  portaTopo: { height: 24 },
+  marca: {
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 40,
   },
-  social: { gap: 12 },
-  /* O preto é exigência da Apple: o botão dela tem aparência normatizada, e um
-     botão "parecido" com cor nossa é motivo de observação na revisão. */
-  appleBtn: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+  marcaNome: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 36,
+    color: colors.warmWhite,
+    letterSpacing: -0.8,
   },
-  appleLabel: { color: '#FFFFFF' },
-  socialBtn: {
+  portaAcoes: {
+    gap: 12,
+    paddingBottom: 8,
+  },
+  btnGoogle: {
     minHeight: 54,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(247, 240, 226, 0.06)',
+    borderRadius: radius.md,
+    backgroundColor: colors.warmWhite,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     paddingHorizontal: 20,
   },
-  socialLabel: {
+  btnGoogleTexto: {
     fontFamily: fonts.sansSemi,
-    fontSize: 12,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    color: colors.palha,
+    fontSize: 16,
+    color: '#000000',
   },
-  disabled: { opacity: 0.5 },
-  footerLink: {
+  btnApple: {
+    minHeight: 54,
+    borderRadius: radius.md,
+    backgroundColor: '#000000',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 28,
-    paddingVertical: 8,
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
   },
-  footerLinkText: {
+  btnAppleTexto: {
     fontFamily: fonts.sansSemi,
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: colors.palha,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
-  demo: {
-    marginTop: 18,
+  ouLinha: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+    marginVertical: 8,
+  },
+  ouTraco: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(252,250,246,0.45)',
+  },
+  ouTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 14,
+    color: 'rgba(252,250,246,0.85)',
+  },
+  linkEmail: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.warmWhite,
+    textAlign: 'center',
     paddingVertical: 10,
   },
-  demoText: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.foregroundMuted,
-  },
-  demoHint: {
+  termosPorta: {
     fontFamily: fonts.sans,
     fontSize: 12,
-    color: colors.foregroundSubtle,
+    lineHeight: 18,
+    color: 'rgba(252,250,246,0.7)',
     textAlign: 'center',
+    paddingHorizontal: 12,
+  },
+  termosLink: {
+    fontFamily: fonts.sansSemi,
+    color: colors.warmWhite,
+    textDecorationLine: 'underline',
+  },
+  erroClaro: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: '#E8A598',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  infoClaro: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: 'rgba(252,250,246,0.85)',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  demo: {
+    alignItems: 'center',
+    paddingVertical: 10,
     marginTop: 4,
   },
+  demoDestaque: {
+    marginTop: 8,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: 'rgba(252,250,246,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  demoDestaqueTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 15,
+    color: colors.warmWhite,
+  },
+  demoTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: 'rgba(252,250,246,0.7)',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  disabled: { opacity: 0.5 },
 
-  politica: { alignSelf: 'center', marginTop: 20, paddingVertical: 6 },
+  scrollEmail: {
+    paddingHorizontal: space.gutter,
+    paddingBottom: 48,
+    flexGrow: 1,
+  },
+  emailTopo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  voltarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.warmWhite,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(shadows.sm as object),
+  },
+  emailMarca: {
+    alignItems: 'center',
+    marginBottom: 32,
+    gap: 10,
+  },
+  emailTitulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 28,
+    color: '#000000',
+    letterSpacing: -0.4,
+    marginTop: 4,
+  },
+  emailSub: {
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: colors.mist,
+    textAlign: 'center',
+  },
+  campo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.warmWhite,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 18,
+    minHeight: 54,
+    marginBottom: 12,
+  },
+  campoInput: {
+    flex: 1,
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    color: '#000000',
+    paddingVertical: 14,
+  },
+  hintEscuro: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: colors.mist,
+    marginTop: -4,
+    marginBottom: 12,
+    marginLeft: 8,
+  },
+  esqueci: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+    paddingVertical: 4,
+  },
+  esqueciTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 14,
+    color: colors.caramel,
+  },
+  termosCriar: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.mist,
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  erroEscuro: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.perigo,
+    marginBottom: 12,
+  },
+  infoEscuro: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.warmGray,
+    marginBottom: 12,
+  },
+  ctaPreto: {
+    minHeight: 54,
+    borderRadius: radius.pill,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  ctaPretoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.warmWhite,
+  },
+  emailRodape: {
+    alignItems: 'center',
+    marginTop: 28,
+  },
+  rodapeTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: colors.mist,
+  },
+  rodapeLink: {
+    fontFamily: fonts.sansSemi,
+    color: colors.caramel,
+    textDecorationLine: 'underline',
+  },
+  demoClaro: {
+    alignItems: 'center',
+    marginTop: 20,
+    paddingVertical: 8,
+  },
+  demoClaroTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.mist,
+  },
+  avisoLocal: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.earth,
+    backgroundColor: 'rgba(180, 119, 53, 0.14)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  politica: { alignSelf: 'center', marginTop: 24, paddingVertical: 6 },
   politicaTexto: {
     fontFamily: fonts.sans,
     fontSize: 13,
-    color: colors.foregroundSubtle,
+    color: colors.mist,
     textAlign: 'center',
     textDecorationLine: 'underline',
   },

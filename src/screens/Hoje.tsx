@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   Share,
@@ -13,32 +12,56 @@ import {
   Easing,
   ActivityIndicator,
   Linking,
+  Pressable,
 } from 'react-native';
-import { BookOpen, MessageCircle, Mic, Share2, Sprout } from '../components/icons';
-import SeedCard from '../components/SeedCard';
+import {
+  BookOpen,
+  Feather,
+  Heart,
+  Lock,
+  MessageCircle,
+  Mic,
+  Music2,
+  Share2,
+  Sprout,
+  type LucideIcon,
+} from '../components/icons';
 import AvaliarSemente from '../components/AvaliarSemente';
 import Responder from '../components/Responder';
-import ConviteDoPlantio from '../components/ConviteDoPlantio';
-import OuvirTexto from '../components/OuvirTexto';
+import { useLeituraEmVoz } from '../components/OuvirTexto';
 import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
-import ScreenBackground from '../components/ui/ScreenBackground';
-import AppHeader from '../components/ui/AppHeader';
-import Button from '../components/ui/Button';
+import ProfileButton from '../components/ProfileButton';
+import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
+import HeaderGamificacao from '../components/ui/HeaderGamificacao';
 import { useFocusEffect } from '@react-navigation/native';
 import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
-import { selectTodaySeed, getMoment, confirmarLeitura, plantarSementeDeHoje } from '../onboarding/seedDelivery';
+import {
+  selectTodaySeed,
+  getMoment,
+  plantarSementeDeHoje,
+  devocionalDeHoje,
+  resumoDeLeitura,
+  type ResumoLeitura,
+} from '../onboarding/seedDelivery';
 import { minhaAssinatura, minhasPreferencias } from '../onboarding/assinatura';
+import { meusGraos, type ResumoGraos } from '../onboarding/graos';
 import { colors } from '../theme/colors';
-import { fonts, fontSizes } from '../theme/typography';
+import { fonts } from '../theme/typography';
 import { space } from '../theme/spacing';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
-import { glassCard } from '../theme/glass';
 
 const NATIVE = Platform.OS !== 'web';
 const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+type TopicoId =
+  | 'semente'
+  | 'reflexao'
+  | 'pratica'
+  | 'oracao'
+  | 'louvor';
 
 function weekDates() {
   const now = new Date();
@@ -53,125 +76,70 @@ function weekDates() {
 }
 
 export default function Hoje({ navigation }: { navigation: any }) {
-  /**
-   * Tem o plano pago? `null` enquanto não se sabe.
-   *
-   * Vem do servidor, e não do formato da semente. Antes a tela deduzia o plano
-   * pelo conteúdo que recebia (`seed.tipo !== 'semente'`), o que funcionava
-   * enquanto Hoje servia os dois produtos. Agora ela é outra tela para cada
-   * plano, e deduzir significaria buscar o devocional inteiro só para
-   * descobrir que a pessoa não assina — e mostrar a página de venda depois de
-   * um piscar de conteúdo que não é dela.
-   */
   const [pago, setPago] = useState<boolean | null>(null);
   const [seed, setSeed] = useState<Seed>(todaySeed);
-  const [lido, setLido] = useState(false);
-  /**
-   * A pessoa já contou o momento hoje.
-   *
-   * O aplicativo passa a seguir a mesma regra do WhatsApp: a porta da troca
-   * existe uma vez por dia. Lá, tocar no botão fecha o dia e ele não volta até
-   * amanhã; aqui o botão some pelo mesmo motivo. Quem decide é o servidor —
-   * ele responde `trocaUsada` — porque o dia pode ter sido fechado pelo
-   * WhatsApp, num aparelho que este app nem viu.
-   */
+  const [devocao, setDevocao] = useState<Seed | null>(null);
   const [trocaUsada, setTrocaUsada] = useState(false);
-  /**
-   * A semente de hoje já foi aberta.
-   *
-   * Vem do servidor, nunca do aparelho: o dia pode ter sido fechado pelo
-   * WhatsApp, num celular que este app nem viu. É o mesmo campo que faz o
-   * botão "Meu sentimento mudou" sumir, e o que espelha as duas pontas.
-   */
   const [plantada, setPlantada] = useState(true);
-  /**
-   * O que o botão "Guardar no WhatsApp" precisa, ou null quando ele não cabe.
-   *
-   * `jaNoWhatsapp` evita oferecer o que já aconteceu: quem recebeu a semente
-   * no canal hoje não precisa de um atalho para recebê-la de novo.
-   */
   const [waPref, setWaPref] = useState<{ numero: string; frase: string } | null>(null);
   const [plantando, setPlantando] = useState(false);
-  const [confirmando, setConfirmando] = useState(false);
-  /** Linha em que o Grão retoma algo que a pessoa contou dias atrás. */
   const [ligacao, setLigacao] = useState<string | null>(null);
+  const [cardAberto, setCardAberto] = useState<TopicoId | null>(null);
+  const [graos, setGraos] = useState<ResumoGraos | null>(null);
+  const [resumo, setResumo] = useState<ResumoLeitura | null>(null);
   const reveal = useRef(new Animated.Value(0)).current;
-  /** Momento vigente quando a semente na tela foi carregada. */
   const momentoCarregado = useRef<EmotionalFamily | null>(null);
-  /** Já buscamos a semente ao menos uma vez nesta sessão de tela. */
   const seedCarregada = useRef(false);
   const days = weekDates();
   const todayIdx = new Date().getDay();
 
-  const loadSeed = React.useCallback(async () => {
-    try {
-      const { seed: next, lido: jaLido, ligacao: lembranca, trocaUsada: trocada,
-              plantada: plantadaApi } = await selectTodaySeed();
-      setSeed(next);
-      setLido(!!jaLido);
-      setLigacao(lembranca ?? null);
-      setTrocaUsada(!!trocada);
-      setPlantada(!!plantadaApi);
-      momentoCarregado.current = await getMoment();
-    } catch {
-      setSeed(todaySeed);
-    } finally {
-      // A entrada suave continua, agora disparada pela chegada da semente e
-      // não por um toque. O movimento era do conteúdo aparecendo; só o botão
-      // que o provocava é que sobrava.
-      Animated.timing(reveal, {
-        toValue: 1,
-        duration: 420,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: NATIVE,
-      }).start();
-    }
-  }, [reveal]);
-
-  // O plano é conferido a cada foco, e não uma vez só: é nesta tela que a
-  // pessoa volta depois de assinar, e ela precisa encontrar a semente no lugar
-  // onde, um minuto antes, havia uma página de venda.
-  //
-  // As duas idas à rede saem JUNTAS. Elas nunca dependeram uma da outra — o
-  // plano não muda qual semente o servidor escolhe —, mas estavam em sequência,
-  // e sequência aqui é cara: o servidor está em Oregon e o banco em São Paulo,
-  // então cada chamada custa entre meio segundo e três quartos. Somadas, eram
-  // ~1,3 s de tela parada antes da semente aparecer; juntas, ~0,75 s.
   useFocusEffect(
     React.useCallback(() => {
       let vivo = true;
       (async () => {
-        // O momento é lido do próprio aparelho, então é instantâneo e pode vir
-        // antes. É ele que diz se a semente precisa ser buscada de novo:
-        // trocar de aba continua não custando uma ida à rede.
         const agora = await getMoment();
         if (!vivo) return;
-        const precisaDaSemente =
-          !seedCarregada.current || agora !== momentoCarregado.current;
 
-        const [a, dados] = await Promise.all([
+        const [a, devo, g, r] = await Promise.all([
           minhaAssinatura(),
-          precisaDaSemente ? selectTodaySeed().catch(() => null) : Promise.resolve(null),
+          devocionalDeHoje().catch(() => null),
+          meusGraos().catch(() => null),
+          resumoDeLeitura().catch(() => null),
         ]);
         if (!vivo) return;
 
         const completo = !!a?.completo;
         setPago(completo);
-        if (!completo || !precisaDaSemente) return;
+        if (devo) setDevocao(devo.seed);
+        setGraos(g);
+        setResumo(r);
+
+        if (!completo) {
+          reveal.setValue(1);
+          return;
+        }
+
+        const precisaDaSemente =
+          !seedCarregada.current || agora !== momentoCarregado.current;
+        if (!precisaDaSemente) {
+          reveal.setValue(1);
+          return;
+        }
 
         seedCarregada.current = true;
         reveal.setValue(0);
-        if (dados) {
+        try {
+          const dados = await selectTodaySeed();
+          if (!vivo) return;
           setSeed(dados.seed);
-          setLido(!!dados.lido);
           setLigacao(dados.ligacao ?? null);
           setTrocaUsada(!!dados.trocaUsada);
           setPlantada(!!dados.plantada);
           momentoCarregado.current = agora;
-        } else {
+        } catch {
+          if (!vivo) return;
           setSeed(todaySeed);
         }
-        // A entrada suave é do conteúdo aparecendo, não de um toque.
         Animated.timing(reveal, {
           toValue: 1,
           duration: 420,
@@ -185,37 +153,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
     }, [reveal])
   );
 
-
-  const confirmarLeituraDeHoje = async () => {
-    if (confirmando || lido) return;
-    setConfirmando(true);
-    // Marca na tela antes da resposta: confirmar leitura é um gesto de leitura,
-    // não uma transação. Se a rede falhar, o servidor recebe na próxima vez em
-    // que a tela abrir; travar o botão esperando ida e volta é pior.
-    setLido(true);
-    try {
-      await confirmarLeitura();
-    } finally {
-      setConfirmando(false);
-    }
-  };
-
-  // O versículo é um recorte; o capítulo é o contexto. Como a Bíblia já está
-  // dentro do app, a referência vira porta em vez de enfeite.
-  const referencia = partesDaReferencia(seed.reference);
-  const abrirCapitulo = referencia
-    ? () => navigation.navigate('Biblia', { livro: referencia.livro, capitulo: referencia.capitulo })
-    : undefined;
-
-  /**
-   * Planta a semente de hoje.
-   *
-   * Otimista com um porém: a tela abre a semente ANTES de a rede responder,
-   * porque a pessoa acabou de tocar e não deve esperar Oregon para ver o que
-   * já está na mão dela. Mas se o servidor recusar, volta — senão ela leria a
-   * semente com o dia aberto, o WhatsApp mandaria o aviso de novo mais tarde,
-   * e as duas pontas voltariam a discordar pela porta dos fundos.
-   */
   useEffect(() => {
     let vivo = true;
     minhasPreferencias().then((p) => {
@@ -225,16 +162,14 @@ export default function Hoje({ navigation }: { navigation: any }) {
     return () => { vivo = false; };
   }, []);
 
-  /**
-   * Abre o WhatsApp com a frase pronta.
-   *
-   * O envio é DELA — o link só preenche o campo. Essa distinção é o caminho
-   * inteiro: é a mensagem dela que abre a janela de 24 horas da Meta, e é só
-   * dentro dessa janela que a semente inteira pode sair como texto livre. Não
-   * existe forma de abrir essa janela do nosso lado, e isso é proposital: a
-   * regra existe para impedir que empresas empurrem texto sem que alguém tenha
-   * pedido.
-   */
+  const refSemente = partesDaReferencia(seed.reference);
+  const abrirCapituloSemente = refSemente
+    ? () => navigation.navigate('Biblia', {
+        livro: refSemente.livro,
+        capitulo: refSemente.capitulo,
+      })
+    : undefined;
+
   const guardarNoWhatsapp = () => {
     if (!waPref) return;
     const url = `https://wa.me/${waPref.numero}?text=${encodeURIComponent(waPref.frase)}`;
@@ -251,7 +186,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
   };
 
   const share = async () => {
-    const message = seed.compartilhavel?.trim();
+    const message = (pago ? seed.compartilhavel : devocao?.compartilhavel)?.trim();
     if (!message) return;
     try {
       await Share.share(
@@ -262,457 +197,689 @@ export default function Hoje({ navigation }: { navigation: any }) {
     }
   };
 
-  const dateLine = new Date()
-    .toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })
-    .toUpperCase()
-    .replace('.', '');
+  // Plantio / Momento / Settings moram no stack pai; Hoje é aba.
+  // Sem subir o parent, o navigate procura só nas tabs e a tela não abre.
+  const irStack = (tela: string, params?: Record<string, unknown>) => {
+    const pai = navigation.getParent?.();
+    if (pai) {
+      pai.navigate(tela as never, params as never);
+      return;
+    }
+    navigation.navigate(tela, params);
+  };
+  const irPlantio = () => irStack('Plantio');
+  const contarMomento = () => irStack('MomentoSemente', { real: true });
 
-  const isSemente = pago === true;
-  const isFree = pago === false;
+  const isPago = pago === true;
   const contentOp = reveal;
   const contentTy = reveal.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
 
+  const progresso = (() => {
+    if (pago === null) return 0;
+    if (!isPago) return devocao ? 25 : 0;
+    if (!plantada) return 10;
+    let p = 35;
+    if (seed.reflection) p += 15;
+    if (seed.practice) p += 15;
+    if (seed.prayer) p += 20;
+    if (seed.music) p += 15;
+    return Math.min(100, p);
+  })();
+
+  const dateLine = (() => {
+    const agora = new Date();
+    const dia = String(agora.getDate()).padStart(2, '0');
+    const mes = agora
+      .toLocaleDateString('pt-BR', { month: 'short' })
+      .replace('.', '')
+      .toUpperCase();
+    return `${dia} ${mes} ${agora.getFullYear()}`;
+  })();
+
+  const heroTitulo = 'Semente do dia';
+
+  // Mesmos números do Campo / app publicado: sequência e saldo de grãos.
+  const sequencia =
+    graos && graos.sequencia > 0
+      ? graos.sequencia
+      : resumo
+        ? resumo.sequencia
+        : 0;
+  const diasNoAno = graos?.diasVividos ?? resumo?.total ?? null;
+
+  const toggle = (id: TopicoId) =>
+    setCardAberto((atual) => (atual === id ? null : id));
+
+  // Paywall do servidor: null = bloqueado (gancho para assinar).
+  const praticaBloqueada = isPago && plantada && seed.practice === null;
+  const oracaoBloqueada = isPago && plantada && seed.prayer === null;
+  const louvorBloqueado = isPago && plantada && seed.music === null;
+
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <HeaderCampoFundo>
+          <View style={styles.headerTop}>
+            <ProfileButton onPress={() => irStack('Settings')} size={36} />
+            <HeaderGamificacao
+              navigation={navigation}
+              sequencia={sequencia}
+            />
+          </View>
+
+          <View style={styles.week}>
+            {days.map((d, i) => {
+              const active = i === todayIdx;
+              return (
+                <View key={i} style={styles.dayCol}>
+                  <Text style={styles.dayLetter}>{WEEK[i]}</Text>
+                  <View style={[styles.dayDot, active && styles.dayDotActive]}>
+                    <Text style={[styles.dayNum, active && styles.dayNumActive]}>
+                      {d.getDate()}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={styles.progressBlock}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressLabel}>Progresso hoje</Text>
+              <Text style={styles.progressPct}>{progresso}%</Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progresso}%` }]} />
+            </View>
+            {diasNoAno !== null ? (
+              <Text style={styles.progressAno}>
+                {diasNoAno} de 365 dias
+              </Text>
+            ) : null}
+          </View>
+      </HeaderCampoFundo>
+
+      <View style={styles.sheet}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
         >
-          <AppHeader
-            title="Hoje"
-            subtitle={new Date()
-              .toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })
-              .replace(/^./, (c) => c.toUpperCase())}
-            onLogoPress={() => navigation.navigate('Settings')}
-            onProfilePress={() => navigation.navigate('Settings')}
-          />
-
-          {/* Enquanto não se sabe o plano, nada. Um piscar de página de venda
-              na cara de quem assina é pior do que meio segundo de silêncio. */}
           {pago === null ? (
             <View style={styles.esperando}>
-              <ActivityIndicator color={colors.ambarSoft} />
+              <ActivityIndicator color={colors.earth} />
             </View>
-          ) : isFree ? (
-            <ConviteDoPlantio onAssinar={() => navigation.navigate('Assinar')} />
           ) : (
-          <>
-          <View style={styles.weekWrap}>
-            <View style={styles.week}>
-              {days.map((d, i) => {
-                const active = i === todayIdx;
-                return (
-                  <View key={i} style={styles.dayCol}>
-                    <Text style={[styles.dayLetter, active && styles.dayLetterActive]}>
-                      {WEEK[i]}
-                    </Text>
-                    <View style={[styles.dayDot, active && styles.dayDotActive]}>
-                      <Text style={[styles.dayNum, active && styles.dayNumActive]}>
-                        {d.getDate()}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Campo')}
-              style={styles.calLink}
-            >
-              <Text style={styles.calLinkText}>Ver calendário</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* A porta que pedia para ser aberta saiu.
-              Havia um cartão intermediário — "Deus, o que temos para hoje?",
-              "Toque para abrir" — entre a pessoa e a própria semente. Fazia
-              sentido quando o Hoje servia os dois produtos e a abertura era
-              uma pequena cerimônia; hoje é só um toque a mais para ver o que
-              ela assinou. A pergunta foi para a Raiz, onde ela abre o
-              devocional do dia. */}
-          <Animated.View style={{ opacity: contentOp, transform: [{ translateY: contentTy }] }}>
-              <View style={styles.hero}>
-                <Text style={styles.dateLine}>{dateLine}</Text>
-                <Text style={styles.heroTitle}>
-                  {/* Antes de plantar, só a referência — como no WhatsApp.
-                      O título já é o conteúdo: mostrá-lo aqui entregaria a
-                      semente e deixaria o botão sem nada para abrir. */}
-                  {!plantada
-                    ? (seed.reference || 'Sua semente chegou')
-                    : (seed.title || seed.reference || 'Semente de hoje')}
-                </Text>
-                <Text style={styles.sectionEyebrow}>Devocional diário</Text>
+            <Animated.View style={{ opacity: contentOp, transform: [{ translateY: contentTy }] }}>
+              <View style={styles.sheetHead}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.dateLine}>{dateLine}</Text>
+                  <Text style={styles.heroTitle}>{heroTitulo}</Text>
+                </View>
+                <TouchableOpacity onPress={share} hitSlop={10} accessibilityLabel="Compartilhar">
+                  <Share2 size={18} color={colors.earth} strokeWidth={2} />
+                </TouchableOpacity>
               </View>
 
-              {/* O Grão lembrando em voz alta. Vem do motor de memória, que
-                  guarda fatos com evidência literal desde o primeiro dia e até
-                  agora só falava no WhatsApp. É o momento que a pessoa conta
-                  para alguém — "como assim ele lembrou?". */}
-              {ligacao ? (
-                <View style={styles.lembranca}>
-                  <Text style={styles.lembrancaTexto}>{ligacao}</Text>
-                </View>
+              {ligacao && isPago ? (
+                <Text style={styles.ligacao}>{ligacao}</Text>
               ) : null}
 
-              {/* O ANÚNCIO, enquanto a semente não foi plantada.
-
-                  No WhatsApp plantar sempre foi um ato: chega o aviso com a
-                  referência, a pessoa toca, a semente abre. No app ela já
-                  aparecia aberta — não havia o que plantar, e por isso o dia
-                  nunca fechava por aqui. Quem usava só o aplicativo nunca
-                  plantou nada: dos 19 plantios registrados até 23/09/2026,
-                  todos vieram do WhatsApp.
-
-                  Agora é a mesma porta nos dois lugares, e fechar o dia de um
-                  lado apaga os botões do outro. */}
-              {isSemente && !plantada ? (
-                <View style={styles.anuncio}>
-                  <Text style={styles.anuncioTexto}>
-                    Sua semente de hoje está pronta, escolhida para o seu momento.
-                  </Text>
-                  <TouchableOpacity
-                    onPress={plantar}
-                    disabled={plantando}
-                    style={[styles.plantarBtn, plantando && styles.plantarBtnOcupado]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Plantar a semente de hoje"
-                    activeOpacity={0.85}
-                  >
-                    {plantando ? (
-                      <ActivityIndicator color={colors.white} size="small" />
-                    ) : (
-                      <>
-                        <Sprout size={18} color={colors.white} strokeWidth={2.2} />
-                        <Text style={styles.plantarTexto}>Plantar</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
-              {/* Ouvir vale mais aqui do que na Bíblia: é o público que não
-                  tem e-mail e cansa a vista que mais pediu isso. A ordem é a
-                  da leitura — versículo, referência, reflexão — e as partes
-                  pagas só entram quando existem. */}
-              {plantada ? (
-              <>
-              <OuvirTexto
-                trechos={[
-                  seed.title || '',
-                  seed.passage || '',
-                  seed.reference || '',
-                  seed.reflection || '',
-                  ...(seed.prayer ? ['Oração.', seed.prayer] : []),
-                  ...(seed.practice ? ['Prática.', seed.practice] : []),
-                ]}
-                rotulo={isSemente ? 'Ouvir a semente' : 'Ouvir o devocional'}
-                style={styles.ouvir}
+              {/* 1. Devocional diário: abre a tela própria (365 páginas). */}
+              <TopicoCard
+                titulo="Devocional"
+                tempo="5 min"
+                Icon={BookOpen}
+                aberto={false}
+                onPress={() => irStack('Devocional')}
               />
 
-              <SeedCard
-                seed={seed}
-                featured={true}
-                onLerCapitulo={abrirCapitulo}
+              {/* 2. Versículo — só no plano pago */}
+              <TopicoCard
+                titulo="Versículo"
+                tempo="5 min"
+                Icon={Sprout}
+                aberto={cardAberto === 'semente'}
+                onPress={() => {
+                  if (!isPago) {
+                    irPlantio();
+                    return;
+                  }
+                  if (!plantada) {
+                    contarMomento();
+                    return;
+                  }
+                  toggle('semente');
+                }}
+                bloqueado={!isPago || !plantada}
+                cabecalho={
+                  isPago && plantada
+                    ? (seed.reference || seed.title || 'Sua semente')
+                    : 'Disponível no Plantio'
+                }
+                trechosOuvir={
+                  isPago && plantada
+                    ? [seed.passage || '', seed.reference || '']
+                    : undefined
+                }
+                onLer={isPago && plantada ? abrirCapituloSemente : undefined}
+                textoLeitura={isPago && plantada ? seed.passage : undefined}
+                onOuvirExtra={!plantada && isPago ? contarMomento : undefined}
+                onLerExtra={!plantada && isPago ? () => { void plantar(); } : undefined}
+                acoesExtras={
+                  isPago && plantada && !trocaUsada ? (
+                    <Pressable onPress={contarMomento} style={styles.linkMomento}>
+                      <Mic size={14} color={colors.warmWhite} strokeWidth={2} />
+                      <Text style={styles.linkMomentoTexto}>Meu sentimento mudou</Text>
+                    </Pressable>
+                  ) : null
+                }
               />
 
-              {isSemente && seed.music ? (
-                <MusicPlayer music={seed.music} inline style={styles.player} />
-              ) : null}
+              {/* 3. Reflexão — da semente, após plantar */}
+              <TopicoCard
+                titulo="Reflexão"
+                tempo="3 min"
+                Icon={Feather}
+                aberto={cardAberto === 'reflexao'}
+                onPress={() => {
+                  if (!isPago) {
+                    irPlantio();
+                    return;
+                  }
+                  if (!plantada) {
+                    contarMomento();
+                    return;
+                  }
+                  toggle('reflexao');
+                }}
+                bloqueado={!isPago || !plantada}
+                cabecalho={
+                  isPago && plantada
+                    ? (seed.reference || seed.title || 'Reflexão')
+                    : 'Disponível no Plantio'
+                }
+                trechosOuvir={
+                  isPago && plantada && seed.reflection
+                    ? [seed.reflection]
+                    : undefined
+                }
+                textoLeitura={isPago && plantada ? seed.reflection : undefined}
+              />
 
-              {/* "Confirmar leitura" saiu daqui junto com o devocional: é o
-                  gesto que marca o dia no Campo, e agora mora na Raiz, ao pé
-                  da página que ele confirma. */}
+              {/* 4. Prática — null = bloqueado pelo servidor */}
+              <TopicoCard
+                titulo="Prática"
+                tempo="2 min"
+                Icon={MessageCircle}
+                aberto={cardAberto === 'pratica'}
+                onPress={() => {
+                  if (!isPago || !plantada || praticaBloqueada || !seed.practice) {
+                    if (!isPago) irPlantio();
+                    else if (!plantada) contarMomento();
+                    return;
+                  }
+                  toggle('pratica');
+                }}
+                bloqueado={!isPago || !plantada || praticaBloqueada || !seed.practice}
+                cabecalho={seed.practice ? 'Prática de hoje' : 'Disponível no Plantio'}
+                trechosOuvir={seed.practice ? [seed.practice] : undefined}
+                textoLeitura={seed.practice || undefined}
+              />
 
-              {seed.compartilhavel ? (
-                <TouchableOpacity
-                  onPress={share}
-                  style={styles.shareBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Compartilhar"
-                  hitSlop={8}
-                >
-                  <Share2 size={15} color={colors.foregroundMuted} strokeWidth={2} />
-                  <Text style={styles.shareText}>Compartilhar</Text>
-                </TouchableOpacity>
-              ) : null}
+              {/* 5. Oração */}
+              <TopicoCard
+                titulo="Oração"
+                tempo="2 min"
+                Icon={Heart}
+                aberto={cardAberto === 'oracao'}
+                onPress={() => {
+                  if (!isPago || !plantada || oracaoBloqueada || !seed.prayer) {
+                    if (!isPago) irPlantio();
+                    else if (!plantada) contarMomento();
+                    return;
+                  }
+                  toggle('oracao');
+                }}
+                bloqueado={!isPago || !plantada || oracaoBloqueada || !seed.prayer}
+                cabecalho={seed.prayer ? 'Oração de hoje' : 'Disponível no Plantio'}
+                trechosOuvir={seed.prayer ? [seed.prayer] : undefined}
+                textoLeitura={seed.prayer || undefined}
+              />
 
-              {/* Só na semente: no devocional o gesto é confirmar a leitura, e
-                  duas perguntas no mesmo lugar viram formulário. */}
-              {isSemente ? <AvaliarSemente seedId={seed.id} /> : null}
+              {/* 6. Louvor */}
+              <TopicoCard
+                titulo="Louvor"
+                tempo="3 min"
+                Icon={Music2}
+                aberto={cardAberto === 'louvor'}
+                onPress={() => {
+                  if (!isPago || !plantada || louvorBloqueado || !seed.music) {
+                    if (!isPago) irPlantio();
+                    else if (!plantada) contarMomento();
+                    return;
+                  }
+                  toggle('louvor');
+                }}
+                bloqueado={!isPago || !plantada || louvorBloqueado || !seed.music}
+                cabecalho={
+                  seed.music
+                    ? `${seed.music.title}${seed.music.artist ? ` · ${seed.music.artist}` : ''}`
+                    : 'Disponível no Plantio'
+                }
+                acoesExtras={
+                  seed.music ? (
+                    <MusicPlayer music={seed.music} inline style={{ marginTop: 4 }} />
+                  ) : null
+                }
+              />
 
-              {/* Responder é o que alimenta a memória. Sem obrigação e sem
-                  contador: quem não escreve não perde nada. */}
-              <Responder />
-              </>
-              ) : null}
-
-              {/* A porta do produto pago, que faltava.
-                  Quem assina recebe a semente escolhida para o SEU momento, e
-                  o momento muda todo dia — mas dentro do app só existia o
-                  seletor de sentimentos, que é um atalho, não um relato. Sem
-                  este caminho, contar com as próprias palavras só era possível
-                  no WhatsApp ou no primeiro dia de cadastro, e o motor
-                  envelhecia junto com aquele retrato. */}
-              {/* Some assim que a semente é plantada, por qualquer canal.
-                  
-                  A condição era só `!trocaUsada`, que vem do servidor e só
-                  muda na próxima leitura — então quem plantava pelo app
-                  continuava vendo "Meu sentimento mudou" logo abaixo da
-                  semente que acabou de plantar. Oferecer trocar o sentimento
-                  de um dia já encerrado é o app admitindo que não viu o que a
-                  pessoa fez um segundo antes. */}
-              {/* Depois de plantar, o atalho para o WhatsApp.
-                  
-                  Quem planta pelo app de manhã só via a semente no WhatsApp no
-                  horário agendado, horas depois — e às vezes nem isso, se a
-                  janela de 24h estivesse fechada e o template esbarrasse no
-                  limite da Meta. Aqui ela chega no momento em que a pessoa
-                  acabou de plantar, que é quando ela ainda se importa. */}
-              {isSemente && plantada && waPref ? (
-                <TouchableOpacity onPress={guardarNoWhatsapp} style={styles.otherLink}>
-                  <MessageCircle size={14} color={colors.ambarSoft} strokeWidth={2} />
-                  <Text style={[styles.otherLinkText, { color: colors.ambarSoft }]}>
-                    Guardar no WhatsApp
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-
-              {isSemente && !trocaUsada && !plantada ? (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('MomentoSemente', { real: true })}
-                  style={styles.otherLink}
-                >
-                  <Mic size={14} color={colors.ambarSoft} strokeWidth={2} />
-                  <Text style={[styles.otherLinkText, { color: colors.ambarSoft }]}>
-                    Meu sentimento mudou
-                  </Text>
-                </TouchableOpacity>
+              {isPago && plantada ? (
+                <>
+                  <AvaliarSemente seedId={seed.id} />
+                  <Responder />
+                  {waPref ? (
+                    <TouchableOpacity onPress={guardarNoWhatsapp} style={styles.otherLink}>
+                      <Text style={styles.otherLinkText}>Guardar no WhatsApp</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
               ) : null}
             </Animated.View>
-          </>
           )}
         </ScrollView>
+      </View>
+    </View>
+  );
+}
 
-      </SafeAreaView>
-    </ScreenBackground>
+function TopicoCard({
+  titulo,
+  tempo,
+  Icon,
+  aberto,
+  onPress,
+  bloqueado,
+  cabecalho,
+  trechosOuvir,
+  onLer,
+  onOuvirExtra,
+  onLerExtra,
+  textoLeitura,
+  acoesExtras,
+}: {
+  titulo: string;
+  tempo: string;
+  Icon: LucideIcon;
+  aberto: boolean;
+  onPress: () => void;
+  bloqueado?: boolean;
+  /** Livro + referência (ou título curto) no estilo BiblicAI. */
+  cabecalho?: string;
+  trechosOuvir?: string[];
+  onLer?: () => void;
+  /** Quando ainda não há áudio da API (ex.: semente antes de plantar). */
+  onOuvirExtra?: () => void;
+  onLerExtra?: () => void;
+  /** Texto mostrado ao tocar Ler, se não houver navegação de capítulo. */
+  textoLeitura?: string | null;
+  acoesExtras?: React.ReactNode;
+}) {
+  const leitura = useLeituraEmVoz(trechosOuvir ?? []);
+  const [mostrandoTexto, setMostrandoTexto] = useState(false);
+  const expandido = aberto && !bloqueado;
+
+  const aoOuvir = () => {
+    if (trechosOuvir?.length) leitura.alternar();
+    else onOuvirExtra?.();
+  };
+
+  const aoLer = () => {
+    if (onLer) {
+      onLer();
+      return;
+    }
+    if (onLerExtra) {
+      onLerExtra();
+      return;
+    }
+    if (textoLeitura) setMostrandoTexto((v) => !v);
+  };
+
+  const temOuvir = !!(trechosOuvir?.length || onOuvirExtra);
+  const temLer = !!(onLer || onLerExtra || textoLeitura);
+
+  if (expandido) {
+    return (
+      <View style={[styles.card, styles.cardDestaque]}>
+        <Pressable onPress={onPress} style={styles.cardRow}>
+          <Icon size={22} color={colors.white} strokeWidth={2} />
+          <Text style={[styles.cardTitulo, styles.cardTituloLight]}>{titulo}</Text>
+          <Text style={styles.cardTempoLight}>{tempo}</Text>
+        </Pressable>
+
+        {cabecalho ? <Text style={styles.destaqueTitulo}>{cabecalho}</Text> : null}
+
+        {mostrandoTexto && textoLeitura ? (
+          <Text style={styles.cardCorpoLight}>{textoLeitura}</Text>
+        ) : null}
+
+        {(temOuvir || temLer) ? (
+          <View style={styles.cardAcoes}>
+            {temOuvir ? (
+              <Pressable onPress={aoOuvir} style={styles.btnPrimario}>
+                <Text style={styles.btnPrimarioTexto}>
+                  {leitura.tocando ? 'Parar' : 'Ouvir'}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+            {temLer ? (
+              <Pressable onPress={aoLer} style={styles.btnSecundario}>
+                <Text style={styles.btnSecundarioTexto}>Ler</Text>
+              </Pressable>
+            ) : (
+              <View style={{ flex: 1 }} />
+            )}
+          </View>
+        ) : null}
+
+        {acoesExtras}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.card}
+      accessibilityRole="button"
+      accessibilityLabel={bloqueado ? `${titulo}, bloqueado` : titulo}
+    >
+      {bloqueado ? (
+        <View style={styles.cadeadoBadge} accessibilityElementsHidden>
+          <Lock size={12} color={colors.white} strokeWidth={2.4} />
+        </View>
+      ) : null}
+
+      <View style={styles.cardRow}>
+        <Icon size={20} color={colors.earth} strokeWidth={1.9} />
+        <Text style={styles.cardTitulo}>{titulo}</Text>
+        <Text style={styles.cardTempo}>{tempo}</Text>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  esperando: { paddingVertical: 60, alignItems: 'center' },
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: space.gutter },
-  weekWrap: {
-    marginTop: 8,
-    marginBottom: 8,
-    paddingTop: 8,
+  root: { flex: 1, backgroundColor: '#241708' },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40,
+    marginTop: 10,
+    marginBottom: 18,
   },
   week: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    marginBottom: 16,
   },
   dayCol: { alignItems: 'center', gap: 8, width: 36 },
   dayLetter: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 12,
-    color: colors.ambarSoft,
-  },
-  dayLetterActive: {
-    color: colors.ambarSoft,
+    fontFamily: fonts.sansMedium,
+    fontSize: 11,
+    color: 'rgba(252,250,246,0.65)',
   },
   dayDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(252,250,246,0.22)',
   },
   dayDotActive: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.warmWhite,
+    borderColor: colors.warmWhite,
   },
   dayNum: {
     fontFamily: fonts.sansMedium,
     fontSize: 13,
-    color: colors.foregroundMuted,
+    color: 'rgba(252,250,246,0.85)',
   },
   dayNumActive: {
-    color: colors.palha,
+    color: colors.headerBrand,
     fontFamily: fonts.sansSemi,
   },
-  calLink: {
-    alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 8,
+  progressBlock: { gap: 8 },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  calLinkText: {
+  progressLabel: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: 'rgba(252,250,246,0.75)',
+  },
+  progressPct: {
     fontFamily: fonts.sansSemi,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: colors.ambarSoft,
+    fontSize: 13,
+    color: colors.warmWhite,
   },
-  hero: {
-    marginTop: 12,
-    marginBottom: 8,
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(252,250,246,0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.warmWhite,
+    borderRadius: 2,
+  },
+  progressAno: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: 'rgba(252,250,246,0.65)',
+    marginTop: 2,
+  },
+  sheet: {
+    flex: 1,
+    marginTop: -16,
+    backgroundColor: '#F4F4F4',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+  },
+  scroll: {
+    paddingHorizontal: space.gutter,
+    paddingTop: 28,
+  },
+  esperando: { paddingVertical: 60, alignItems: 'center' },
+  sheetHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
   },
   dateLine: {
     fontFamily: fonts.sans,
     fontSize: 12,
     letterSpacing: 0.6,
-    color: colors.foregroundSubtle,
-    marginBottom: 10,
+    color: colors.earth,
+    marginBottom: 8,
   },
   heroTitle: {
     fontFamily: fonts.serifMedium,
     fontSize: 28,
     lineHeight: 34,
-    color: colors.palha,
-    letterSpacing: -0.5,
-    marginBottom: 22,
+    color: colors.earth,
+    letterSpacing: -0.4,
+    marginBottom: 10,
   },
-  sectionEyebrow: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-    color: colors.foregroundSubtle,
+  ligacao: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.warmGray,
     marginBottom: 14,
   },
-  passCard: {
-    ...glassCard,
-    borderRadius: 28,
-    padding: 22,
+  card: {
+    position: 'relative',
+    backgroundColor: colors.warmWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.sand,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 10,
     ...(shadows.sm as object),
   },
-  passTop: {
+  cadeadoBadge: {
+    position: 'absolute',
+    top: -7,
+    right: 14,
+    zIndex: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.earth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.warmWhite,
+    ...(shadows.sm as object),
+  },
+  cardDestaque: {
+    backgroundColor: colors.headerBrand,
+    borderColor: colors.headerBrand,
+    paddingBottom: 18,
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    gap: 14,
   },
-  passLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  passLabel: {
+  cardTitulo: {
+    flex: 1,
     fontFamily: fonts.sansSemi,
     fontSize: 14,
-    color: colors.ambarSoft,
+    color: colors.earth,
   },
-  passMeta: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.foregroundMuted,
-  },
-  passTitle: {
-    fontFamily: fonts.serifMedium,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.palha,
-    letterSpacing: -0.3,
-    marginBottom: 20,
-  },
-  player: {
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  ouvir: { marginBottom: 16 },
-  lembranca: {
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
-    paddingLeft: 16,
-    paddingVertical: 4,
-    marginBottom: 20,
-  },
-  lembrancaTexto: {
-    fontFamily: fonts.serifItalic,
-    fontSize: 17,
-    lineHeight: 26,
-    color: colors.foregroundMuted,
-  },
-  leituraWrap: {
-    marginTop: 22,
-  },
-  leituraFeita: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-  },
-  leituraFeitaText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    color: colors.accent,
-  },
-  shareBtn: {
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  shareText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    color: colors.foregroundMuted,
-  },
-  /* O anúncio: o que aparece antes de plantar. Respira mais que o resto da
-     tela de propósito — é uma pausa curta antes do conteúdo, não um cartão. */
-  anuncio: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: space.lg,
-    gap: 22,
-  },
-  anuncioTexto: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
-    lineHeight: 24,
-    color: colors.foregroundMuted,
-    textAlign: 'center',
-    maxWidth: 320,
-  },
-  plantarBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    minWidth: 190,
-    minHeight: 52,
-    paddingHorizontal: 30,
-    borderRadius: 999,
-    backgroundColor: colors.accent,
-    ...(shadows.md as object),
-  },
-  plantarBtnOcupado: { opacity: 0.75 },
-  plantarTexto: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.base,
+  cardTituloLight: {
     color: colors.white,
-    letterSpacing: 0.3,
   },
-
+  cardTempo: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: colors.earth,
+  },
+  cardTempoLight: {
+    fontFamily: fonts.sans,
+    fontSize: 12,
+    color: 'rgba(252,250,246,0.7)',
+  },
+  destaqueTitulo: {
+    marginTop: 16,
+    fontFamily: fonts.sansSemi,
+    fontSize: 22,
+    lineHeight: 28,
+    color: colors.white,
+  },
+  cardCorpo: {
+    marginTop: 12,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    lineHeight: 24,
+    color: colors.charcoal,
+  },
+  cardCorpoLight: {
+    marginTop: 10,
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    lineHeight: 23,
+    color: 'rgba(252,250,246,0.88)',
+  },
+  cardAcoes: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18,
+  },
+  cardAcoesClaras: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  btnPrimario: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: colors.earth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  btnPrimarioTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 14,
+    letterSpacing: 0.6,
+    color: colors.white,
+    textTransform: 'uppercase',
+  },
+  btnSecundario: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: 'rgba(252,250,246,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSecundarioTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 14,
+    letterSpacing: 0.6,
+    color: colors.white,
+    textTransform: 'uppercase',
+  },
+  btnOutline: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.earth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnOutlineTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    color: colors.earth,
+    textTransform: 'uppercase',
+  },
+  linkMomento: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  linkMomentoTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    color: colors.warmWhite,
+  },
   otherLink: {
     alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
     paddingVertical: 18,
   },
   otherLinkText: {
     fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
+    fontSize: 14,
+    color: colors.earth,
   },
 });

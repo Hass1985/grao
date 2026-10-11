@@ -9,17 +9,24 @@ import {
   Animated,
   Platform,
   Pressable,
+  ImageBackground,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
-import Button from '../../components/ui/Button';
-import ScreenBackground from '../../components/ui/ScreenBackground';
 import { colors } from '../../theme/colors';
 import { fonts, fontSizes } from '../../theme/typography';
+import { radius } from '../../theme/radius';
 import { space } from '../../theme/spacing';
 import { motion } from '../../theme/motion';
 import { webScreenFill } from '../../theme/webScreen';
+import { marcarApresentacaoVista } from '../../onboarding/authFlow';
+import { setDevocionalOptIn } from '../../onboarding/userProfile';
 
-type Props = { navigation: StackNavigationProp<any> };
+type Props = {
+  navigation: StackNavigationProp<any>;
+  /** Mantido pela pilha; o fim do fluxo sai por CodigoIndicacao / ComoChamar. */
+  onFinish?: () => void;
+};
 
 const NATIVE = Platform.OS !== 'web';
 
@@ -44,6 +51,7 @@ const SLIDES = [
 
 export default function Intro({ navigation }: Props) {
   const [index, setIndex] = useState(0);
+  const [fechando, setFechando] = useState(false);
   /**
    * Quem tocou assumiu o comando.
    *
@@ -84,7 +92,18 @@ export default function Intro({ navigation }: Props) {
     setIndex(Math.max(0, Math.min(i, SLIDES.length - 1)));
   };
 
-  const goAuth = () => navigation.navigate('Auth');
+  /** Fim da apresentação: código de indicação, depois nome (se faltar) e Hoje. */
+  const concluir = async () => {
+    if (fechando) return;
+    setFechando(true);
+    try {
+      await marcarApresentacaoVista();
+      await setDevocionalOptIn(true);
+      navigation.replace('CodigoIndicacao');
+    } finally {
+      setFechando(false);
+    }
+  };
 
   const opacity = enter.interpolate({
     inputRange: [0, 0.2, 1],
@@ -96,15 +115,29 @@ export default function Intro({ navigation }: Props) {
   });
 
   return (
-    <ScreenBackground style={webScreenFill}>
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+    <View style={[styles.root, webScreenFill]}>
+      <ImageBackground
+        source={require('../../../assets/campo-trigo.jpg')}
+        style={styles.bg}
+        imageStyle={styles.bgImage}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(36,23,8,0.55)', 'rgba(28,18,6,0.78)', 'rgba(36,23,8,0.94)']}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </ImageBackground>
 
-        {/* A barra de progresso do topo saiu: os pontos embaixo já contam a
-            mesma coisa, e dois indicadores do mesmo estado na mesma tela fazem
-            a pessoa procurar a diferença entre eles. */}
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+
         <View style={styles.topbar}>
-          <TouchableOpacity onPress={goAuth} hitSlop={{ top: 12, bottom: 12, left: 16, right: 12 }}>
+          <TouchableOpacity
+            onPress={concluir}
+            disabled={fechando}
+            hitSlop={{ top: 12, bottom: 12, left: 16, right: 12 }}
+          >
             <Text style={styles.skip}>Pular</Text>
           </TouchableOpacity>
         </View>
@@ -123,9 +156,6 @@ export default function Intro({ navigation }: Props) {
             <Text style={styles.sub}>{slide.sub}</Text>
           </Animated.View>
 
-          {/* Metade esquerda volta, metade direita avança — o gesto que todo
-              mundo já conhece de story. Fica por cima do texto e por baixo dos
-              pontos e do botão, para não roubar o toque de nenhum dos dois. */}
           <View style={styles.toques} pointerEvents="box-none">
             <Pressable
               style={styles.toque}
@@ -160,17 +190,38 @@ export default function Intro({ navigation }: Props) {
             ))}
           </View>
           {isLast ? (
-            <Button title="Vamos começar" onPress={goAuth} variant="dark" uppercase />
+            <Pressable
+              onPress={concluir}
+              disabled={fechando}
+              style={({ pressed }) => [
+                styles.ctaPreto,
+                (pressed || fechando) && { opacity: 0.92 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Vamos começar"
+            >
+              <Text style={styles.ctaPretoTexto}>VAMOS COMEÇAR</Text>
+            </Pressable>
           ) : (
             <View style={styles.ctaPlaceholder} />
           )}
         </View>
       </SafeAreaView>
-    </ScreenBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#241708',
+  },
+  bg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bgImage: {
+    transform: [{ scale: 1.12 }],
+  },
   container: { flex: 1, backgroundColor: 'transparent' },
   topbar: {
     flexDirection: 'row',
@@ -183,7 +234,7 @@ const styles = StyleSheet.create({
   skip: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.sm,
-    color: colors.foregroundMuted,
+    color: 'rgba(252, 250, 246, 0.78)',
   },
   toques: {
     ...StyleSheet.absoluteFillObject,
@@ -200,7 +251,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.serifMedium,
     fontSize: 34,
     lineHeight: 40,
-    color: colors.palha,
+    color: colors.warmWhite,
     textAlign: 'center',
     letterSpacing: -0.7,
   },
@@ -208,7 +259,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 16,
     lineHeight: 24,
-    color: colors.foregroundMuted,
+    color: 'rgba(252, 250, 246, 0.82)',
     textAlign: 'center',
     maxWidth: 320,
   },
@@ -224,8 +275,23 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 22,
   },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(251, 246, 236, 0.38)' },
-  dotActive: { width: 22, backgroundColor: colors.accent },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(252, 250, 246, 0.35)' },
+  dotActive: { width: 22, backgroundColor: colors.warmWhite },
+  ctaPreto: {
+    minHeight: 54,
+    borderRadius: radius.pill,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 26,
+  },
+  ctaPretoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    letterSpacing: 0.7,
+    color: colors.warmWhite,
+  },
   ctaPlaceholder: {
     height: 56,
   },

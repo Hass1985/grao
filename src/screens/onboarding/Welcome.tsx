@@ -11,7 +11,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { StackNavigationProp } from '@react-navigation/stack';
 import GraoSymbol from '../../components/GraoSymbol';
-import { colors } from '../../theme/colors';
 import { fonts } from '../../theme/typography';
 import { motion } from '../../theme/motion';
 
@@ -21,7 +20,7 @@ type Props = {
 
 const NATIVE = Platform.OS !== 'web';
 
-/** Splash: marca Grão. Depois sempre vai para a apresentação (Intro). */
+/** Splash: marca Grão. Depois vai para a porta de autenticação. */
 export default function Welcome({ navigation }: Props) {
   const enter = useRef(new Animated.Value(0)).current;
   const saiu = useRef(false);
@@ -37,7 +36,7 @@ export default function Welcome({ navigation }: Props) {
     const t = setTimeout(() => {
       if (saiu.current) return;
       saiu.current = true;
-      navigation.replace('Intro');
+      navigation.replace('Auth');
     }, motion.splashMs);
     return () => clearTimeout(t);
   }, [enter, navigation]);
@@ -65,7 +64,7 @@ export default function Welcome({ navigation }: Props) {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <View style={styles.stage}>
         <Animated.View style={[styles.brand, { opacity, transform: [{ translateY }] }]}>
-          <GraoSymbol size={56} color={colors.ambarSoft} filled={false} />
+          <GraoSymbol size={56} color="#F7F1E7" filled={false} />
           <Text style={styles.name}>Grão</Text>
         </Animated.View>
       </View>
@@ -76,7 +75,7 @@ export default function Welcome({ navigation }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.cascaDeep,
+    backgroundColor: '#241708',
   },
   bg: {
     ...StyleSheet.absoluteFillObject,
@@ -96,7 +95,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: fonts.serifMedium,
     fontSize: 48,
-    color: colors.palha,
+    color: '#F7F1E7',
     letterSpacing: -1.2,
   },
 });

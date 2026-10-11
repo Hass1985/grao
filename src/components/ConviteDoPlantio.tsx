@@ -2,27 +2,19 @@
 //
 // Antes era um bloco pequeno no pé do devocional, e o caminho até o teste
 // passava por cinco telas de apresentação: a pessoa tinha que querer muito
-// para chegar na oferta, e quase ninguém quer tanto assim. Cinco toques entre
-// a curiosidade e a decisão é atrito, não construção de desejo.
+// para chegar na oferta, e quase ninguém quer tanto assim.
 //
 // Agora é a própria tela: o que o Plantio é, como funciona, o que entra, e o
-// botão no fim — depois do conteúdo, nunca antes dele. Quem chegou ao fim da
-// página leu os argumentos; quem não chegou não seria convencido por um botão
-// no topo.
-//
-// O devocional gratuito não é anunciado aqui: quem navega pelo app encontra a
-// Raiz sozinho, e é lá, no topo dela, que está escrito o que ela é. Uma placa
-// nesta tela apontando para outra só disputaria atenção com o que esta tem a
-// dizer.
+// botão no fim. Depois dele: dados de cobrança → horário WhatsApp → relato
+// do momento → tópicos liberados na Hoje.
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { BookOpen, Check, Mic, MessageCircle, Sprout } from './icons';
-import Button from './ui/Button';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
-import { configuracaoDeCobranca, emReais } from '../onboarding/assinatura';
+import { radius } from '../theme/radius';
+import { shadows } from '../theme/shadows';
 
 const PASSOS = [
   {
@@ -33,7 +25,7 @@ const PASSOS = [
   {
     icone: 'sprout' as const,
     titulo: 'O Grão escuta e escolhe',
-    texto: 'A partir do que você contou, a Palavra certa para o seu dia — não o mesmo texto de todo mundo.',
+    texto: 'A partir do que você contou, a Palavra certa para o seu dia, não o mesmo texto de todo mundo.',
   },
   {
     icone: 'book' as const,
@@ -52,12 +44,11 @@ const INCLUI = [
   'Oração guiada e prática para viver a Palavra',
   'Louvor escolhido para o seu dia',
   'A semente também no WhatsApp, no seu horário',
-  'Bíblia completa, com leitura em áudio',
   'Seu Campo e sua Raiz guardados para sempre',
 ];
 
 function PassoIcone({ nome }: { nome: (typeof PASSOS)[number]['icone'] }) {
-  const cor = colors.ambarSoft;
+  const cor = colors.earth;
   if (nome === 'mic') return <Mic size={20} color={cor} strokeWidth={1.9} />;
   if (nome === 'sprout') return <Sprout size={20} color={cor} strokeWidth={1.9} />;
   if (nome === 'whats') return <MessageCircle size={20} color={cor} strokeWidth={1.9} />;
@@ -65,20 +56,6 @@ function PassoIcone({ nome }: { nome: (typeof PASSOS)[number]['icone'] }) {
 }
 
 export default function ConviteDoPlantio({ onAssinar }: { onAssinar: () => void }) {
-  const [preco, setPreco] = useState<string | null>(null);
-
-  // O preço vem do servidor, do lado de onde a cobrança é criada. Preço escrito
-  // na tela é preço que um dia diverge do que o gateway cobra.
-  useEffect(() => {
-    let vivo = true;
-    configuracaoDeCobranca().then((c) => {
-      if (!vivo || !c) return;
-      const p = c.planos.find((x) => x.id === 'plantio');
-      if (p) setPreco(`${emReais(p.valorCentavos)} por ${p.ciclo}`);
-    });
-    return () => { vivo = false; };
-  }, []);
-
   return (
     <View style={styles.wrap}>
       <View style={styles.hero}>
@@ -105,82 +82,63 @@ export default function ConviteDoPlantio({ onAssinar }: { onAssinar: () => void 
       </View>
 
       <View style={styles.caixa}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            'rgba(251, 246, 236, 0.20)',
-            'rgba(251, 246, 236, 0.12)',
-            'rgba(251, 246, 236, 0.16)',
-          ]}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.brilho}
-        />
         <Text style={styles.incluiTitulo}>O que entra</Text>
         <View style={styles.lista}>
           {INCLUI.map((item) => (
             <View key={item} style={styles.linha}>
-              <Check size={15} color={colors.ambarSoft} strokeWidth={2.4} />
+              <Check size={15} color={colors.earth} strokeWidth={2.4} />
               <Text style={styles.item}>{item}</Text>
             </View>
           ))}
         </View>
       </View>
 
-      {/* O botão vem depois do conteúdo, e o preço vem antes do botão: quem
-          aperta já sabe quanto custa e quando começa a custar. */}
       <View style={styles.fecho}>
-        <Text style={styles.precoLinha}>
-          {preco
-            ? `7 dias grátis. Depois, ${preco} — e você cancela quando quiser.`
-            : '7 dias grátis. Você cancela quando quiser.'}
-        </Text>
-        <Button
-          title="Teste grátis por 7 dias"
+        <Pressable
           onPress={onAssinar}
-          variant="dark"
-          uppercase
-        />
-        <Text style={styles.rodape}>
-          Hoje você não paga nada. A gente avisa um dia antes da primeira cobrança,
-          com o valor escrito. Cancelar não tira o devocional diário.
-        </Text>
+          style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Quero meus 7 dias grátis"
+        >
+          <Text style={styles.ctaTexto}>Quero meus 7 dias grátis</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 6 },
-  hero: { gap: 12, marginBottom: 30 },
+  wrap: { marginBottom: 8 },
+  hero: { gap: 12, marginBottom: 28 },
   eyebrow: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.ambarSoft,
+    color: colors.earth,
   },
   titulo: {
     fontFamily: fonts.serifMedium,
     fontSize: 32,
     lineHeight: 38,
-    color: colors.palha,
+    color: colors.earth,
     letterSpacing: -0.7,
   },
   subtitulo: {
     fontFamily: fonts.sans,
     fontSize: 16,
     lineHeight: 25,
-    color: colors.foregroundMuted,
+    color: colors.warmGray,
   },
-  passos: { gap: 22, marginBottom: 30 },
+  passos: { gap: 20, marginBottom: 28 },
   passo: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   passoIcone: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(192, 120, 38, 0.18)',
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -188,42 +146,30 @@ const styles = StyleSheet.create({
   passoTitulo: {
     fontFamily: fonts.sansSemi,
     fontSize: fontSizes.base,
-    color: colors.palha,
+    color: colors.earth,
   },
   passoCorpo: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
     lineHeight: 22,
-    color: colors.foregroundMuted,
+    color: colors.warmGray,
   },
   caixa: {
-    overflow: 'hidden',
-    backgroundColor: 'rgba(72, 48, 24, 0.28)',
+    backgroundColor: colors.warmWhite,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.sand,
     paddingVertical: 20,
     paddingHorizontal: 18,
     gap: 12,
-    ...(Platform.OS === 'web'
-      ? ({
-          backdropFilter: 'blur(22px)',
-          WebkitBackdropFilter: 'blur(22px)',
-          boxShadow: '0 10px 28px rgba(36, 23, 8, 0.16)',
-        } as object)
-      : {
-          shadowColor: '#241708',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.2,
-          shadowRadius: 18,
-          elevation: 4,
-        }),
+    ...(shadows.sm as object),
   },
-  brilho: { ...StyleSheet.absoluteFillObject },
   incluiTitulo: {
     fontFamily: fonts.sansSemi,
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: colors.ambarSoft,
+    color: colors.earth,
   },
   lista: { gap: 10 },
   linha: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
@@ -232,21 +178,20 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: fontSizes.sm,
     lineHeight: 22,
-    color: colors.foregroundMuted,
+    color: colors.warmGray,
   },
   fecho: { marginTop: 28, gap: 14 },
-  precoLinha: {
-    fontFamily: fonts.sansMedium,
-    fontSize: fontSizes.sm,
-    lineHeight: 22,
-    color: colors.palha,
-    textAlign: 'center',
+  cta: {
+    minHeight: 54,
+    borderRadius: radius.pill,
+    backgroundColor: colors.earth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
-  rodape: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.foregroundMuted,
-    textAlign: 'center',
+  ctaTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.warmWhite,
   },
 });

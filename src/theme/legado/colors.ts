@@ -1,0 +1,63 @@
+export const colors = {
+  // Paleta oficial do site graoapp.com.br
+  ambar: '#C07826',
+  ambarSoft: '#D89A55',
+  ambar08: 'rgba(192, 120, 38, 0.22)',
+  palha: '#F7F0E2',
+  palhaWarm: '#FBF6EC',
+  casca: '#3B2208',
+  cascaDeep: '#241708',
+  peneira: '#EDE0C6',
+  peneiraSoft: 'rgba(237, 224, 198, 0.16)',
+  ceu: '#3D6EBD',
+  white: '#FFFFFF',
+
+  casca80: 'rgba(59, 34, 8, 0.80)',
+  casca60: 'rgba(59, 34, 8, 0.58)',
+  casca50: 'rgba(59, 34, 8, 0.48)',
+  casca40: 'rgba(59, 34, 8, 0.38)',
+  casca20: 'rgba(59, 34, 8, 0.16)',
+  casca12: 'rgba(59, 34, 8, 0.10)',
+  casca08: 'rgba(59, 34, 8, 0.07)',
+
+  // App: glass marrom claro (mesmo tom dos cards do Hoje)
+  background: '#2A1C0C',
+  backgroundElevated: '#3A2814',
+  surface: 'rgba(72, 48, 24, 0.44)',
+  surfaceSolid: 'rgba(72, 48, 24, 0.72)',
+  surfaceCard: 'rgba(72, 48, 24, 0.44)',
+  surfaceSeed: 'rgba(72, 48, 24, 0.48)',
+  surfaceSeedSoft: 'rgba(72, 48, 24, 0.36)',
+  surfaceSeedNight: '#2A1C0C',
+  surfaceSeedNightSoft: '#3A2814',
+  surfaceMuted: 'rgba(72, 48, 24, 0.32)',
+  surfaceSoft: 'rgba(72, 48, 24, 0.42)',
+  surfaceAccent: 'rgba(192, 120, 38, 0.28)',
+  bubble: 'rgba(72, 48, 24, 0.5)',
+
+  foreground: '#FBF6EC',
+  foregroundMuted: 'rgba(251, 246, 236, 0.82)',
+  foregroundSubtle: 'rgba(251, 246, 236, 0.58)',
+  foregroundInverse: '#2A1C0C',
+
+  accent: '#C07826',
+  accentSoft: '#D89A55',
+  accentForeground: '#FFFFFF',
+
+  /**
+   * Vermelho de ação destrutiva, legível no escuro.
+   *
+   * Era #B33A2B, um tijolo que mede 2.80:1 contra o fundo da tela e 2.38:1
+   * contra o card de vidro — reprovado nos dois, e o efeito era "Sair da
+   * conta" e "Excluir conta" parecendo desabilitados. Este mede 6.48:1 e
+   * 5.51:1: passa em AA nos dois, e continua inconfundivelmente vermelho.
+   */
+  perigo: '#FF7A66',
+
+  /** O mesmo `background`, sem opacidade: a ponta transparente de um degradê. */
+  backgroundFade: 'rgba(42, 28, 12, 0)',
+
+  border: 'rgba(237, 224, 198, 0.22)',
+  borderStrong: 'rgba(237, 224, 198, 0.34)',
+  hairline: 'rgba(237, 224, 198, 0.16)',
+};

@@ -117,9 +117,9 @@ export default function Responder({
           style={[styles.enviar, (vazio || salvando) && styles.enviarOff]}
         >
           {salvando ? (
-            <ActivityIndicator color={colors.accent} size="small" />
+            <ActivityIndicator color={colors.earth} size="small" />
           ) : (
-            <Send size={17} color={colors.accent} strokeWidth={2} />
+            <Send size={17} color={colors.earth} strokeWidth={2} />
           )}
         </Pressable>
       </View>

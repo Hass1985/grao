@@ -125,13 +125,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 18,
     marginBottom: 10,
-    backgroundColor: colors.surfaceAccent,
+    backgroundColor: 'rgba(101, 69, 47, 0.10)',
     borderRadius: radius.lg,
   },
   horario: {
     fontFamily: fonts.serif,
     fontSize: 46,
-    color: colors.accent,
+    color: colors.earth,
     lineHeight: 54,
     letterSpacing: -1,
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  horaAtiva: { backgroundColor: colors.accent, borderColor: colors.accent },
+  horaAtiva: { backgroundColor: colors.earth, borderColor: colors.earth },
   horaTexto: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.base,
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  minutoAtivo: { backgroundColor: colors.accent, borderColor: colors.accent },
+  minutoAtivo: { backgroundColor: colors.earth, borderColor: colors.earth },
   minutoTexto: {
     fontFamily: fonts.sansMedium,
     fontSize: fontSizes.base,

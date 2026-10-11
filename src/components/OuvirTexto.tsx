@@ -101,7 +101,7 @@ export default function OuvirTexto({
       hitSlop={8}
     >
       {tocando ? (
-        <Pause size={15} color={colors.accent} strokeWidth={2.2} />
+        <Pause size={15} color={colors.earth} strokeWidth={2.2} />
       ) : (
         <Play size={15} color={colors.foregroundMuted} strokeWidth={2.2} />
       )}
@@ -129,5 +129,5 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: colors.foregroundMuted,
   },
-  textoAtivo: { color: colors.accent },
+  textoAtivo: { color: colors.earth },
 });

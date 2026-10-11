@@ -25,7 +25,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   Animated,
@@ -34,10 +33,9 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import GraoSymbol from '../components/GraoSymbol';
-import CircleBack from '../components/ui/CircleBack';
+import BrandHeader from '../components/ui/BrandHeader';
 import Button from '../components/ui/Button';
 import Reveal from '../components/ui/Reveal';
-import ScreenBackground from '../components/ui/ScreenBackground';
 import { AI_MODE, getUserId, postOpening } from '../onboarding/aiClient';
 import { jaConsentiu, registrarConsentimento } from '../onboarding/consentimento';
 import { useAudioRecorder, RecordingPresets, AudioModule } from 'expo-audio';
@@ -59,6 +57,8 @@ import { space } from '../theme/spacing';
 import { glassCard } from '../theme/glass';
 import { motion } from '../theme/motion';
 import { webScreenFill, webScroll } from '../theme/webScreen';
+
+const FUNDO_SHEET = '#F4F4F4';
 
 type Props = {
   navigation: any;
@@ -121,7 +121,7 @@ function ProgressRing({ size, progress }: { size: number; progress: number }) {
         cx={size / 2}
         cy={size / 2}
         r={r}
-        stroke={colors.accent}
+        stroke={colors.earth}
         strokeWidth={3}
         fill="none"
         strokeLinecap="round"
@@ -502,28 +502,18 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
     : 'Como está o seu\ncoração hoje?';
 
   return (
-    <ScreenBackground style={webScreenFill}>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+    <View style={[styles.root, webScreenFill]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <BrandHeader
+        onClose={() => {
+          stopEverything();
+          navigation.goBack();
+        }}
+        titulo="Conte o seu momento. A Palavra certa para o seu dia nasce daqui."
+      />
 
-        <View style={styles.topbar}>
-          <CircleBack
-            onPress={() => {
-              stopEverything();
-              navigation.goBack();
-            }}
-          />
-          <View style={styles.topTitles}>
-            <Text style={styles.topTitle}>Plantio</Text>
-            <Text style={styles.topHint}>{real ? 'Sua semente de hoje' : 'Modo teste'}</Text>
-          </View>
-          <View style={styles.topSpacer} />
-        </View>
-
-        {/* A promessa da cobrança continua à vista sem virar parada obrigatória.
-            Quem acabou de assinar veio direto para cá: a tela de recibo saiu do
-            caminho, mas a data não pode sair junto — é a diferença entre um
-            teste e uma surpresa na fatura. */}
+      <View style={styles.sheet}>
+        {/* A promessa da cobrança continua à vista sem virar parada obrigatória. */}
         {trialAte ? (
           <View style={styles.faixaTrial}>
             <Text style={styles.faixaTrialTexto}>
@@ -729,55 +719,42 @@ export default function MomentoSementeTeste({ navigation, route }: Props) {
             </Reveal>
           )}
         </ScrollView>
-      </SafeAreaView>
-    </ScreenBackground>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#241708' },
+  sheet: {
+    flex: 1,
+    minHeight: 0,
+    marginTop: -16,
+    backgroundColor: FUNDO_SHEET,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+  },
   faixaTrial: {
     marginHorizontal: space.gutter,
-    marginBottom: 6,
+    marginTop: 16,
+    marginBottom: 0,
     paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(192, 120, 38, 0.22)',
+    backgroundColor: 'rgba(180, 119, 53, 0.14)',
   },
   faixaTrialTexto: {
     fontFamily: fonts.sansMedium,
     fontSize: 12,
     lineHeight: 17,
-    color: colors.palha,
+    color: colors.caramelDark,
     textAlign: 'center',
   },
-  safe: { flex: 1 },
-  topbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: space.gutter,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 12,
-  },
-  topTitles: { flex: 1, alignItems: 'center' },
-  topTitle: {
-    fontFamily: fonts.serifMedium,
-    fontSize: 20,
-    color: colors.palha,
-    letterSpacing: -0.3,
-  },
-  topHint: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 10,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-    color: colors.ambarSoft,
-    marginTop: 2,
-  },
-  topSpacer: { width: 40 },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: space.gutter,
+    paddingTop: 18,
     paddingBottom: 40,
   },
   center: {
@@ -831,13 +808,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.earth,
   },
   micBtn: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.earth,
     alignItems: 'center',
     justifyContent: 'center',
     ...(shadows.md as object),

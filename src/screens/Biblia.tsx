@@ -5,15 +5,15 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-import { ChevronLeft, ChevronRight } from '../components/icons';
+import { ChevronLeft, ChevronRight, Search } from '../components/icons';
 import OuvirTexto from '../components/OuvirTexto';
-import ScreenBackground from '../components/ui/ScreenBackground';
-import AppHeader from '../components/ui/AppHeader';
+import ProfileButton from '../components/ProfileButton';
+import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
+import HeaderGamificacao from '../components/ui/HeaderGamificacao';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import {
   livrosDaBiblia, capituloDaBiblia, buscarNaBiblia,
@@ -23,8 +23,7 @@ import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { radius } from '../theme/radius';
 import { space } from '../theme/spacing';
-import { glassCard } from '../theme/glass';
-
+import { shadows } from '../theme/shadows';
 /**
  * A Bíblia para consulta, em três degraus.
  *
@@ -124,39 +123,60 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
         ? 'Antigo e Novo'
         : 'Limpar busca';
 
+  const tituloTopo = aberto
+    ? `${aberto.livro} ${aberto.capitulo}`
+    : escolhendoCapitulo
+      ? escolhendoCapitulo.nome
+      : testamento
+        ? nomeDoTestamento(testamento === 'antigo')
+        : achados
+          ? `${achados.length} ${achados.length === 1 ? 'passagem' : 'passagens'}`
+          : 'Bíblia';
+
   return (
-    <ScreenBackground>
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <HeaderCampoFundo>
+          <View style={styles.headerTop}>
+            <ProfileButton onPress={() => navigation.navigate('Settings')} size={36} />
+            <Text style={styles.headerTitulo} numberOfLines={1}>{tituloTopo}</Text>
+            <HeaderGamificacao navigation={navigation} />
+          </View>
+          {!emAlgumLugar ? (
+            <View style={styles.progressBlock}>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressLabel}>Seu progresso na Bíblia</Text>
+                <Text style={styles.progressPct}>0%</Text>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: '0%' }]} />
+              </View>
+            </View>
+          ) : null}
+      </HeaderCampoFundo>
+
+      <View style={styles.sheet}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <AppHeader
-            title="Bíblia"
-            subtitle={
-              aberto ? `${aberto.livro} ${aberto.capitulo}`
-                : escolhendoCapitulo ? escolhendoCapitulo.nome
-                : testamento ? nomeDoTestamento(testamento === 'antigo')
-                : achados ? `${achados.length} ${achados.length === 1 ? 'passagem' : 'passagens'}`
-                : 'Consulte quando precisar.'
-            }
-            onLogoPress={() => navigation.navigate('Settings')}
-            onProfilePress={() => navigation.navigate('Settings')}
-          />
+          {!emAlgumLugar ? (
+            <Text style={styles.heroTitle}>Bíblia</Text>
+          ) : null}
 
           {emAlgumLugar ? (
             <Pressable onPress={voltar} style={styles.voltar} hitSlop={8}>
-              <ChevronLeft size={16} color={colors.ambarSoft} strokeWidth={2.2} />
+              <ChevronLeft size={16} color={colors.earth} strokeWidth={2.2} />
               <Text style={styles.voltarTexto}>{destinoDoVoltar}</Text>
             </Pressable>
           ) : (
             <View style={styles.buscaLinha}>
+              <Search size={16} color={colors.mist} strokeWidth={2} />
               <TextInput
                 style={styles.buscaCampo}
                 placeholder="Procurar uma palavra"
-                placeholderTextColor={colors.foregroundSubtle}
+                placeholderTextColor={colors.mist}
                 value={busca}
                 onChangeText={setBusca}
                 onSubmitEditing={procurar}
@@ -167,7 +187,7 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
           )}
 
           {carregando ? (
-            <ActivityIndicator color={colors.accent} style={styles.carregando} />
+            <ActivityIndicator color={colors.earth} style={styles.carregando} />
           ) : aberto ? (
             <View style={styles.capitulo}>
               {/* Sem os números: lido cru, sairia "um O Senhor é meu pastor,
@@ -197,7 +217,7 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
                   style={[styles.navBtn, aberto.capitulo <= 1 && styles.navBtnOff]}
                   hitSlop={6}
                 >
-                  <ChevronLeft size={16} color={colors.palha} strokeWidth={2.2} />
+                  <ChevronLeft size={16} color={colors.earth} strokeWidth={2.2} />
                   <Text style={styles.navTexto}>Anterior</Text>
                 </Pressable>
                 <Text style={styles.navPosicao}>
@@ -210,7 +230,7 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
                   hitSlop={6}
                 >
                   <Text style={styles.navTexto}>Próximo</Text>
-                  <ChevronRight size={16} color={colors.palha} strokeWidth={2.2} />
+                  <ChevronRight size={16} color={colors.earth} strokeWidth={2.2} />
                 </Pressable>
               </View>
             </View>
@@ -265,145 +285,335 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
             </View>
           ) : (
             <>
-              {/* Primeiro degrau. */}
-              <View style={styles.testamentos}>
+              <View style={styles.segmento}>
                 <Pressable
                   onPress={() => setTestamento('antigo')}
-                  style={styles.testamentoBotao}
+                  style={[styles.segmentoBtn, styles.segmentoAtivo]}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.testamentoNome}>Antigo Testamento</Text>
-                  <Text style={styles.testamentoInfo}>{antigo.length} livros</Text>
+                  <Text style={styles.segmentoTextoAtivo}>Antigo Testamento</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => setTestamento('novo')}
-                  style={styles.testamentoBotao}
+                  style={styles.segmentoBtn}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.testamentoNome}>Novo Testamento</Text>
-                  <Text style={styles.testamentoInfo}>{novo.length} livros</Text>
+                  <Text style={styles.segmentoTexto}>Novo Testamento</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.listaLivros}>
+                {antigo.slice(0, 8).map((l) => (
+                  <Pressable
+                    key={l.numero}
+                    onPress={() => {
+                      setTestamento('antigo');
+                      setEscolhendoCapitulo(l);
+                    }}
+                    style={styles.livroCard}
+                  >
+                    <Text style={styles.livroCardNome}>{l.nome}</Text>
+                    <Text style={styles.livroCardMeta}>{l.capitulos} cap.</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  onPress={() => setTestamento('antigo')}
+                  style={styles.verTodos}
+                >
+                  <Text style={styles.verTodosTexto}>Ver todos os livros</Text>
                 </Pressable>
               </View>
 
               <Text style={styles.creditos}>
-                Bíblia Livre — tradução de domínio público, livre para ler e compartilhar.
+                Bíblia Livre, tradução de domínio público, livre para ler e compartilhar.
               </Text>
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
-    </ScreenBackground>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: space.gutter },
+  root: { flex: 1, backgroundColor: '#241708' },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 40,
+    marginTop: 10,
+    marginBottom: 18,
+    gap: 10,
+  },
+  headerTitulo: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: fonts.sansSemi,
+    fontSize: 17,
+    color: colors.warmWhite,
+  },
+  progressBlock: { gap: 8 },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressLabel: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: 'rgba(252,250,246,0.75)',
+  },
+  progressPct: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    color: colors.warmWhite,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(252,250,246,0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.warmWhite,
+  },
+  sheet: {
+    flex: 1,
+    marginTop: -16,
+    backgroundColor: colors.warmWhite,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+  },
+  scroll: {
+    paddingHorizontal: space.gutter,
+    paddingTop: 22,
+  },
+  heroTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.earth,
+    letterSpacing: -0.4,
+    marginBottom: 16,
+  },
   carregando: { marginTop: 40 },
 
-  buscaLinha: { marginTop: 6, marginBottom: 18 },
+  buscaLinha: {
+    marginBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.warmWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.sand,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    ...(shadows.sm as object),
+  },
   buscaCampo: {
-    ...glassCard,
-    borderRadius: radius.pill,
-    paddingHorizontal: 18,
+    flex: 1,
     paddingVertical: 12,
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,
-    color: colors.palha,
+    color: colors.earth,
+  },
+  segmento: {
+    flexDirection: 'row',
+    backgroundColor: '#EDEDED',
+    borderRadius: radius.pill,
+    padding: 4,
+    marginBottom: 16,
+  },
+  segmentoBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+  },
+  segmentoAtivo: {
+    backgroundColor: colors.warmWhite,
+  },
+  segmentoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: colors.mist,
+    textTransform: 'uppercase',
+  },
+  segmentoTextoAtivo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: colors.earth,
+    textTransform: 'uppercase',
+  },
+  listaLivros: { gap: 10, marginBottom: 16 },
+  livroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.warmWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.sand,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    ...(shadows.sm as object),
+  },
+  livroCardNome: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.earth,
+  },
+  livroCardMeta: {
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    color: colors.mist,
+  },
+  verTodos: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  verTodosTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 14,
+    color: colors.earth,
   },
 
   voltar: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 14, marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginTop: 2,
   },
   voltarTexto: {
-    fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.2,
-    textTransform: 'uppercase', color: colors.ambarSoft,
-  },
-
-  testamentos: { gap: 12, marginTop: 10 },
-  testamentoBotao: {
-    ...glassCard,
-    borderRadius: 18,
-    paddingVertical: 24,
-    paddingHorizontal: 22,
-    gap: 4,
-  },
-  testamentoNome: {
-    fontFamily: fonts.serifMedium, fontSize: 21, color: colors.palha,
-    letterSpacing: -0.3,
-  },
-  testamentoInfo: {
-    fontFamily: fonts.sans, fontSize: fontSizes.sm, color: colors.foregroundSubtle,
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.earth,
   },
 
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   /* O nome manda na largura; a altura é a mesma da grade de capítulos, para os
      dois degraus parecerem o mesmo gesto. */
   livroBotao: {
-    height: 46, borderRadius: 14, paddingHorizontal: 14,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.surfaceSoft,
+    height: 46,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
   },
   livroBotaoNome: {
-    fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.palha,
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.sm,
+    color: colors.earth,
   },
   capBotao: {
-    width: 52, height: 46, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.surfaceSoft,
+    width: 52,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
   },
   capNumero: {
-    fontFamily: fonts.sansMedium, fontSize: fontSizes.base, color: colors.palha,
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.base,
+    color: colors.earth,
     fontVariant: ['tabular-nums'],
   },
 
   capitulo: { marginTop: 4 },
   ouvir: { marginBottom: 20 },
   versiculo: {
-    fontFamily: fonts.serif, fontSize: 18, lineHeight: 30,
-    color: colors.palha, marginBottom: 14,
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    lineHeight: 30,
+    color: colors.earth,
+    marginBottom: 14,
   },
   numero: {
-    fontFamily: fonts.sansSemi, fontSize: 12, color: colors.ambarSoft,
+    fontFamily: fonts.sansSemi,
+    fontSize: 12,
+    color: colors.earth,
   },
 
   navegacao: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 24, paddingTop: 18, borderTopWidth: 1, borderTopColor: colors.hairline,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: colors.sand,
   },
   navBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 10, paddingHorizontal: 14,
-    borderRadius: radius.pill, backgroundColor: colors.surfaceSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warmWhite,
+    borderWidth: 1,
+    borderColor: colors.sand,
   },
   navBtnOff: { opacity: 0.3 },
-  navTexto: { fontFamily: fonts.sansMedium, fontSize: fontSizes.sm, color: colors.palha },
+  navTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: fontSizes.sm,
+    color: colors.earth,
+  },
   navPosicao: {
-    fontFamily: fonts.sans, fontSize: fontSizes.xs, color: colors.foregroundSubtle,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.xs,
+    color: colors.mist,
     fontVariant: ['tabular-nums'],
   },
 
   lista: { gap: 2, marginTop: 4 },
   achado: {
-    paddingVertical: 14, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: colors.hairline,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.sand,
   },
   achadoRef: {
-    fontFamily: fonts.sansSemi, fontSize: fontSizes.xs, color: colors.ambarSoft,
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.xs,
+    color: colors.earth,
     marginBottom: 5,
   },
   achadoTexto: {
-    fontFamily: fonts.serif, fontSize: fontSizes.base, lineHeight: 24,
-    color: colors.foregroundMuted,
+    fontFamily: fonts.serif,
+    fontSize: fontSizes.base,
+    lineHeight: 24,
+    color: colors.earth,
   },
 
   vazio: {
-    fontFamily: fonts.sans, fontSize: fontSizes.base, lineHeight: 25,
-    color: colors.foregroundMuted, marginTop: 24,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    lineHeight: 25,
+    color: colors.mist,
+    marginTop: 24,
   },
   creditos: {
-    fontFamily: fonts.sans, fontSize: fontSizes.xs, lineHeight: 19,
-    color: colors.foregroundSubtle, marginTop: 28, textAlign: 'center',
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.xs,
+    lineHeight: 19,
+    color: colors.mist,
+    marginTop: 28,
+    textAlign: 'center',
   },
 });

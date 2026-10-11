@@ -47,7 +47,7 @@ export default function ProfileButton({ onPress, size = 38 }: Props) {
       {uri ? (
         <Image
           source={{ uri }}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
+          style={[styles.foto, { width: size, height: size, borderRadius: size / 2 }]}
           accessibilityIgnoresInvertColors
         />
       ) : (
@@ -62,9 +62,15 @@ export default function ProfileButton({ onPress, size = 38 }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
     backgroundColor: 'rgba(216, 154, 85, 0.28)',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: 'rgba(252,250,246,0.55)',
+  },
+  foto: {
+    ...StyleSheet.absoluteFillObject,
   },
   initialsWrap: {
     alignItems: 'center',
@@ -74,6 +80,5 @@ const styles = StyleSheet.create({
   initials: {
     fontFamily: fonts.serif,
     color: colors.palha,
-    marginTop: 1,
   },
 });
