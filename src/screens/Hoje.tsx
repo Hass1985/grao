@@ -176,6 +176,18 @@ export default function Hoje({ navigation }: { navigation: any }) {
     Linking.openURL(url).catch(() => {});
   };
 
+  /**
+   * Abre a parte em tela cheia.
+   *
+   * Antes o card abria no próprio lugar, dividindo a tela com os outros cinco
+   * fechados logo abaixo. Serve para espiar, não para ler: a Reflexão tem três
+   * minutos e a Oração é para ser rezada devagar. Em tela cheia o texto fica
+   * sozinho, e o botão de ouvir fica fixo embaixo para quem prefere escutar.
+   */
+  const abrirParte = (parte: 'versiculo' | 'reflexao' | 'pratica' | 'oracao' | 'louvor') => {
+    navigation.navigate('ParteDaSemente', { parte });
+  };
+
   const plantar = async () => {
     if (plantando) return;
     setPlantando(true);
@@ -348,7 +360,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     contarMomento();
                     return;
                   }
-                  toggle('semente');
+                  abrirParte('versiculo');
                 }}
                 bloqueado={!isPago || !plantada}
                 cabecalho={
@@ -390,7 +402,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     contarMomento();
                     return;
                   }
-                  toggle('reflexao');
+                  abrirParte('reflexao');
                 }}
                 bloqueado={!isPago || !plantada}
                 cabecalho={
@@ -418,7 +430,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     else if (!plantada) contarMomento();
                     return;
                   }
-                  toggle('pratica');
+                  abrirParte('pratica');
                 }}
                 bloqueado={!isPago || !plantada || praticaBloqueada || !seed.practice}
                 cabecalho={seed.practice ? 'Prática de hoje' : 'Disponível no Plantio'}
@@ -438,7 +450,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     else if (!plantada) contarMomento();
                     return;
                   }
-                  toggle('oracao');
+                  abrirParte('oracao');
                 }}
                 bloqueado={!isPago || !plantada || oracaoBloqueada || !seed.prayer}
                 cabecalho={seed.prayer ? 'Oração de hoje' : 'Disponível no Plantio'}
@@ -458,7 +470,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     else if (!plantada) contarMomento();
                     return;
                   }
-                  toggle('louvor');
+                  abrirParte('louvor');
                 }}
                 bloqueado={!isPago || !plantada || louvorBloqueado || !seed.music}
                 cabecalho={

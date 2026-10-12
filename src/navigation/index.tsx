@@ -14,6 +14,7 @@ import Campo from '../screens/Campo';
 import Biblia from '../screens/Biblia';
 import Loja from '../screens/Loja';
 import Devocional from '../screens/Devocional';
+import ParteDaSemente from '../screens/ParteDaSemente';
 import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
@@ -98,6 +99,8 @@ function AppNavigator() {
       <AppStack.Screen name="Credits" component={Credits} />
       <AppStack.Screen name="WhatsAppDemo" component={WhatsAppDemo} />
       <AppStack.Screen name="Devocional" component={Devocional} />
+      {/* Versículo, Reflexão, Prática, Oração e Louvor em tela cheia. */}
+      <AppStack.Screen name="ParteDaSemente" component={ParteDaSemente} />
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="Assinar" component={Assinar} />
       <AppStack.Screen name="EntregaWhatsApp" component={EntregaWhatsApp} />
