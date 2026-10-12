@@ -15,7 +15,16 @@ export const colors = {
   caramel: '#65452F',
   caramelDark: '#4A3224',
   earth: '#65452F',
-  charcoal: '#292621',
+  /**
+    * Texto principal: marrom escuro, não preto.
+    *
+    * Era #292621, um cinza quentíssimo que no papel claro lê como preto. O
+    * guia é de terra — grão, campo, casca — e preto sobre creme é tipografia
+    * de contrato. Este marrom mede 12,19:1 sobre o ivory: perde um ponto de
+    * contraste do quase-preto e ganha a cor do produto, com folga enorme
+    * sobre o mínimo de 4,5:1.
+    */
+  charcoal: '#3B2A1C',
   warmGray: '#746E66',
   mist: '#A79F94',
 
@@ -24,7 +33,7 @@ export const colors = {
   ambarSoft: '#65452F',
   ambar08: 'rgba(101, 69, 47, 0.14)',
   /** Texto principal e títulos (antes era creme no tema escuro). */
-  palha: '#292621',
+  palha: '#3B2A1C',
   palhaWarm: '#FCFAF6',
   casca: '#65452F',
   cascaDeep: '#F7F1E7',
@@ -55,7 +64,7 @@ export const colors = {
   surfaceAccent: 'rgba(101, 69, 47, 0.12)',
   bubble: '#FCFAF6',
 
-  foreground: '#292621',
+  foreground: '#3B2A1C',
   foregroundMuted: '#746E66',
   foregroundSubtle: '#A79F94',
   foregroundInverse: '#FCFAF6',

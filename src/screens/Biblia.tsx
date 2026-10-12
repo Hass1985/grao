@@ -47,6 +47,8 @@ import { shadows } from '../theme/shadows';
  */
 export default function Biblia({ navigation, route }: { navigation: any; route?: any }) {
   const [livros, setLivros] = useState<LivroBiblia[]>([]);
+  /** A lista não chegou — rede, origem bloqueada, servidor fora. */
+  const [falhou, setFalhou] = useState(false);
   const [aberto, setAberto] = useState<CapituloBiblia | null>(null);
   const [testamento, setTestamento] = useState<'antigo' | 'novo' | null>(null);
   const [escolhendoCapitulo, setEscolhendoCapitulo] = useState<LivroBiblia | null>(null);
@@ -56,7 +58,20 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
 
   useEffect(() => {
     livrosDaBiblia()
-      .then(setLivros)
+      .then((r) => {
+        setFalhou(r === null);
+        setLivros(r ?? []);
+      })
+      .finally(() => setCarregando(false));
+  }, []);
+
+  const recarregar = useCallback(() => {
+    setCarregando(true);
+    livrosDaBiblia()
+      .then((r) => {
+        setFalhou(r === null);
+        setLivros(r ?? []);
+      })
       .finally(() => setCarregando(false));
   }, []);
 
@@ -138,7 +153,10 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
         ? nomeDoTestamento(testamento === 'antigo')
         : achados
           ? `${achados.length} ${achados.length === 1 ? 'passagem' : 'passagens'}`
-          : 'Bíblia';
+          // Na raiz o cabeçalho fica sem título: "Bíblia" já está escrito logo
+          // abaixo, em tamanho de página. Dois títulos iguais na mesma tela
+          // desperdiçam o único espaço que diz onde a pessoa está.
+          : '';
 
   return (
     <View style={styles.root}>
@@ -312,6 +330,22 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
                   livros com um "ver todos". Metade do Pentateuco visível e o
                   resto escondido atrás de um link não ajuda quem procura
                   Salmos — e a aba acesa mentia sobre o estado da tela. */}
+              {/* Falhar calado vira "0 livros", e "0 livros" manda a pessoa
+                  procurar defeito na Bíblia quando o problema é a chamada não
+                  chegar. Melhor dizer o que houve e oferecer tentar de novo. */}
+              {falhou ? (
+                <View style={styles.erroCaixa}>
+                  <Text style={styles.erroTitulo}>Não consegui carregar os livros</Text>
+                  <Text style={styles.erroTexto}>
+                    A Bíblia vem do servidor a cada abertura. Confira a conexão
+                    e tente de novo.
+                  </Text>
+                  <Pressable onPress={recarregar} style={styles.erroBotao}>
+                    <Text style={styles.erroBotaoTexto}>Tentar de novo</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
               <View style={styles.testamentos}>
                 {([['antigo', 'Antigo Testamento', antigo], ['novo', 'Novo Testamento', novo]] as const).map(
                   ([id, nome, lista]) => (
@@ -507,6 +541,33 @@ const styles = StyleSheet.create({
   /* Segura o espaço do título ausente, para o avatar e a gamificação não
      colarem um no outro no meio do cabeçalho. */
   headerVazio: { flex: 1 },
+
+  erroCaixa: {
+    backgroundColor: colors.warmWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.sand,
+    padding: 20,
+    gap: 8,
+    marginBottom: 16,
+  },
+  erroTitulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.base,
+    color: colors.perigo,
+  },
+  erroTexto: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    lineHeight: 22,
+    color: colors.foregroundMuted,
+  },
+  erroBotao: { alignSelf: 'flex-start', paddingVertical: 8 },
+  erroBotaoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: fontSizes.sm,
+    color: colors.earth,
+  },
 
   testamentos: { gap: 12, marginTop: 4 },
   testamentoCard: {

@@ -50,15 +50,25 @@ export function partesDaReferencia(
   return { livro: m[1].trim(), capitulo };
 }
 
-export async function livrosDaBiblia(): Promise<LivroBiblia[]> {
-  if (!API_URL) return [];
+/**
+ * Os 66 livros, ou `null` quando não deu para perguntar.
+ *
+ * A diferença entre `[]` e `null` é a diferença entre duas frases: "a Bíblia
+ * não tem livros" e "não consegui falar com o servidor". Antes as duas eram
+ * `[]`, e a tela escrevia "0 livros" com toda a calma — o que fez perder tempo
+ * procurando um defeito na Bíblia quando o problema era a chamada não chegar.
+ *
+ * Silêncio que parece dado é pior do que erro: erro a gente vê.
+ */
+export async function livrosDaBiblia(): Promise<LivroBiblia[] | null> {
+  if (!API_URL) return null;
   try {
     const res = await apiFetch(`/biblia/livros`);
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const j = await res.json();
-    return Array.isArray(j.livros) ? j.livros : [];
+    return Array.isArray(j.livros) ? j.livros : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
