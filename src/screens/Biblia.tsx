@@ -19,6 +19,9 @@ import {
   livrosDaBiblia, capituloDaBiblia, buscarNaBiblia,
   type LivroBiblia, type CapituloBiblia, type AchadoBiblia,
 } from '../onboarding/biblia';
+import {
+  DIVISOES_ANTIGO, DIVISOES_NOVO, agruparPorDivisao,
+} from '../data/divisoesDaBiblia';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
 import { radius } from '../theme/radius';
@@ -109,6 +112,10 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
   const antigo = livros.filter((l) => l.antigo);
   const novo = livros.filter((l) => !l.antigo);
   const daLista = testamento === 'antigo' ? antigo : novo;
+  const grupos = agruparPorDivisao(
+    daLista,
+    testamento === 'antigo' ? DIVISOES_ANTIGO : DIVISOES_NOVO,
+  );
   const nomeDoTestamento = (velho: boolean) =>
     velho ? 'Antigo Testamento' : 'Novo Testamento';
 
@@ -139,7 +146,11 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
       <HeaderCampoFundo>
           <View style={styles.headerTop}>
             <ProfileButton onPress={() => navigation.navigate('Settings')} size={36} />
-            <Text style={styles.headerTitulo} numberOfLines={1}>{tituloTopo}</Text>
+            {tituloTopo ? (
+              <Text style={styles.headerTitulo} numberOfLines={1}>{tituloTopo}</Text>
+            ) : (
+              <View style={styles.headerVazio} />
+            )}
             <HeaderGamificacao navigation={navigation} />
           </View>
           {!emAlgumLugar ? (
@@ -268,60 +279,54 @@ export default function Biblia({ navigation, route }: { navigation: any; route?:
               </View>
             )
           ) : testamento ? (
-            /* Segundo degrau: os livros do testamento escolhido, em botões do
-               mesmo feitio da grade de capítulos. */
-            <View style={styles.grade}>
-              {daLista.map((l) => (
-                <Pressable
-                  key={l.numero}
-                  onPress={() => setEscolhendoCapitulo(l)}
-                  style={styles.livroBotao}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${l.nome}, ${l.capitulos} capítulos`}
-                >
-                  <Text style={styles.livroBotaoNome}>{l.nome}</Text>
-                </Pressable>
+            /* Segundo degrau: TODOS os livros do testamento, agrupados como a
+               Bíblia é ensinada. Quem procura um salmo sabe que está nos
+               Poéticos; quem quer uma carta de Paulo sabe que vem depois de
+               Atos. É trocar "procurar na lista" por "ir direto no grupo". */
+            <View>
+              {grupos.map((g) => (
+                <View key={g.nome} style={styles.grupo}>
+                  <Text style={styles.grupoTitulo}>{g.nome}</Text>
+                  <View style={styles.grade}>
+                    {g.livros.map((l) => (
+                      <Pressable
+                        key={l.numero}
+                        onPress={() => setEscolhendoCapitulo(l)}
+                        style={styles.livroBotao}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${l.nome}, ${l.capitulos} capítulos`}
+                      >
+                        <Text style={styles.livroBotaoNome}>{l.nome}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
               ))}
             </View>
           ) : (
             <>
-              <View style={styles.segmento}>
-                <Pressable
-                  onPress={() => setTestamento('antigo')}
-                  style={[styles.segmentoBtn, styles.segmentoAtivo]}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.segmentoTextoAtivo}>Antigo Testamento</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setTestamento('novo')}
-                  style={styles.segmentoBtn}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.segmentoTexto}>Novo Testamento</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.listaLivros}>
-                {antigo.slice(0, 8).map((l) => (
-                  <Pressable
-                    key={l.numero}
-                    onPress={() => {
-                      setTestamento('antigo');
-                      setEscolhendoCapitulo(l);
-                    }}
-                    style={styles.livroCard}
-                  >
-                    <Text style={styles.livroCardNome}>{l.nome}</Text>
-                    <Text style={styles.livroCardMeta}>{l.capitulos} cap.</Text>
-                  </Pressable>
-                ))}
-                <Pressable
-                  onPress={() => setTestamento('antigo')}
-                  style={styles.verTodos}
-                >
-                  <Text style={styles.verTodosTexto}>Ver todos os livros</Text>
-                </Pressable>
+              {/* Primeiro degrau: os dois testamentos.
+                  
+                  Antes havia um seletor em que "Antigo" ficava sempre aceso,
+                  sem refletir escolha nenhuma, e embaixo os OITO primeiros
+                  livros com um "ver todos". Metade do Pentateuco visível e o
+                  resto escondido atrás de um link não ajuda quem procura
+                  Salmos — e a aba acesa mentia sobre o estado da tela. */}
+              <View style={styles.testamentos}>
+                {([['antigo', 'Antigo Testamento', antigo], ['novo', 'Novo Testamento', novo]] as const).map(
+                  ([id, nome, lista]) => (
+                    <Pressable
+                      key={id}
+                      onPress={() => setTestamento(id as 'antigo' | 'novo')}
+                      style={styles.testamentoCard}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${nome}, ${lista.length} livros`}
+                    >
+                      <Text style={styles.testamentoNome}>{nome}</Text>
+                      <Text style={styles.testamentoMeta}>{lista.length} livros</Text>
+                    </Pressable>
+                  ),
+                )}
               </View>
 
               <Text style={styles.creditos}>
@@ -496,6 +501,44 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: colors.earth,
+  },
+
+  /* Os dois cartões do primeiro degrau. */
+  /* Segura o espaço do título ausente, para o avatar e a gamificação não
+     colarem um no outro no meio do cabeçalho. */
+  headerVazio: { flex: 1 },
+
+  testamentos: { gap: 12, marginTop: 4 },
+  testamentoCard: {
+    backgroundColor: colors.warmWhite,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.sand,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    gap: 4,
+  },
+  testamentoNome: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 21,
+    color: colors.charcoal,
+    letterSpacing: -0.3,
+  },
+  testamentoMeta: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    color: colors.warmGray,
+  },
+
+  /* Cada divisão do testamento: Pentateuco, Históricos, Evangelhos… */
+  grupo: { marginBottom: 22 },
+  grupoTitulo: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: colors.earth,
+    marginBottom: 4,
   },
 
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },

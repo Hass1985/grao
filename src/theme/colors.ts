@@ -68,7 +68,14 @@ export const colors = {
   headerBrand: '#65452F',
   headerBrandSoft: '#7A5638',
 
-  perigo: '#C45C4A',
+  /**
+   * Vermelho de ação destrutiva, legível no fundo claro.
+   *
+   * #C45C4A media 3,76:1 sobre o ivory e 4,05:1 sobre o warmWhite — reprovado
+   * em AA nos dois, e "Sair da conta" voltava a parecer desabilitado. Este
+   * mede 5,29:1 e 5,70:1, mantendo o tom terroso do guia.
+   */
+  perigo: '#B3392A',
 
   backgroundFade: 'rgba(247, 241, 231, 0)',
 
