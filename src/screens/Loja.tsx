@@ -7,7 +7,6 @@ import {
   StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Sprout } from '../components/icons';
 import ProfileButton from '../components/ProfileButton';
 import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
 import HeaderGamificacao from '../components/ui/HeaderGamificacao';
@@ -43,7 +42,9 @@ export default function Loja({ navigation }: { navigation: any }) {
       <HeaderCampoFundo paddingBottom={22}>
           <View style={styles.headerTop}>
             <ProfileButton onPress={() => navigation.navigate('Settings')} size={36} />
-            <Text style={styles.headerTitulo} numberOfLines={1}>Loja</Text>
+            {/* Sem título aqui: ele desceu para a folha, onde tem tamanho de
+                página. No cabeçalho sobram o avatar e a contagem de grãos. */}
+            <View style={styles.headerVazio} />
             <HeaderGamificacao
               navigation={navigation}
               sequencia={graos?.sequencia ?? 0}
@@ -56,17 +57,13 @@ export default function Loja({ navigation }: { navigation: any }) {
           contentContainerStyle={[styles.scroll, { paddingBottom: TAB_DOCK_CLEARANCE + 28 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.saldoCard}>
-            <View style={styles.saldoTopo}>
-              <Sprout size={18} color={colors.earth} strokeWidth={2.3} fill={colors.ambar08} />
-              <Text style={styles.saldoRotulo}>Seus grãos</Text>
-            </View>
-            <Text style={styles.saldoValor}>{graos ? graos.saldo : '·'}</Text>
-            <Text style={styles.saldoApoio}>
-              Guardados desde o seu primeiro dia. Nada aqui expira.
-            </Text>
-          </View>
+          <Text style={styles.heroTitle}>Loja</Text>
 
+          {/* O card de saldo saiu: o número já está no cabeçalho, a um palmo
+              daqui. Dizer a mesma coisa duas vezes na mesma tela não reforça,
+              divide a atenção — e empurrava para baixo o texto que explica
+              como os grãos funcionam, que é a única coisa nova desta tela
+              enquanto a Loja não abre. */}
           <View style={styles.obra}>
             <Text style={styles.obraTitulo}>A Loja do Grão está chegando!</Text>
             <Text style={styles.obraTexto}>
@@ -97,12 +94,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 10,
   },
-  headerTitulo: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: fonts.sansSemi,
-    fontSize: 17,
-    color: colors.warmWhite,
+  headerVazio: { flex: 1 },
+  heroTitle: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 28,
+    lineHeight: 34,
+    color: colors.earth,
+    letterSpacing: -0.4,
+    marginBottom: 16,
   },
   sheet: {
     flex: 1,
@@ -115,43 +114,6 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: space.gutter,
     paddingTop: 22,
-  },
-  saldoCard: {
-    ...glassCard,
-    alignSelf: 'flex-start',
-    width: '68%',
-    maxWidth: 240,
-    borderRadius: 28,
-    padding: 24,
-    ...(shadows.sm as object),
-  },
-  saldoTopo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  saldoRotulo: {
-    fontFamily: fonts.sansSemi,
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-    color: colors.earth,
-  },
-  saldoValor: {
-    fontFamily: fonts.serifMedium,
-    fontSize: 52,
-    lineHeight: 56,
-    color: colors.earth,
-    letterSpacing: -1,
-    fontVariant: ['tabular-nums'],
-  },
-  saldoApoio: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.sm,
-    lineHeight: 21,
-    color: colors.mist,
-    marginTop: 10,
   },
   obra: { marginTop: 28 },
   obraTitulo: {
