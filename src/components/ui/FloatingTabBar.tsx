@@ -4,6 +4,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleCheck, BookOpen } from '../icons';
 import MaisSheet from './MaisSheet';
+import { AncoraDoGuia } from '../GuiaPrimeiroAcesso';
 import { getDisplayName } from '../../onboarding/userProfile';
 import { useAuth } from '../../auth/AuthContext';
 import { colors } from '../../theme/colors';
@@ -55,52 +56,58 @@ export default function FloatingTabBar({ state, navigation }: BottomTabBarProps)
         ]}
       >
         <View style={styles.bar}>
-          <Pressable
-            onPress={() => irAba('Hoje')}
-            style={styles.lado}
-            accessibilityRole="button"
-            accessibilityState={{ selected: hojeAtivo }}
-            accessibilityLabel="Hoje"
-          >
-            <CircleCheck
-              size={20}
-              color={hojeAtivo ? colors.earth : colors.mist}
-              strokeWidth={hojeAtivo ? 2.4 : 1.9}
-            />
-            <Text style={[styles.label, hojeAtivo && styles.labelAtivo]}>Hoje</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setMaisAberto(true)}
-            style={styles.centro}
-            accessibilityRole="button"
-            accessibilityLabel="Menu Grão"
-            accessibilityState={{ selected: maisAberto }}
-          >
-            <View style={styles.logoCirculo}>
-              <Image
-                source={LOGO_MENU}
-                style={styles.logoImagem}
-                resizeMode="cover"
-                accessibilityIgnoresInvertColors
+          <AncoraDoGuia id="tab-hoje" style={styles.lado}>
+            <Pressable
+              onPress={() => irAba('Hoje')}
+              style={styles.ladoHit}
+              accessibilityRole="button"
+              accessibilityState={{ selected: hojeAtivo }}
+              accessibilityLabel="Hoje"
+            >
+              <CircleCheck
+                size={20}
+                color={hojeAtivo ? colors.earth : colors.mist}
+                strokeWidth={hojeAtivo ? 2.4 : 1.9}
               />
-            </View>
-          </Pressable>
+              <Text style={[styles.label, hojeAtivo && styles.labelAtivo]}>Hoje</Text>
+            </Pressable>
+          </AncoraDoGuia>
 
-          <Pressable
-            onPress={() => irAba('Biblia')}
-            style={styles.lado}
-            accessibilityRole="button"
-            accessibilityState={{ selected: bibliaAtiva }}
-            accessibilityLabel="Bíblia"
-          >
-            <BookOpen
-              size={20}
-              color={bibliaAtiva ? colors.earth : colors.mist}
-              strokeWidth={bibliaAtiva ? 2.4 : 1.9}
-            />
-            <Text style={[styles.label, bibliaAtiva && styles.labelAtivo]}>Bíblia</Text>
-          </Pressable>
+          <AncoraDoGuia id="tab-mais" style={styles.centro}>
+            <Pressable
+              onPress={() => setMaisAberto(true)}
+              style={styles.centro}
+              accessibilityRole="button"
+              accessibilityLabel="Menu Grão"
+              accessibilityState={{ selected: maisAberto }}
+            >
+              <View style={styles.logoCirculo}>
+                <Image
+                  source={LOGO_MENU}
+                  style={styles.logoImagem}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
+                />
+              </View>
+            </Pressable>
+          </AncoraDoGuia>
+
+          <AncoraDoGuia id="tab-biblia" style={styles.lado}>
+            <Pressable
+              onPress={() => irAba('Biblia')}
+              style={styles.ladoHit}
+              accessibilityRole="button"
+              accessibilityState={{ selected: bibliaAtiva }}
+              accessibilityLabel="Bíblia"
+            >
+              <BookOpen
+                size={20}
+                color={bibliaAtiva ? colors.earth : colors.mist}
+                strokeWidth={bibliaAtiva ? 2.4 : 1.9}
+              />
+              <Text style={[styles.label, bibliaAtiva && styles.labelAtivo]}>Bíblia</Text>
+            </Pressable>
+          </AncoraDoGuia>
         </View>
       </View>
 
@@ -138,6 +145,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   lado: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 72,
+  },
+  ladoHit: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

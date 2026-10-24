@@ -102,6 +102,12 @@ export default function CodigoIndicacao({ navigation, onFinish }: Props) {
               desconto na assinatura.
             </Text>
 
+            {/* O exemplo diz "Pastor", não "Padre".
+                
+                O Grão é evangélico, e o texto cinza do campo vazio é uma das
+                primeiras coisas que dizem de quem é este app. Padre Fábio é
+                católico e conhecidíssimo — o exemplo errado faz quem chega
+                parar por um segundo e duvidar se veio ao lugar certo. */}
             <TextInput
               style={styles.campo}
               value={codigo}
@@ -109,7 +115,7 @@ export default function CodigoIndicacao({ navigation, onFinish }: Props) {
                 setCodigo(t);
                 setErro(null);
               }}
-              placeholder="PADRE_FABIO"
+              placeholder="PASTOR_FABIO"
               placeholderTextColor={colors.mist}
               autoCapitalize="characters"
               autoCorrect={false}

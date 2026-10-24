@@ -165,7 +165,7 @@ export default function ParteDaSemente({
                   <Text style={styles.referencia}>{seed.reference}</Text>
                 </Pressable>
               ) : null}
-              <Text style={parte === 'versiculo' ? styles.versiculo : styles.corpo}>
+              <Text style={styles.corpo}>
                 {texto}
               </Text>
             </>
@@ -241,17 +241,11 @@ const styles = StyleSheet.create({
     color: colors.earth,
     marginBottom: 10,
   },
-  /** O versículo é a Palavra: serifada, maior, com o respiro de uma página. */
-  versiculo: {
+  /** Mesma tipografia do Versículo nas outras partes: serifada, com respiro. */
+  corpo: {
     fontFamily: fonts.serif,
     fontSize: 22,
     lineHeight: 36,
-    color: colors.charcoal,
-  },
-  corpo: {
-    fontFamily: fonts.sans,
-    fontSize: fontSizes.base,
-    lineHeight: 28,
     color: colors.charcoal,
   },
   vazio: {

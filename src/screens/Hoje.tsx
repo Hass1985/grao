@@ -33,6 +33,7 @@ import { partesDaReferencia } from '../onboarding/biblia';
 import MusicPlayer from '../components/MusicPlayer';
 import { TAB_DOCK_CLEARANCE } from '../components/ui/FloatingTabBar';
 import ProfileButton from '../components/ProfileButton';
+import { AncoraDoGuia } from '../components/GuiaPrimeiroAcesso';
 import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
 import HeaderGamificacao from '../components/ui/HeaderGamificacao';
 import { useFocusEffect } from '@react-navigation/native';
@@ -272,11 +273,15 @@ export default function Hoje({ navigation }: { navigation: any }) {
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <HeaderCampoFundo>
           <View style={styles.headerTop}>
-            <ProfileButton onPress={() => irStack('Settings')} size={36} />
-            <HeaderGamificacao
-              navigation={navigation}
-              sequencia={sequencia}
-            />
+            <AncoraDoGuia id="hoje-perfil">
+              <ProfileButton onPress={() => irStack('Settings')} size={36} />
+            </AncoraDoGuia>
+            <AncoraDoGuia id="hoje-sequencia">
+              <HeaderGamificacao
+                navigation={navigation}
+                sequencia={sequencia}
+              />
+            </AncoraDoGuia>
           </View>
 
           <View style={styles.week}>
@@ -336,6 +341,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 <Text style={styles.ligacao}>{ligacao}</Text>
               ) : null}
 
+              <AncoraDoGuia id="hoje-cards">
               {/* 1. Devocional diário: abre a tela própria (365 páginas). */}
               <TopicoCard
                 titulo="Devocional"
@@ -484,6 +490,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                   ) : null
                 }
               />
+              </AncoraDoGuia>
 
               {isPago && plantada ? (
                 <>

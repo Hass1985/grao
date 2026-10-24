@@ -38,6 +38,7 @@ import { space } from '../theme/spacing';
 import { glassCard } from '../theme/glass';
 import { webScreenFill, webScroll } from '../theme/webScreen';
 import { useAuth } from '../auth/AuthContext';
+import { useGuiaPrimeiroAcesso } from '../components/GuiaPrimeiroAcesso';
 import {
   minhaAssinatura, minhasPreferencias, salvarHorario, excluirMinhaConta,
   emReais, porExtenso, type SituacaoAssinatura,
@@ -55,6 +56,7 @@ import {
   Mail,
   BookOpen,
   Info,
+  CircleCheck,
   type LucideIcon,
 } from '../components/icons';
 
@@ -122,6 +124,7 @@ function Row({
 
 export default function Settings({ navigation }: Props) {
   const { signOut } = useAuth();
+  const { iniciar: iniciarGuia } = useGuiaPrimeiroAcesso();
   /** Situação real da assinatura e do horário. Nada aqui é escrito no código. */
   const [assinatura, setAssinatura] = useState<SituacaoAssinatura | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -438,6 +441,20 @@ export default function Settings({ navigation }: Props) {
               label="Excluir minha conta"
               danger
               onPress={confirmDelete}
+              last
+            />
+          </Section>
+
+          <Section title="Ajuda">
+            <Row
+              icon={CircleCheck}
+              label="Ver guia do app"
+              value="Tour das telas principais"
+              onPress={() => {
+                navigation.navigate('Main', { screen: 'Hoje' });
+                // Espera a Hoje medir os alvos antes de abrir o balão.
+                setTimeout(() => iniciarGuia(), 500);
+              }}
               last
             />
           </Section>

@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   badge: {
-    backgroundColor: 'rgba(180, 119, 53, 0.16)',
+    backgroundColor: colors.ambar08,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radius.pill,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   badgeTexto: {
     fontFamily: fonts.sansSemi,
     fontSize: 12,
-    color: colors.caramelDark,
+    color: colors.earth,
   },
   pular: {
     fontFamily: fonts.sansMedium,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemi,
     fontSize: 18,
     lineHeight: 24,
-    color: '#000000',
+    color: colors.earth,
     marginBottom: 8,
   },
   texto: {

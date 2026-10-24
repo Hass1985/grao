@@ -13,9 +13,11 @@ import { Manrope_400Regular } from '@expo-google-fonts/manrope/400Regular';
 import { Manrope_500Medium } from '@expo-google-fonts/manrope/500Medium';
 import { Manrope_600SemiBold } from '@expo-google-fonts/manrope/600SemiBold';
 import 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
+import { GuiaPrimeiroAcessoProvider } from './src/components/GuiaPrimeiroAcesso';
 import { hasDisplayName, sincronizarPerfil } from './src/onboarding/userProfile';
 import { consumirPosOAuth, viuApresentacao } from './src/onboarding/authFlow';
 import { viuIndicacao } from './src/onboarding/indicacao';
@@ -140,8 +142,12 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <GuiaPrimeiroAcessoProvider>
+          <AppShell />
+        </GuiaPrimeiroAcessoProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

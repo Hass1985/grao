@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   promo: {
     marginVertical: 14,
     borderRadius: radius.lg,
-    backgroundColor: '#2A2A2A',
+    backgroundColor: colors.earth,
     padding: 18,
     minHeight: 120,
     justifyContent: 'flex-end',
