@@ -131,11 +131,16 @@ function AppShell() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F7F1E7' }} onLayout={onLayoutRootView}>
-      <RootNavigator
-        isOnboarded={gate.app}
-        onboardingInitialRoute={gate.initialRoute}
-        onFinish={finishOnboarding}
-      />
+      {/* O guia mora AQUI, e não em volta do app, porque só aqui existe a
+          resposta de que ele depende: a pessoa já entrou? Montado na raiz, ele
+          subia junto com a tela de login. */}
+      <GuiaPrimeiroAcessoProvider habilitado={gate.app}>
+        <RootNavigator
+          isOnboarded={gate.app}
+          onboardingInitialRoute={gate.initialRoute}
+          onFinish={finishOnboarding}
+        />
+      </GuiaPrimeiroAcessoProvider>
     </View>
   );
 }
@@ -144,9 +149,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <GuiaPrimeiroAcessoProvider>
-          <AppShell />
-        </GuiaPrimeiroAcessoProvider>
+        <AppShell />
       </AuthProvider>
     </SafeAreaProvider>
   );

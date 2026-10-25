@@ -24,6 +24,14 @@ type Props = {
   music: Music;
   /** No fluxo do scroll, abaixo do card (Hoje). */
   inline?: boolean;
+  /**
+   * Esconde nome e artista, deixando só o controle.
+   *
+   * Para quem já anunciou a música na própria tela — a parte Louvor põe o
+   * título na serifada das outras partes, e repetir os dois dentro da barra
+   * fazia a tela dizer a mesma coisa duas vezes em dois tamanhos.
+   */
+  soControle?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -36,7 +44,7 @@ const SpotifyGlyph = ({ s = 12 }: { s?: number }) => (
   </Svg>
 );
 
-export default function MusicPlayer({ music, inline = false, style }: Props) {
+export default function MusicPlayer({ music, inline = false, soControle = false, style }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
   const url = music.spotifyUrl || music.youtubeUrl;
 
@@ -67,14 +75,20 @@ export default function MusicPlayer({ music, inline = false, style }: Props) {
       <View style={styles.art}>
         <SpotifyGlyph />
       </View>
-      <View style={styles.meta}>
-        <Text style={styles.title} numberOfLines={1}>
-          {music.title}
+      {soControle ? (
+        <Text style={styles.convite} numberOfLines={1}>
+          Ouvir no Spotify
         </Text>
-        <Text style={styles.artist} numberOfLines={1}>
-          {music.artist}
-        </Text>
-      </View>
+      ) : (
+        <View style={styles.meta}>
+          <Text style={styles.title} numberOfLines={1}>
+            {music.title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {music.artist}
+          </Text>
+        </View>
+      )}
       <Pressable onPress={open} onPressIn={onPressIn} onPressOut={onPressOut} accessibilityLabel="Ouvir música">
         <Animated.View style={{ transform: [{ scale }] }}>
           <LinearGradient
@@ -161,6 +175,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sans,
     fontSize: 11,
     color: colors.foregroundMuted,
+  },
+  /** O rótulo do modo só-controle, onde o nome da música já foi dito. */
+  convite: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.sansSemi,
+    fontSize: 13,
+    color: colors.palha,
+    letterSpacing: -0.1,
   },
   playBtn: {
     width: 34,

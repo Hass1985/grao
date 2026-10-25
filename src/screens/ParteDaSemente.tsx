@@ -222,7 +222,21 @@ export default function ParteDaSemente({
             <ActivityIndicator color={colors.earth} style={styles.carregando} />
           ) : parte === 'louvor' ? (
             seed?.music ? (
-              <MusicPlayer music={seed.music} />
+              // O louvor é uma parte da semente como as outras, e lê como as
+              // outras: o nome da música na mesma serifada do versículo e da
+              // oração, o artista abaixo, e só então o player.
+              //
+              // Antes era só o player, em modo flutuante (`position:absolute`),
+              // que não ocupa lugar nenhum no fluxo — por isso o botão de
+              // plantar subia por cima dele. `inline` devolve o player ao
+              // fluxo, e aí o espaçamento normal vale.
+              <>
+                <Text style={styles.corpo}>{seed.music.title}</Text>
+                {seed.music.artist ? (
+                  <Text style={styles.autoria}>{seed.music.artist}</Text>
+                ) : null}
+                <MusicPlayer music={seed.music} inline soControle style={styles.player} />
+              </>
             ) : (
               <Text style={styles.vazio}>
                 O louvor de hoje ainda não está disponível.
@@ -355,6 +369,16 @@ const styles = StyleSheet.create({
     lineHeight: 36,
     color: colors.charcoal,
   },
+  /** O artista, abaixo do nome da música: mesma escala do corpo, voz menor. */
+  autoria: {
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.base,
+    lineHeight: 26,
+    color: colors.foregroundMuted,
+    marginTop: 6,
+  },
+  /** Respiro entre o nome da música e o controle de tocar. */
+  player: { marginTop: 22 },
   vazio: {
     fontFamily: fonts.sans,
     fontSize: fontSizes.base,

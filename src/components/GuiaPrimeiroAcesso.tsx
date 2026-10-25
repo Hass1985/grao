@@ -58,7 +58,17 @@ export function useGuiaPrimeiroAcesso() {
   return c;
 }
 
-export function GuiaPrimeiroAcessoProvider({ children }: { children: React.ReactNode }) {
+/**
+ * @param habilitado Só arma o guia quando a pessoa já entrou e está no app
+ *   principal. Sem isto o provider montava junto com a raiz, ou seja, antes do
+ *   login: os seis passos apareciam por cima da tela de entrar, apontando para
+ *   âncoras (`tab-hoje`, `tab-mais`) que só existem depois. E pior — quem
+ *   tocasse em "Pular" ali gastava o guia sem nunca ter visto o app.
+ */
+export function GuiaPrimeiroAcessoProvider({
+  children,
+  habilitado = false,
+}: { children: React.ReactNode; habilitado?: boolean }) {
   const [ativo, setAtivo] = useState(false);
   const [indice, setIndice] = useState(0);
   const [rects, setRects] = useState<Partial<Record<AncoraGuia, RetAngulo>>>({});
@@ -66,6 +76,12 @@ export function GuiaPrimeiroAcessoProvider({ children }: { children: React.React
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    if (!habilitado) {
+      // Saiu do app (logout, ou voltou para o onboarding): o guia não fica
+      // aberto por cima de uma tela que não é a dele.
+      setAtivo(false);
+      return;
+    }
     let vivo = true;
     jaViuGuia().then((viu) => {
       if (!vivo || viu) return;
@@ -75,7 +91,7 @@ export function GuiaPrimeiroAcessoProvider({ children }: { children: React.React
       }, 700);
     });
     return () => { vivo = false; };
-  }, []);
+  }, [habilitado]);
 
   const registrar = useCallback((id: AncoraGuia, rect: RetAngulo | null) => {
     setRects((prev) => {
