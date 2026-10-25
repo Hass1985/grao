@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
+  Modal,
 } from 'react-native';
 import {
   BookOpen,
@@ -76,6 +77,15 @@ function weekDates() {
   });
 }
 
+/**
+ * Como o plano pago se chama na tela.
+ *
+ * Num lugar só porque ele aparece quatro vezes no aviso, e porque o nome ainda
+ * está em discussão: o servidor e a tela de assinatura dizem "Plantio", e a
+ * palavra "semente" é o conteúdo de cada dia. Trocar aqui troca em todas.
+ */
+const NOME_DO_PLANO = 'Plantio';
+
 export default function Hoje({ navigation }: { navigation: any }) {
   const [pago, setPago] = useState<boolean | null>(null);
   const [seed, setSeed] = useState<Seed>(todaySeed);
@@ -86,6 +96,15 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const [plantando, setPlantando] = useState(false);
   const [ligacao, setLigacao] = useState<string | null>(null);
   const [cardAberto, setCardAberto] = useState<TopicoId | null>(null);
+  /**
+   * Qual parte a pessoa tocou estando sem o plano.
+   *
+   * Antes o toque no cadeado jogava direto na tela do Plantio, sem uma palavra:
+   * a pessoa tocava em "Oração" e aparecia uma tela de planos. O salto deixava
+   * a pergunta no ar — por que isto está fechado, e o que eu ganho abrindo.
+   * O aviso responde antes de pedir qualquer coisa.
+   */
+  const [avisoPlano, setAvisoPlano] = useState<string | null>(null);
   const [graos, setGraos] = useState<ResumoGraos | null>(null);
   const [resumo, setResumo] = useState<ResumoLeitura | null>(null);
   const reveal = useRef(new Animated.Value(0)).current;
@@ -359,7 +378,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 aberto={cardAberto === 'semente'}
                 onPress={() => {
                   if (!isPago) {
-                    irPlantio();
+                    setAvisoPlano('Versículo');
                     return;
                   }
                   if (!plantada) {
@@ -401,7 +420,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 aberto={cardAberto === 'reflexao'}
                 onPress={() => {
                   if (!isPago) {
-                    irPlantio();
+                    setAvisoPlano('Reflexão');
                     return;
                   }
                   if (!plantada) {
@@ -432,7 +451,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 aberto={cardAberto === 'pratica'}
                 onPress={() => {
                   if (!isPago || !plantada || praticaBloqueada || !seed.practice) {
-                    if (!isPago) irPlantio();
+                    if (!isPago) setAvisoPlano('Prática');
                     else if (!plantada) contarMomento();
                     return;
                   }
@@ -452,7 +471,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 aberto={cardAberto === 'oracao'}
                 onPress={() => {
                   if (!isPago || !plantada || oracaoBloqueada || !seed.prayer) {
-                    if (!isPago) irPlantio();
+                    if (!isPago) setAvisoPlano('Oração');
                     else if (!plantada) contarMomento();
                     return;
                   }
@@ -472,7 +491,7 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 aberto={cardAberto === 'louvor'}
                 onPress={() => {
                   if (!isPago || !plantada || louvorBloqueado || !seed.music) {
-                    if (!isPago) irPlantio();
+                    if (!isPago) setAvisoPlano('Louvor');
                     else if (!plantada) contarMomento();
                     return;
                   }
@@ -507,6 +526,54 @@ export default function Hoje({ navigation }: { navigation: any }) {
           )}
         </ScrollView>
       </View>
+
+      {/* O aviso do plano, antes do salto.
+          
+          Tocar num cadeado levava direto à tela de planos, sem uma palavra: a
+          pessoa tocava em "Oração" e aparecia um preço. Aqui ela lê o que está
+          fechado e o que ganha abrindo, e só então decide — e "Agora não" é
+          uma saída de verdade, que devolve para a tela onde ela estava. */}
+      <Modal
+        visible={!!avisoPlano}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvisoPlano(null)}
+      >
+        <Pressable style={styles.avisoFundo} onPress={() => setAvisoPlano(null)}>
+          {/* O toque dentro do cartão não fecha: só o de fora. */}
+          <Pressable style={styles.avisoCartao} onPress={() => {}}>
+            <View style={styles.avisoSelo}>
+              <Lock size={16} color={colors.earth} strokeWidth={2.2} />
+              <Text style={styles.avisoSeloTexto}>Exclusivo no {NOME_DO_PLANO}</Text>
+            </View>
+
+            <Text style={styles.avisoTitulo}>
+              {avisoPlano} faz parte do {NOME_DO_PLANO}
+            </Text>
+
+            <Text style={styles.avisoTexto}>
+              No {NOME_DO_PLANO} você recebe o versículo, a reflexão, a prática,
+              a oração e o louvor — tudo escolhido para o seu momento, todo dia.
+            </Text>
+
+            <Pressable
+              style={styles.avisoBotao}
+              onPress={() => { setAvisoPlano(null); irPlantio(); }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.avisoBotaoTexto}>Começar 7 dias grátis</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setAvisoPlano(null)}
+              style={styles.avisoAgoraNao}
+              accessibilityRole="button"
+            >
+              <Text style={styles.avisoAgoraNaoTexto}>Agora não</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -631,6 +698,71 @@ function TopicoCard({
 }
 
 const styles = StyleSheet.create({
+  avisoFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(41, 38, 33, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  avisoCartao: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.warmWhite,
+    borderRadius: 24,
+    padding: 24,
+    gap: 12,
+  },
+  avisoSelo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceAccent,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  avisoSeloTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.earth,
+  },
+  avisoTitulo: {
+    fontFamily: fonts.serifMedium,
+    fontSize: 22,
+    lineHeight: 29,
+    color: colors.charcoal,
+    letterSpacing: -0.3,
+  },
+  avisoTexto: {
+    fontFamily: fonts.sans,
+    fontSize: 16,
+    lineHeight: 26,
+    color: colors.foregroundMuted,
+  },
+  avisoBotao: {
+    minHeight: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.earth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  avisoBotaoTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.warmWhite,
+  },
+  avisoAgoraNao: { alignItems: 'center', paddingVertical: 10 },
+  avisoAgoraNaoTexto: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
+    color: colors.warmGray,
+  },
+
   root: { flex: 1, backgroundColor: '#241708' },
   headerTop: {
     flexDirection: 'row',
