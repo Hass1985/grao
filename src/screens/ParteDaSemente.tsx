@@ -155,10 +155,16 @@ export default function ParteDaSemente({
   /**
    * O fim da última parte é o gesto do dia.
    *
-   * Só quando ainda não plantou: oferecer "finalizar e plantar" a quem já
-   * plantou no WhatsApp de manhã seria o app admitindo que não viu.
+   * Plantar FECHA o dia, não o abre: quem chegou até aqui passou pelas cinco
+   * fases e agora efetiva a semente. Por isso o fim não depende de `plantada`
+   * — antes dependia, e como só se entrava aqui DEPOIS de plantar, o botão
+   * nunca aparecia uma única vez.
+   *
+   * Quem já plantou no WhatsApp de manhã também tem um fim, com outra palavra:
+   * plantar de novo não é o que o gesto faz para ele.
    */
-  const fecharODia = !proxima && !plantada && !carregando && !!seed;
+  const fecharODia = !proxima && !carregando && !!seed;
+  const rotuloDoFim = plantada ? 'Concluir o dia' : 'Finalizar e plantar a semente';
 
   const seguir = () => {
     if (proxima) {
@@ -263,14 +269,14 @@ export default function ParteDaSemente({
               disabled={plantando}
               style={[styles.plantar, plantando && styles.plantarOcupado]}
               accessibilityRole="button"
-              accessibilityLabel="Finalizar e plantar a semente"
+              accessibilityLabel={rotuloDoFim}
             >
               {plantando ? (
                 <ActivityIndicator color={colors.warmWhite} size="small" />
               ) : (
                 <>
                   <Sprout size={18} color={colors.warmWhite} strokeWidth={2.2} />
-                  <Text style={styles.plantarTexto}>Finalizar e plantar a semente</Text>
+                  <Text style={styles.plantarTexto}>{rotuloDoFim}</Text>
                 </>
               )}
             </Pressable>

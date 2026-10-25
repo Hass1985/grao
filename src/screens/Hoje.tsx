@@ -42,7 +42,6 @@ import { todaySeed, Seed, EmotionalFamily } from '../data/seeds';
 import {
   selectTodaySeed,
   getMoment,
-  plantarSementeDeHoje,
   devocionalDeHoje,
   resumoDeLeitura,
   type ResumoLeitura,
@@ -93,7 +92,6 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const [trocaUsada, setTrocaUsada] = useState(false);
   const [plantada, setPlantada] = useState(true);
   const [waPref, setWaPref] = useState<{ numero: string; frase: string } | null>(null);
-  const [plantando, setPlantando] = useState(false);
   const [ligacao, setLigacao] = useState<string | null>(null);
   const [cardAberto, setCardAberto] = useState<TopicoId | null>(null);
   /**
@@ -208,14 +206,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
     navigation.navigate('ParteDaSemente', { parte });
   };
 
-  const plantar = async () => {
-    if (plantando) return;
-    setPlantando(true);
-    setPlantada(true);
-    const ok = await plantarSementeDeHoje();
-    if (!ok) setPlantada(false);
-    setPlantando(false);
-  };
+  // Plantar saiu desta tela de propósito.
+  //
+  // Enquanto os cards ficavam travados até plantar, o Hoje precisava de um
+  // botão para destravá-los. Agora plantar é o FIM do caminho — a última fase
+  // oferece o gesto, e é lá que a tela de confirmação aparece. Um segundo
+  // botão aqui plantaria o dia antes de a pessoa ler qualquer coisa, que é o
+  // avesso do que o caminho propõe.
 
   const share = async () => {
     const message = (pago ? seed.compartilhavel : devocao?.compartilhavel)?.trim();
@@ -249,13 +246,14 @@ export default function Hoje({ navigation }: { navigation: any }) {
   const progresso = (() => {
     if (pago === null) return 0;
     if (!isPago) return devocao ? 25 : 0;
-    if (!plantada) return 10;
     let p = 35;
     if (seed.reflection) p += 15;
     if (seed.practice) p += 15;
     if (seed.prayer) p += 20;
     if (seed.music) p += 15;
-    return Math.min(100, p);
+    // O anel só fecha quando o dia fecha. Plantar é o último gesto do caminho,
+    // então enquanto a semente não foi plantada falta sempre um pedaço.
+    return Math.min(plantada ? 100 : 85, p);
   })();
 
   const dateLine = (() => {
@@ -283,9 +281,9 @@ export default function Hoje({ navigation }: { navigation: any }) {
     setCardAberto((atual) => (atual === id ? null : id));
 
   // Paywall do servidor: null = bloqueado (gancho para assinar).
-  const praticaBloqueada = isPago && plantada && seed.practice === null;
-  const oracaoBloqueada = isPago && plantada && seed.prayer === null;
-  const louvorBloqueado = isPago && plantada && seed.music === null;
+  const praticaBloqueada = isPago && seed.practice === null;
+  const oracaoBloqueada = isPago && seed.prayer === null;
+  const louvorBloqueado = isPago && seed.music === null;
 
   return (
     <View style={styles.root}>
@@ -381,29 +379,23 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     setAvisoPlano('Versículo');
                     return;
                   }
-                  if (!plantada) {
-                    contarMomento();
-                    return;
-                  }
                   abrirParte('versiculo');
                 }}
-                bloqueado={!isPago || !plantada}
+                bloqueado={!isPago}
                 cabecalho={
-                  isPago && plantada
+                  isPago
                     ? (seed.reference || seed.title || 'Sua semente')
                     : 'Disponível no Plantio'
                 }
                 trechosOuvir={
-                  isPago && plantada
+                  isPago
                     ? [seed.passage || '', seed.reference || '']
                     : undefined
                 }
-                onLer={isPago && plantada ? abrirCapituloSemente : undefined}
-                textoLeitura={isPago && plantada ? seed.passage : undefined}
-                onOuvirExtra={!plantada && isPago ? contarMomento : undefined}
-                onLerExtra={!plantada && isPago ? () => { void plantar(); } : undefined}
+                onLer={isPago ? abrirCapituloSemente : undefined}
+                textoLeitura={isPago ? seed.passage : undefined}
                 acoesExtras={
-                  isPago && plantada && !trocaUsada ? (
+                  isPago && !trocaUsada ? (
                     <Pressable onPress={contarMomento} style={styles.linkMomento}>
                       <Mic size={14} color={colors.warmWhite} strokeWidth={2} />
                       <Text style={styles.linkMomentoTexto}>Meu sentimento mudou</Text>
@@ -423,24 +415,20 @@ export default function Hoje({ navigation }: { navigation: any }) {
                     setAvisoPlano('Reflexão');
                     return;
                   }
-                  if (!plantada) {
-                    contarMomento();
-                    return;
-                  }
                   abrirParte('reflexao');
                 }}
-                bloqueado={!isPago || !plantada}
+                bloqueado={!isPago}
                 cabecalho={
-                  isPago && plantada
+                  isPago
                     ? (seed.reference || seed.title || 'Reflexão')
                     : 'Disponível no Plantio'
                 }
                 trechosOuvir={
-                  isPago && plantada && seed.reflection
+                  isPago && seed.reflection
                     ? [seed.reflection]
                     : undefined
                 }
-                textoLeitura={isPago && plantada ? seed.reflection : undefined}
+                textoLeitura={isPago ? seed.reflection : undefined}
               />
 
               {/* 4. Prática — null = bloqueado pelo servidor */}
@@ -450,14 +438,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 Icon={MessageCircle}
                 aberto={cardAberto === 'pratica'}
                 onPress={() => {
-                  if (!isPago || !plantada || praticaBloqueada || !seed.practice) {
+                  if (!isPago || praticaBloqueada || !seed.practice) {
                     if (!isPago) setAvisoPlano('Prática');
-                    else if (!plantada) contarMomento();
                     return;
                   }
                   abrirParte('pratica');
                 }}
-                bloqueado={!isPago || !plantada || praticaBloqueada || !seed.practice}
+                bloqueado={!isPago || praticaBloqueada || !seed.practice}
                 cabecalho={seed.practice ? 'Prática de hoje' : 'Disponível no Plantio'}
                 trechosOuvir={seed.practice ? [seed.practice] : undefined}
                 textoLeitura={seed.practice || undefined}
@@ -470,14 +457,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 Icon={Heart}
                 aberto={cardAberto === 'oracao'}
                 onPress={() => {
-                  if (!isPago || !plantada || oracaoBloqueada || !seed.prayer) {
+                  if (!isPago || oracaoBloqueada || !seed.prayer) {
                     if (!isPago) setAvisoPlano('Oração');
-                    else if (!plantada) contarMomento();
                     return;
                   }
                   abrirParte('oracao');
                 }}
-                bloqueado={!isPago || !plantada || oracaoBloqueada || !seed.prayer}
+                bloqueado={!isPago || oracaoBloqueada || !seed.prayer}
                 cabecalho={seed.prayer ? 'Oração de hoje' : 'Disponível no Plantio'}
                 trechosOuvir={seed.prayer ? [seed.prayer] : undefined}
                 textoLeitura={seed.prayer || undefined}
@@ -490,14 +476,13 @@ export default function Hoje({ navigation }: { navigation: any }) {
                 Icon={Music2}
                 aberto={cardAberto === 'louvor'}
                 onPress={() => {
-                  if (!isPago || !plantada || louvorBloqueado || !seed.music) {
+                  if (!isPago || louvorBloqueado || !seed.music) {
                     if (!isPago) setAvisoPlano('Louvor');
-                    else if (!plantada) contarMomento();
                     return;
                   }
                   abrirParte('louvor');
                 }}
-                bloqueado={!isPago || !plantada || louvorBloqueado || !seed.music}
+                bloqueado={!isPago || louvorBloqueado || !seed.music}
                 cabecalho={
                   seed.music
                     ? `${seed.music.title}${seed.music.artist ? ` · ${seed.music.artist}` : ''}`
