@@ -33,14 +33,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, Feather, Heart, MessageCircle, Music2, Pause, Play, Sprout } from '../components/icons';
+import {
+  ChevronLeft, ChevronRight, Feather, Heart, MessageCircle, Music2,
+  Pause, Play, Sprout,
+} from '../components/icons';
 import type { LucideIcon } from '../components/icons';
 import { useLeituraEmVoz } from '../components/OuvirTexto';
 import MusicPlayer from '../components/MusicPlayer';
 import HeaderCampoFundo from '../components/ui/HeaderCampoFundo';
 import HeaderGamificacao from '../components/ui/HeaderGamificacao';
 import { Seed, todaySeed } from '../data/seeds';
-import { selectTodaySeed } from '../onboarding/seedDelivery';
+import { selectTodaySeed, plantarSementeDeHoje } from '../onboarding/seedDelivery';
 import { partesDaReferencia } from '../onboarding/biblia';
 import { colors } from '../theme/colors';
 import { fonts, fontSizes } from '../theme/typography';
@@ -59,6 +62,35 @@ const TITULOS: Record<ParteId, { titulo: string; Icon: LucideIcon }> = {
 };
 
 /** O texto de cada parte, ou null quando o plano da pessoa não abre aquela. */
+/**
+ * A ordem da leitura, e ela não é arbitrária.
+ *
+ * Primeiro a Palavra, depois o que ela diz para esta pessoa hoje, depois o
+ * gesto, depois a conversa com Deus, e o louvor por último — é a sequência de
+ * um devocional, e é a mesma do WhatsApp. Quem lê um pedaço por dia não perde
+ * nada; quem quer o caminho inteiro agora tem para onde seguir sem voltar ao
+ * índice a cada parte.
+ */
+const ORDEM: ParteId[] = ['versiculo', 'reflexao', 'pratica', 'oracao', 'louvor'];
+
+/**
+ * A próxima parte que TEM conteúdo hoje.
+ *
+ * Pula o que veio vazio do servidor. Oferecer "continuar para a Prática"
+ * quando não há prática leva a pessoa a uma tela que diz "não disponível" —
+ * um beco com o nome de caminho.
+ */
+function proximaParte(atual: ParteId, seed: Seed | null): ParteId | null {
+  if (!seed) return null;
+  const i = ORDEM.indexOf(atual);
+  for (let k = i + 1; k < ORDEM.length; k++) {
+    const p = ORDEM[k];
+    const tem = p === 'louvor' ? !!seed.music : !!textoDa(p, seed);
+    if (tem) return p;
+  }
+  return null;
+}
+
 function textoDa(parte: ParteId, seed: Seed): string | null {
   if (parte === 'versiculo') return seed.passage?.trim() || null;
   if (parte === 'reflexao') return seed.reflection?.trim() || null;
@@ -76,6 +108,9 @@ export default function ParteDaSemente({
 
   const [seed, setSeed] = useState<Seed | null>(null);
   const [carregando, setCarregando] = useState(true);
+  /** Já plantada hoje, por qualquer porta. Decide se o fim oferece plantar. */
+  const [plantada, setPlantada] = useState(false);
+  const [plantando, setPlantando] = useState(false);
 
   // Recarrega ao ganhar foco. A semente pode ter sido plantada no WhatsApp
   // enquanto esta tela estava empilhada atrás, e aí o que ela mostra mudou.
@@ -86,7 +121,10 @@ export default function ParteDaSemente({
         setCarregando(true);
         try {
           const dados = await selectTodaySeed();
-          if (vivo) setSeed(dados.seed);
+          if (vivo) {
+            setSeed(dados.seed);
+            setPlantada(!!dados.plantada);
+          }
         } catch {
           if (vivo) setSeed(todaySeed);
         } finally {
@@ -112,6 +150,32 @@ export default function ParteDaSemente({
     : undefined;
 
   const podeOuvir = parte !== 'louvor' && trechos.length > 0;
+
+  const proxima = proximaParte(parte, seed);
+  /**
+   * O fim da última parte é o gesto do dia.
+   *
+   * Só quando ainda não plantou: oferecer "finalizar e plantar" a quem já
+   * plantou no WhatsApp de manhã seria o app admitindo que não viu.
+   */
+  const fecharODia = !proxima && !plantada && !carregando && !!seed;
+
+  const seguir = () => {
+    if (proxima) {
+      // replace, não push: a pilha não deve guardar as cinco partes. Quem
+      // chega ao fim e toca em voltar quer o Hoje, não refazer o caminho.
+      navigation.replace('ParteDaSemente', { parte: proxima });
+      return;
+    }
+    if (!fecharODia || plantando) return;
+    setPlantando(true);
+    plantarSementeDeHoje()
+      .then((ok) => {
+        if (ok) navigation.replace('SementePlantada');
+        else setPlantando(false);
+      })
+      .catch(() => setPlantando(false));
+  };
 
   return (
     <View style={[styles.root, webScreenFill]}>
@@ -174,6 +238,43 @@ export default function ParteDaSemente({
               Esta parte ainda não está disponível hoje.
             </Text>
           )}
+
+          {/* O caminho continua aqui, no fim do que ela acabou de ler.
+              
+              Sem isto, terminar uma parte era um beco: voltar, achar o próximo
+              card, tocar. Três gestos para seguir lendo o mesmo devocional. O
+              convite aparece onde o olho já está, e na última parte ele deixa
+              de ser "continuar" e vira o gesto do dia. */}
+          {proxima ? (
+            <Pressable
+              onPress={seguir}
+              style={styles.seguir}
+              accessibilityRole="button"
+              accessibilityLabel={`Continuar para ${TITULOS[proxima].titulo}`}
+            >
+              <Text style={styles.seguirTexto}>
+                Continuar para {TITULOS[proxima].titulo}
+              </Text>
+              <ChevronRight size={18} color={colors.earth} strokeWidth={2.2} />
+            </Pressable>
+          ) : fecharODia ? (
+            <Pressable
+              onPress={seguir}
+              disabled={plantando}
+              style={[styles.plantar, plantando && styles.plantarOcupado]}
+              accessibilityRole="button"
+              accessibilityLabel="Finalizar e plantar a semente"
+            >
+              {plantando ? (
+                <ActivityIndicator color={colors.warmWhite} size="small" />
+              ) : (
+                <>
+                  <Sprout size={18} color={colors.warmWhite} strokeWidth={2.2} />
+                  <Text style={styles.plantarTexto}>Finalizar e plantar a semente</Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
         </ScrollView>
 
         {podeOuvir ? (
@@ -256,6 +357,42 @@ const styles = StyleSheet.create({
   },
 
   /** Fixo: quem prefere escutar decide antes de começar a ler. */
+  /* O convite para a próxima parte: discreto, no fim do texto. */
+  seguir: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 32,
+    paddingVertical: 14,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.warmWhite,
+  },
+  seguirTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 15,
+    color: colors.earth,
+  },
+  /* O último não é um link: é o gesto do dia, e parece um. */
+  plantar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 32,
+    minHeight: 54,
+    borderRadius: radius.pill,
+    backgroundColor: colors.earth,
+  },
+  plantarOcupado: { opacity: 0.7 },
+  plantarTexto: {
+    fontFamily: fonts.sansSemi,
+    fontSize: 16,
+    color: colors.warmWhite,
+  },
+
   rodape: {
     position: 'absolute',
     left: 0,

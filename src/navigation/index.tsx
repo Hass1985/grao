@@ -15,6 +15,7 @@ import Biblia from '../screens/Biblia';
 import Loja from '../screens/Loja';
 import Devocional from '../screens/Devocional';
 import ParteDaSemente from '../screens/ParteDaSemente';
+import SementePlantada from '../screens/SementePlantada';
 import Settings from '../screens/Settings';
 import PrivacyPolicy from '../screens/PrivacyPolicy';
 import Credits from '../screens/Credits';
@@ -101,6 +102,8 @@ function AppNavigator() {
       <AppStack.Screen name="Devocional" component={Devocional} />
       {/* Versículo, Reflexão, Prática, Oração e Louvor em tela cheia. */}
       <AppStack.Screen name="ParteDaSemente" component={ParteDaSemente} />
+      {/* O fim do caminho do dia. */}
+      <AppStack.Screen name="SementePlantada" component={SementePlantada} />
       <AppStack.Screen name="Plantio" component={Plantio} />
       <AppStack.Screen name="Assinar" component={Assinar} />
       <AppStack.Screen name="EntregaWhatsApp" component={EntregaWhatsApp} />
