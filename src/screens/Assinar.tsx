@@ -84,10 +84,15 @@ export default function Assinar({ navigation }: Props) {
   };
 
   /** Avança o fluxo sem gravar cobrança: serve para testar WhatsApp e Momento. */
-  const seguirComoTeste = () => {
-    const d = new Date(Date.now() + (config?.diasGratis ?? 7) * 86_400_000);
-    navigation.replace('EntregaWhatsApp', { trialAte: d.toISOString() });
-  };
+  // Havia aqui um "Continuar sem cobrança (teste)".
+  //
+  // Ele pulava o servidor: inventava uma data local e seguia para a entrega.
+  // A pessoa atravessava telefone, horário e relato achando que tinha
+  // assinado, voltava ao Hoje e batia no paywall de novo, porque nenhuma
+  // assinatura havia sido criada. Um atalho que parecia caminho.
+  //
+  // Sandbox não precisa de atalho: a chave de homologação já faz o fluxo
+  // inteiro sem cobrar ninguém, e é ele que queremos ver se comporta.
 
   async function confirmar() {
     setErro(null);
@@ -144,14 +149,9 @@ export default function Assinar({ navigation }: Props) {
                 Estamos terminando de ligar o pagamento. Enquanto isso, o devocional
                 diário continua seu, de graça.
               </Text>
-              <Button
-                title="Continuar para testar o fluxo"
-                onPress={seguirComoTeste}
-                variant="dark"
-                style={{ marginTop: 18 }}
-              />
               <Text style={[styles.ajuda, { marginTop: 12 }]}>
-                Abre horário do WhatsApp e depois o relato do momento, sem registrar cobrança.
+                Assim que a cobrança abrir, o Plantio aparece aqui com os 7 dias
+                grátis.
               </Text>
             </View>
           ) : (
@@ -252,10 +252,6 @@ export default function Assinar({ navigation }: Props) {
 
               <Pressable onPress={() => navigation.goBack()} style={styles.link} hitSlop={8}>
                 <Text style={styles.linkTexto}>Agora não</Text>
-              </Pressable>
-
-              <Pressable onPress={seguirComoTeste} style={styles.link} hitSlop={8}>
-                <Text style={styles.linkTexto}>Continuar sem cobrança (teste)</Text>
               </Pressable>
 
               <Text style={styles.rodape}>
